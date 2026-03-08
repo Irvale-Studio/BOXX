@@ -14,7 +14,7 @@ export default function Hero() {
 
   const imageScale = useTransform(scrollYProgress, [0, 1], [1, 1.2]);
   const imageOpacity = useTransform(scrollYProgress, [0, 0.8], [1, 0]);
-  const overlayOpacity = useTransform(scrollYProgress, [0, 0.5], [0.5, 0.8]);
+  const overlayOpacity = useTransform(scrollYProgress, [0, 0.5], [0.55, 0.85]);
   const textY = useTransform(scrollYProgress, [0, 1], [0, 150]);
   const arrowOpacity = useTransform(scrollYProgress, [0, 0.2], [1, 0]);
 
@@ -39,11 +39,14 @@ export default function Hero() {
         />
       </motion.div>
 
-      {/* Dark overlay */}
+      {/* Dark overlay — stronger for legibility */}
       <motion.div
         style={{ opacity: overlayOpacity }}
         className="absolute inset-0 bg-black"
       />
+
+      {/* Bottom gradient for seamless transition */}
+      <div className="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-[#0a0a0a] to-transparent z-[1]" />
 
       {/* Grain texture overlay */}
       <div
@@ -56,14 +59,14 @@ export default function Hero() {
       {/* Content */}
       <motion.div
         style={{ y: textY }}
-        className="relative z-10 h-full flex flex-col items-center justify-center px-6 text-center"
+        className="relative z-10 h-full flex flex-col items-center justify-center px-8 text-center"
       >
         {/* Overline */}
         <motion.p
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5, duration: 0.8 }}
-          className="text-accent text-[11px] md:text-xs tracking-[0.4em] uppercase mb-8"
+          className="text-accent text-[11px] md:text-xs tracking-[0.4em] uppercase mb-10 drop-shadow-lg"
         >
           Chiang Mai&apos;s First Luxury Boxing Studio
         </motion.p>
@@ -74,7 +77,8 @@ export default function Hero() {
             initial={{ y: '100%' }}
             animate={{ y: 0 }}
             transition={{ delay: 0.7, duration: 1, ease: [0.22, 1, 0.36, 1] }}
-            className="text-7xl sm:text-8xl md:text-9xl lg:text-[10rem] font-bold tracking-tighter leading-none"
+            className="text-7xl sm:text-8xl md:text-9xl lg:text-[11rem] font-bold tracking-tighter leading-none drop-shadow-2xl"
+            style={{ textShadow: '0 4px 30px rgba(0,0,0,0.5)' }}
           >
             BOXX
           </motion.h1>
@@ -85,7 +89,7 @@ export default function Hero() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 1.2, duration: 0.8 }}
-          className="mt-8 md:mt-10 text-white/50 text-base md:text-lg max-w-sm tracking-wide leading-relaxed"
+          className="mt-10 md:mt-12 text-white/70 text-base md:text-xl max-w-md tracking-wide leading-relaxed drop-shadow-lg"
         >
           Boxing &amp; strength training, done properly.
         </motion.p>
@@ -95,7 +99,7 @@ export default function Hero() {
           initial={{ scaleX: 0 }}
           animate={{ scaleX: 1 }}
           transition={{ delay: 1.5, duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-          className="w-12 h-[1px] bg-accent mt-10 origin-center"
+          className="w-12 h-[1px] bg-accent mt-12 origin-center"
         />
 
         {/* CTA */}
@@ -106,7 +110,7 @@ export default function Hero() {
           onClick={() => {
             document.querySelector('#classes')?.scrollIntoView({ behavior: 'smooth' });
           }}
-          className="mt-10 px-10 py-4 border border-white/20 text-xs tracking-[0.2em] uppercase hover:bg-white hover:text-black transition-all duration-500"
+          className="mt-12 px-14 py-6 bg-cta text-[#0a0a0a] text-sm tracking-[0.2em] uppercase font-semibold hover:bg-cta-hover transition-all duration-500"
         >
           Explore Classes
         </motion.button>
@@ -115,15 +119,15 @@ export default function Hero() {
       {/* Scroll indicator */}
       <motion.div
         style={{ opacity: arrowOpacity }}
-        className="absolute bottom-12 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-3"
+        className="absolute bottom-16 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-3"
       >
-        <span className="text-[10px] tracking-[0.3em] uppercase text-white/30">
+        <span className="text-[10px] tracking-[0.3em] uppercase text-white/40 drop-shadow-md">
           Scroll
         </span>
         <motion.div
           animate={{ y: [0, 8, 0] }}
           transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
-          className="w-[1px] h-8 bg-gradient-to-b from-white/30 to-transparent"
+          className="w-[1px] h-8 bg-gradient-to-b from-white/40 to-transparent"
         />
       </motion.div>
     </section>

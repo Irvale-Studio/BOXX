@@ -5,6 +5,8 @@
   --foreground: #f5f5f5;
   --accent: #c8a750;
   --accent-dim: #a08535;
+  --cta: #f5efe6;
+  --cta-hover: #e8dfd2;
   --muted: #888888;
   --card: #111111;
   --card-border: #1a1a1a;
@@ -15,6 +17,8 @@
   --color-foreground: var(--foreground);
   --color-accent: var(--accent);
   --color-accent-dim: var(--accent-dim);
+  --color-cta: var(--cta);
+  --color-cta-hover: var(--cta-hover);
   --color-muted: var(--muted);
   --color-card: var(--card);
   --color-card-border: var(--card-border);
@@ -53,6 +57,17 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
   background: #555;
+}
+
+/* Cursor pointer on all interactive elements */
+button,
+a,
+[role="button"],
+select,
+input[type="submit"],
+input[type="button"],
+input[type="reset"] {
+  cursor: pointer;
 }
 
 /* Selection color */

@@ -38,7 +38,7 @@ const classes = [
     rounds: 'Hybrid',
     image: '/images/studio/class-train.webp',
     description:
-      'The best of both worlds. Boxing meets strength and conditioning — weights, kettlebells, bodyweight training. Build muscle, burn fat, get fit.',
+      'The best of both worlds. Boxing meets strength and conditioning with weights, kettlebells, and bodyweight training. Build muscle, burn fat, and get fit.',
     features: ['Boxing drills', 'Kettlebells', 'Strength work', 'Fat burning'],
   },
   {
@@ -90,8 +90,8 @@ function ClassCard({ cls, index, isExpanded, onToggle }) {
         <div className="absolute inset-0 bg-gradient-to-t from-card via-card/20 to-transparent" />
 
         {/* Level badge */}
-        <div className="absolute top-5 left-5 px-3 py-1.5 bg-black/60 backdrop-blur-sm border border-white/10">
-          <span className="text-[10px] tracking-[0.2em] uppercase text-accent">
+        <div className="absolute top-5 left-5 px-5 py-2.5 bg-black/60 backdrop-blur-sm border border-white/10">
+          <span className="text-[11px] tracking-[0.2em] uppercase text-accent">
             {cls.level}
           </span>
         </div>
@@ -172,10 +172,10 @@ export default function Classes() {
   const headingInView = useInView(headingRef, { once: true, margin: '-100px' });
 
   return (
-    <section id="classes" className="relative py-28 md:py-36 lg:py-44">
+    <section id="classes" className="relative py-40 md:py-52 lg:py-60">
       <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
 
-      <div className="max-w-7xl mx-auto px-6 lg:px-8">
+      <div className="max-w-[1400px] mx-auto px-10 lg:px-20">
         {/* Section header */}
         <div className="mb-16 md:mb-20">
           <motion.p
@@ -242,16 +242,16 @@ export default function Classes() {
                 Personal Training
               </h3>
               <p className="text-white/40 max-w-lg leading-relaxed">
-                Tailored sessions built around your goals. Whether it&apos;s boxing
-                technique, strength, weight loss, or fight preparation — get a
-                programme designed specifically for you.
+                Tailored sessions built around your goals, whether that&apos;s boxing
+                technique, strength, weight loss, or fight preparation. Every
+                programme is designed specifically for you.
               </p>
             </div>
             <button
               onClick={() => {
                 document.querySelector('#contact')?.scrollIntoView({ behavior: 'smooth' });
               }}
-              className="px-10 py-4 bg-accent text-black text-xs tracking-[0.2em] uppercase font-semibold hover:bg-accent-dim transition-colors duration-300 whitespace-nowrap"
+              className="px-12 py-6 bg-cta text-[#0a0a0a] text-sm tracking-[0.2em] uppercase font-semibold hover:bg-cta-hover transition-colors duration-300 whitespace-nowrap"
             >
               Enquire Now
             </button>

@@ -9,7 +9,7 @@ const features = [
     number: '01',
     title: 'Proper Technique',
     description:
-      'UK-qualified coaches who prioritise form and fundamentals. Every punch, every movement — done right from day one.',
+      'UK-qualified coaches who prioritise form and fundamentals. Every punch, every movement, done right from day one.',
     detail: 'Certified in British boxing standards',
   },
   {
@@ -17,7 +17,7 @@ const features = [
     number: '02',
     title: 'Intimate Classes',
     description:
-      'Maximum 6 people per session. You\'re not a number — you get real coaching, real attention, and 1:1 padwork in every class.',
+      'Maximum 6 people per session. You\'re never just a number. You get real coaching, real attention, and 1:1 padwork in every class.',
     detail: 'Small groups, maximum attention',
   },
   {
@@ -33,7 +33,7 @@ const features = [
     number: '04',
     title: 'All Levels Welcome',
     description:
-      'Whether you\'ve never thrown a punch or you\'re preparing for a fight — there\'s a place for you at BOXX.',
+      'Whether you\'ve never thrown a punch or you\'re preparing for a fight, there\'s a place for you at BOXX.',
     detail: 'Beginners to experienced boxers',
   },
 ];
@@ -98,11 +98,11 @@ export default function Features() {
   const headingInView = useInView(headingRef, { once: true, margin: '-100px' });
 
   return (
-    <section className="relative py-28 md:py-36 lg:py-44 bg-[#080808]">
+    <section className="relative py-40 md:py-52 lg:py-60 bg-[#080808]">
       <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
       <div className="absolute bottom-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
 
-      <div className="max-w-7xl mx-auto px-6 lg:px-8">
+      <div className="max-w-[1400px] mx-auto px-10 lg:px-20">
         {/* Section header */}
         <div className="mb-20 md:mb-24">
           <motion.p

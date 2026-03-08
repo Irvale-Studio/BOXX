@@ -17,10 +17,10 @@ export default function Community() {
   const imageY = useTransform(scrollYProgress, [0, 1], [40, -40]);
 
   return (
-    <section id="community" ref={sectionRef} className="relative py-28 md:py-36 lg:py-44 overflow-hidden">
+    <section id="community" ref={sectionRef} className="relative py-40 md:py-52 lg:py-60 overflow-hidden">
       <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
 
-      <div className="max-w-7xl mx-auto px-6 lg:px-8">
+      <div className="max-w-[1400px] mx-auto px-10 lg:px-20">
         {/* Header */}
         <div className="mb-16 md:mb-20">
           <motion.p
@@ -82,7 +82,7 @@ export default function Community() {
             >
               BOXX is built on three things: passion, community, and a genuine
               commitment to your growth. We believe training extends beyond physical
-              results — it&apos;s about confidence, skill, and belonging.
+              results. It&apos;s about confidence, skill, and belonging.
             </motion.p>
 
             <motion.p

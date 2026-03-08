@@ -64,7 +64,7 @@ export default function CTABanner() {
             onClick={() => {
               document.querySelector('#contact')?.scrollIntoView({ behavior: 'smooth' });
             }}
-            className="px-10 py-4 bg-accent text-black text-xs tracking-[0.2em] uppercase font-semibold hover:bg-accent-dim transition-colors duration-300"
+            className="px-14 py-6 bg-cta text-[#0a0a0a] text-sm tracking-[0.2em] uppercase font-semibold hover:bg-cta-hover transition-colors duration-300"
           >
             Get in Touch
           </button>
@@ -72,7 +72,7 @@ export default function CTABanner() {
             href="https://wa.me/66934972306"
             target="_blank"
             rel="noopener noreferrer"
-            className="px-10 py-4 border border-white/20 text-xs tracking-[0.2em] uppercase hover:bg-white/5 transition-all duration-300 text-center"
+            className="px-14 py-6 border border-white/20 text-sm tracking-[0.2em] uppercase hover:bg-white/5 transition-all duration-300 text-center"
           >
             WhatsApp Us
           </a>
