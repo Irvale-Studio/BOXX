@@ -14,21 +14,20 @@ export default function Community() {
     offset: ['start end', 'end start'],
   });
 
-  const imageX = useTransform(scrollYProgress, [0, 1], [-50, 50]);
-  const textX = useTransform(scrollYProgress, [0, 1], [50, -50]);
+  const imageY = useTransform(scrollYProgress, [0, 1], [40, -40]);
 
   return (
-    <section id="community" ref={sectionRef} className="relative py-32 lg:py-40">
+    <section id="community" ref={sectionRef} className="relative py-28 md:py-36 lg:py-44 overflow-hidden">
       <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
 
       <div className="max-w-7xl mx-auto px-6 lg:px-8">
         {/* Header */}
-        <div className="mb-16">
+        <div className="mb-16 md:mb-20">
           <motion.p
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
             viewport={{ once: true }}
-            className="text-accent text-xs tracking-[0.4em] uppercase mb-4"
+            className="text-accent text-xs tracking-[0.4em] uppercase mb-5"
           >
             #BOXXCOMMUNITY
           </motion.p>
@@ -46,9 +45,9 @@ export default function Community() {
         </div>
 
         {/* Content */}
-        <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
-          {/* Image side */}
-          <motion.div style={{ x: imageX }} className="relative">
+        <div className="grid lg:grid-cols-2 gap-14 lg:gap-24 items-center">
+          {/* Image side — vertical parallax only (no horizontal to avoid mobile overflow) */}
+          <motion.div style={{ y: imageY }} className="relative">
             <div className="relative aspect-[4/3] overflow-hidden">
               <Image
                 src="/images/studio/community.webp"
@@ -57,7 +56,7 @@ export default function Community() {
                 className="object-cover"
                 sizes="(max-width: 1024px) 100vw, 50vw"
               />
-              <div className="absolute inset-0 bg-gradient-to-r from-[#0a0a0a]/30 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-r from-[#0a0a0a]/20 to-transparent" />
             </div>
 
             {/* Floating BOXXRUN badge */}
@@ -66,20 +65,20 @@ export default function Community() {
               whileInView={{ opacity: 1, scale: 1 }}
               viewport={{ once: true }}
               transition={{ delay: 0.4, duration: 0.6 }}
-              className="absolute -bottom-6 -right-4 lg:-right-8 bg-accent text-black px-6 py-4"
+              className="absolute -bottom-5 right-4 lg:right-8 bg-accent text-black px-6 py-4"
             >
-              <p className="text-xs tracking-widest uppercase font-bold">BOXXRUN</p>
-              <p className="text-[10px] tracking-wider mt-1 opacity-70">Free Run Club</p>
+              <p className="text-xs tracking-[0.2em] uppercase font-bold">BOXXRUN</p>
+              <p className="text-[10px] tracking-wider mt-1 opacity-60">Free Run Club</p>
             </motion.div>
           </motion.div>
 
           {/* Text side */}
-          <motion.div style={{ x: textX }} className="space-y-6">
+          <div>
             <motion.p
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              className="text-white/60 text-lg leading-relaxed"
+              className="text-white/50 text-base md:text-lg leading-[1.8]"
             >
               BOXX is built on three things: passion, community, and a genuine
               commitment to your growth. We believe training extends beyond physical
@@ -91,7 +90,7 @@ export default function Community() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: 0.1 }}
-              className="text-white/60 text-lg leading-relaxed"
+              className="text-white/50 text-base md:text-lg leading-[1.8] mt-6"
             >
               From free community run clubs to local charity events, we&apos;re creating
               connections that go far beyond the ring. When you join BOXX, you join a
@@ -104,21 +103,21 @@ export default function Community() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: 0.2 }}
-              className="grid grid-cols-3 gap-6 pt-8"
+              className="grid grid-cols-3 gap-6 mt-12 pt-10 border-t border-white/[0.06]"
             >
               {[
                 { icon: '01', title: 'Connection', desc: 'Train together, grow together' },
                 { icon: '02', title: 'Events', desc: 'Free community activities' },
                 { icon: '03', title: 'Charity', desc: 'Giving back locally' },
               ].map((item) => (
-                <div key={item.title} className="space-y-2">
+                <div key={item.title}>
                   <p className="text-accent text-2xl font-light">{item.icon}</p>
-                  <p className="text-sm font-semibold tracking-wide">{item.title}</p>
-                  <p className="text-xs text-white/40">{item.desc}</p>
+                  <p className="text-sm font-semibold tracking-wide mt-3">{item.title}</p>
+                  <p className="text-xs text-white/30 mt-1 leading-relaxed">{item.desc}</p>
                 </div>
               ))}
             </motion.div>
-          </motion.div>
+          </div>
         </div>
       </div>
     </section>

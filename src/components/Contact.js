@@ -7,27 +7,22 @@ const socialLinks = [
   {
     name: 'Instagram',
     href: 'https://instagram.com/boxxthailand',
-    label: '@boxxthailand',
   },
   {
     name: 'TikTok',
     href: 'https://tiktok.com/@boxxthailand',
-    label: '@boxxthailand',
   },
   {
     name: 'Facebook',
     href: 'https://web.facebook.com/profile.php?id=61584385442693',
-    label: 'BOXX Boxing Studio',
   },
   {
     name: 'WhatsApp',
     href: 'https://wa.me/66934972306',
-    label: '+66 93 497 2306',
   },
   {
     name: 'LINE',
     href: '#',
-    label: '@boxxthailand',
   },
 ];
 
@@ -50,23 +45,22 @@ export default function Contact() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    // For now, just show success state
     setSubmitted(true);
   };
 
   return (
-    <section id="contact" className="relative py-32 lg:py-40">
+    <section id="contact" className="relative py-28 md:py-36 lg:py-44 bg-[#080808]">
       <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
 
       <div className="max-w-7xl mx-auto px-6 lg:px-8">
-        <div className="grid lg:grid-cols-2 gap-16 lg:gap-24">
+        <div className="grid lg:grid-cols-2 gap-16 lg:gap-28">
           {/* Left — Info */}
           <div>
             <motion.p
               initial={{ opacity: 0 }}
               whileInView={{ opacity: 1 }}
               viewport={{ once: true }}
-              className="text-accent text-xs tracking-[0.4em] uppercase mb-4"
+              className="text-accent text-xs tracking-[0.4em] uppercase mb-5"
             >
               Get In Touch
             </motion.p>
@@ -89,11 +83,10 @@ export default function Contact() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: 0.2 }}
-              className="mt-6 text-white/50 text-lg leading-relaxed max-w-md"
+              className="mt-8 text-white/40 text-base md:text-lg leading-[1.8] max-w-md"
             >
               Whether you&apos;re a complete beginner or a seasoned boxer, we&apos;d
               love to hear from you. Drop us a message or find us on social media.
-              We typically respond within 24 hours.
             </motion.p>
 
             {/* Contact details */}
@@ -102,13 +95,13 @@ export default function Contact() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: 0.3 }}
-              className="mt-10 space-y-6"
+              className="mt-12 space-y-8"
             >
               <div>
-                <p className="text-xs tracking-widest uppercase text-white/30 mb-2">
+                <p className="text-[10px] tracking-[0.3em] uppercase text-white/25 mb-2">
                   Location
                 </p>
-                <p className="text-white/70">
+                <p className="text-white/60 leading-relaxed">
                   89/2 Bumruang Road, Wat Ket
                   <br />
                   Chiang Mai 50000, Thailand
@@ -116,24 +109,24 @@ export default function Contact() {
               </div>
 
               <div>
-                <p className="text-xs tracking-widest uppercase text-white/30 mb-2">
+                <p className="text-[10px] tracking-[0.3em] uppercase text-white/25 mb-2">
                   Email
                 </p>
                 <a
                   href="mailto:hello@boxxthailand.com"
-                  className="text-white/70 hover:text-accent transition-colors"
+                  className="text-white/60 hover:text-accent transition-colors"
                 >
                   hello@boxxthailand.com
                 </a>
               </div>
 
               <div>
-                <p className="text-xs tracking-widest uppercase text-white/30 mb-2">
+                <p className="text-[10px] tracking-[0.3em] uppercase text-white/25 mb-2">
                   Phone
                 </p>
                 <a
                   href="tel:+66934972306"
-                  className="text-white/70 hover:text-accent transition-colors"
+                  className="text-white/60 hover:text-accent transition-colors"
                 >
                   +66 93 497 2306
                 </a>
@@ -146,7 +139,7 @@ export default function Contact() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: 0.4 }}
-              className="mt-10 flex flex-wrap gap-4"
+              className="mt-12 flex flex-wrap gap-3"
             >
               {socialLinks.map((link) => (
                 <a
@@ -154,9 +147,9 @@ export default function Contact() {
                   href={link.href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="group flex items-center gap-2 px-4 py-2 border border-white/10 hover:border-accent/30 transition-all duration-300"
+                  className="group px-5 py-2.5 border border-white/[0.06] hover:border-accent/30 transition-all duration-300"
                 >
-                  <span className="text-xs tracking-wider text-white/50 group-hover:text-accent transition-colors">
+                  <span className="text-[11px] tracking-[0.15em] text-white/40 group-hover:text-accent transition-colors">
                     {link.name}
                   </span>
                 </a>
@@ -172,22 +165,22 @@ export default function Contact() {
             transition={{ delay: 0.2, duration: 0.8 }}
           >
             {submitted ? (
-              <div className="h-full flex items-center justify-center border border-card-border bg-card p-12">
+              <div className="h-full min-h-[400px] flex items-center justify-center border border-card-border bg-card/50 p-12">
                 <div className="text-center">
-                  <div className="w-12 h-12 border border-accent rounded-full flex items-center justify-center mx-auto mb-6">
+                  <div className="w-14 h-14 border border-accent rounded-full flex items-center justify-center mx-auto mb-8">
                     <span className="text-accent text-xl">&#10003;</span>
                   </div>
-                  <h3 className="text-2xl font-bold mb-3">Message Sent</h3>
-                  <p className="text-white/50">
+                  <h3 className="text-2xl font-bold mb-4">Message Sent</h3>
+                  <p className="text-white/40 leading-relaxed">
                     Thanks for reaching out. We&apos;ll get back to you within 24 hours.
                   </p>
                 </div>
               </div>
             ) : (
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="grid grid-cols-2 gap-4">
+              <form onSubmit={handleSubmit} className="space-y-8">
+                <div className="grid grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-xs tracking-widest uppercase text-white/30 mb-2">
+                    <label className="block text-[10px] tracking-[0.3em] uppercase text-white/25 mb-3">
                       First Name
                     </label>
                     <input
@@ -196,12 +189,12 @@ export default function Contact() {
                       value={formState.firstName}
                       onChange={handleChange}
                       required
-                      className="w-full bg-transparent border-b border-white/10 pb-3 text-white/90 focus:border-accent focus:outline-none transition-colors placeholder:text-white/20"
+                      className="w-full bg-transparent border-b border-white/[0.08] pb-3 text-white/80 focus:border-accent focus:outline-none transition-colors placeholder:text-white/15"
                       placeholder="John"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs tracking-widest uppercase text-white/30 mb-2">
+                    <label className="block text-[10px] tracking-[0.3em] uppercase text-white/25 mb-3">
                       Last Name
                     </label>
                     <input
@@ -210,14 +203,14 @@ export default function Contact() {
                       value={formState.lastName}
                       onChange={handleChange}
                       required
-                      className="w-full bg-transparent border-b border-white/10 pb-3 text-white/90 focus:border-accent focus:outline-none transition-colors placeholder:text-white/20"
+                      className="w-full bg-transparent border-b border-white/[0.08] pb-3 text-white/80 focus:border-accent focus:outline-none transition-colors placeholder:text-white/15"
                       placeholder="Doe"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs tracking-widest uppercase text-white/30 mb-2">
+                  <label className="block text-[10px] tracking-[0.3em] uppercase text-white/25 mb-3">
                     Email
                   </label>
                   <input
@@ -226,13 +219,13 @@ export default function Contact() {
                     value={formState.email}
                     onChange={handleChange}
                     required
-                    className="w-full bg-transparent border-b border-white/10 pb-3 text-white/90 focus:border-accent focus:outline-none transition-colors placeholder:text-white/20"
+                    className="w-full bg-transparent border-b border-white/[0.08] pb-3 text-white/80 focus:border-accent focus:outline-none transition-colors placeholder:text-white/15"
                     placeholder="john@example.com"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs tracking-widest uppercase text-white/30 mb-2">
+                  <label className="block text-[10px] tracking-[0.3em] uppercase text-white/25 mb-3">
                     Phone
                   </label>
                   <input
@@ -240,38 +233,38 @@ export default function Contact() {
                     name="phone"
                     value={formState.phone}
                     onChange={handleChange}
-                    className="w-full bg-transparent border-b border-white/10 pb-3 text-white/90 focus:border-accent focus:outline-none transition-colors placeholder:text-white/20"
+                    className="w-full bg-transparent border-b border-white/[0.08] pb-3 text-white/80 focus:border-accent focus:outline-none transition-colors placeholder:text-white/15"
                     placeholder="+66 XX XXX XXXX"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs tracking-widest uppercase text-white/30 mb-2">
+                  <label className="block text-[10px] tracking-[0.3em] uppercase text-white/25 mb-3">
                     Interested In
                   </label>
                   <select
                     name="interest"
                     value={formState.interest}
                     onChange={handleChange}
-                    className="w-full bg-transparent border-b border-white/10 pb-3 text-white/90 focus:border-accent focus:outline-none transition-colors appearance-none cursor-pointer"
+                    className="w-full bg-transparent border-b border-white/[0.08] pb-3 text-white/80 focus:border-accent focus:outline-none transition-colors appearance-none cursor-pointer"
                   >
-                    <option value="" className="bg-[#0a0a0a]">
+                    <option value="" className="bg-[#080808]">
                       Select an option
                     </option>
-                    <option value="classes" className="bg-[#0a0a0a]">
+                    <option value="classes" className="bg-[#080808]">
                       Group Classes
                     </option>
-                    <option value="pt" className="bg-[#0a0a0a]">
+                    <option value="pt" className="bg-[#080808]">
                       Personal Training
                     </option>
-                    <option value="other" className="bg-[#0a0a0a]">
+                    <option value="other" className="bg-[#080808]">
                       Other
                     </option>
                   </select>
                 </div>
 
                 <div>
-                  <label className="block text-xs tracking-widest uppercase text-white/30 mb-2">
+                  <label className="block text-[10px] tracking-[0.3em] uppercase text-white/25 mb-3">
                     Message
                   </label>
                   <textarea
@@ -280,14 +273,14 @@ export default function Contact() {
                     onChange={handleChange}
                     required
                     rows={4}
-                    className="w-full bg-transparent border-b border-white/10 pb-3 text-white/90 focus:border-accent focus:outline-none transition-colors resize-none placeholder:text-white/20"
+                    className="w-full bg-transparent border-b border-white/[0.08] pb-3 text-white/80 focus:border-accent focus:outline-none transition-colors resize-none placeholder:text-white/15"
                     placeholder="How can we help?"
                   />
                 </div>
 
                 <button
                   type="submit"
-                  className="w-full py-4 bg-accent text-black text-sm tracking-widest uppercase font-semibold hover:bg-accent-dim transition-colors duration-300"
+                  className="w-full py-4 bg-accent text-black text-xs tracking-[0.2em] uppercase font-semibold hover:bg-accent-dim transition-colors duration-300 mt-4"
                 >
                   Send Message
                 </button>

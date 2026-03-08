@@ -36,29 +36,24 @@ function StepItem({ step, index }) {
       initial={{ opacity: 0, x: 30 }}
       animate={inView ? { opacity: 1, x: 0 } : { opacity: 0, x: 30 }}
       transition={{ duration: 0.7, delay: index * 0.1 }}
-      className="group relative flex gap-8 py-10 border-b border-white/5 last:border-0"
+      className="group relative flex gap-6 md:gap-10 py-10 md:py-12 border-b border-white/[0.04] last:border-0"
     >
       {/* Number */}
-      <div className="flex-shrink-0">
-        <span className="text-5xl md:text-6xl font-bold text-white/[0.06] group-hover:text-accent/20 transition-colors duration-500">
+      <div className="flex-shrink-0 pt-1">
+        <span className="text-4xl md:text-5xl font-bold text-white/[0.05] group-hover:text-accent/15 transition-colors duration-500">
           {step.number}
         </span>
       </div>
 
       {/* Content */}
-      <div className="pt-2">
+      <div>
         <h3 className="text-xl md:text-2xl font-bold tracking-tight group-hover:text-accent transition-colors duration-500">
           {step.title}
         </h3>
-        <p className="text-white/40 mt-2 leading-relaxed max-w-md">
+        <p className="text-white/35 mt-3 leading-[1.8] max-w-md text-sm md:text-base">
           {step.description}
         </p>
       </div>
-
-      {/* Connecting line */}
-      {index < steps.length - 1 && (
-        <div className="absolute left-6 bottom-0 w-[1px] h-10 bg-gradient-to-b from-white/5 to-transparent translate-y-full" />
-      )}
     </motion.div>
   );
 }
@@ -68,18 +63,19 @@ export default function Process() {
   const headingInView = useInView(headingRef, { once: true, margin: '-100px' });
 
   return (
-    <section className="relative py-32 lg:py-40">
+    <section className="relative py-28 md:py-36 lg:py-44 bg-[#080808]">
       <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+      <div className="absolute bottom-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
 
       <div className="max-w-7xl mx-auto px-6 lg:px-8">
-        <div className="grid lg:grid-cols-[1fr,2fr] gap-16 lg:gap-24">
+        <div className="grid lg:grid-cols-[1fr,2fr] gap-16 lg:gap-28">
           {/* Left — sticky header */}
           <div className="lg:sticky lg:top-32 lg:self-start">
             <motion.p
               initial={{ opacity: 0 }}
               whileInView={{ opacity: 1 }}
               viewport={{ once: true }}
-              className="text-accent text-xs tracking-[0.4em] uppercase mb-4"
+              className="text-accent text-xs tracking-[0.4em] uppercase mb-5"
             >
               How It Works
             </motion.p>
@@ -102,14 +98,14 @@ export default function Process() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: 0.3 }}
-              className="mt-4 text-white/40 max-w-sm"
+              className="mt-6 text-white/35 max-w-sm leading-relaxed"
             >
               Getting started at BOXX is simple. No complicated sign-ups, no intimidation — just great coaching from day one.
             </motion.p>
           </div>
 
           {/* Right — steps */}
-          <div className="space-y-0">
+          <div>
             {steps.map((step, i) => (
               <StepItem key={step.number} step={step} index={i} />
             ))}

@@ -73,9 +73,11 @@ function ClassCard({ cls, index, isExpanded, onToggle }) {
       }`}
     >
       {/* Image section */}
-      <div className={`relative overflow-hidden transition-all duration-700 ${
-        isExpanded ? 'h-64 md:h-80' : 'h-48 md:h-56'
-      }`}>
+      <div
+        className={`relative overflow-hidden transition-all duration-700 ${
+          isExpanded ? 'h-56 md:h-72' : 'h-52 md:h-64'
+        }`}
+      >
         <Image
           src={cls.image}
           alt={cls.name}
@@ -85,23 +87,23 @@ function ClassCard({ cls, index, isExpanded, onToggle }) {
           }`}
           sizes="(max-width: 768px) 100vw, 50vw"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-card via-card/30 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-card via-card/20 to-transparent" />
 
         {/* Level badge */}
-        <div className="absolute top-4 left-4 px-3 py-1 bg-black/60 backdrop-blur-sm border border-white/10">
-          <span className="text-[10px] tracking-widest uppercase text-accent">
+        <div className="absolute top-5 left-5 px-3 py-1.5 bg-black/60 backdrop-blur-sm border border-white/10">
+          <span className="text-[10px] tracking-[0.2em] uppercase text-accent">
             {cls.level}
           </span>
         </div>
 
         {/* Title overlay */}
-        <div className="absolute bottom-4 left-4 right-4">
+        <div className="absolute bottom-5 left-5 right-5">
           <h3 className="text-2xl md:text-3xl font-bold tracking-tight">
             {cls.name}
           </h3>
-          <div className="flex gap-4 mt-2">
+          <div className="flex gap-4 mt-3">
             {[cls.duration, cls.capacity, cls.rounds].map((detail) => (
-              <span key={detail} className="text-xs tracking-wider text-white/50">
+              <span key={detail} className="text-[11px] tracking-wider text-white/40">
                 {detail}
               </span>
             ))}
@@ -119,25 +121,25 @@ function ClassCard({ cls, index, isExpanded, onToggle }) {
             transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
             className="overflow-hidden"
           >
-            <div className="p-6 space-y-5">
-              <p className="text-white/60 leading-relaxed">{cls.description}</p>
+            <div className="px-6 pt-6 pb-7 space-y-5">
+              <p className="text-white/50 text-sm leading-[1.8]">{cls.description}</p>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-x-4 gap-y-3">
                 {cls.features.map((feature) => (
-                  <div key={feature} className="flex items-center gap-2">
-                    <div className="w-1 h-1 bg-accent rounded-full" />
-                    <span className="text-sm text-white/70">{feature}</span>
+                  <div key={feature} className="flex items-center gap-2.5">
+                    <div className="w-1 h-1 bg-accent rounded-full flex-shrink-0" />
+                    <span className="text-sm text-white/60">{feature}</span>
                   </div>
                 ))}
               </div>
 
-              <div className="pt-2">
+              <div className="pt-3">
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     document.querySelector('#contact')?.scrollIntoView({ behavior: 'smooth' });
                   }}
-                  className="text-xs tracking-widest uppercase text-accent hover:text-accent-dim transition-colors"
+                  className="text-xs tracking-[0.2em] uppercase text-accent hover:text-accent-dim transition-colors"
                 >
                   Get in touch &rarr;
                 </button>
@@ -149,13 +151,13 @@ function ClassCard({ cls, index, isExpanded, onToggle }) {
 
       {/* Expand indicator */}
       <div className="px-6 py-4 flex items-center justify-between border-t border-card-border">
-        <span className="text-xs tracking-wider text-white/30">
+        <span className="text-[11px] tracking-wider text-white/25">
           {isExpanded ? 'Click to collapse' : 'Click to learn more'}
         </span>
         <motion.span
           animate={{ rotate: isExpanded ? 180 : 0 }}
           transition={{ duration: 0.3 }}
-          className="text-white/30 text-lg"
+          className="text-white/25 text-lg"
         >
           &#x2304;
         </motion.span>
@@ -170,18 +172,17 @@ export default function Classes() {
   const headingInView = useInView(headingRef, { once: true, margin: '-100px' });
 
   return (
-    <section id="classes" className="relative py-32 lg:py-40">
-      {/* Background accent */}
+    <section id="classes" className="relative py-28 md:py-36 lg:py-44">
       <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
 
       <div className="max-w-7xl mx-auto px-6 lg:px-8">
         {/* Section header */}
-        <div className="mb-16">
+        <div className="mb-16 md:mb-20">
           <motion.p
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
             viewport={{ once: true }}
-            className="text-accent text-xs tracking-[0.4em] uppercase mb-4"
+            className="text-accent text-xs tracking-[0.4em] uppercase mb-5"
           >
             Our Classes
           </motion.p>
@@ -202,7 +203,7 @@ export default function Classes() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ delay: 0.3 }}
-            className="text-white/50 mt-4 max-w-lg text-lg"
+            className="text-white/40 mt-6 max-w-lg text-base md:text-lg leading-relaxed"
           >
             Small-group sessions. Maximum 6 people. Every class delivers proper
             technique, real conditioning, and 1:1 attention from UK-qualified coaches.
@@ -210,7 +211,7 @@ export default function Classes() {
         </div>
 
         {/* Class cards grid */}
-        <div className="grid md:grid-cols-2 gap-6">
+        <div className="grid md:grid-cols-2 gap-5 md:gap-6">
           {classes.map((cls, i) => (
             <ClassCard
               key={cls.id}
@@ -230,17 +231,17 @@ export default function Classes() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ delay: 0.2, duration: 0.8 }}
-          className="mt-12 relative overflow-hidden border border-card-border bg-card/50 p-8 md:p-12"
+          className="mt-16 relative overflow-hidden border border-card-border bg-card/30 p-8 md:p-14"
         >
-          <div className="grid md:grid-cols-[1fr,auto] gap-8 items-center">
+          <div className="grid md:grid-cols-[1fr,auto] gap-10 items-center">
             <div>
-              <p className="text-accent text-xs tracking-[0.4em] uppercase mb-3">
+              <p className="text-accent text-xs tracking-[0.4em] uppercase mb-4">
                 1-to-1 &amp; Small Group
               </p>
-              <h3 className="text-2xl md:text-3xl font-bold tracking-tight mb-3">
+              <h3 className="text-2xl md:text-3xl font-bold tracking-tight mb-4">
                 Personal Training
               </h3>
-              <p className="text-white/50 max-w-lg">
+              <p className="text-white/40 max-w-lg leading-relaxed">
                 Tailored sessions built around your goals. Whether it&apos;s boxing
                 technique, strength, weight loss, or fight preparation — get a
                 programme designed specifically for you.
@@ -250,14 +251,13 @@ export default function Classes() {
               onClick={() => {
                 document.querySelector('#contact')?.scrollIntoView({ behavior: 'smooth' });
               }}
-              className="px-8 py-3.5 bg-accent text-black text-sm tracking-widest uppercase font-semibold hover:bg-accent-dim transition-colors duration-300 whitespace-nowrap"
+              className="px-10 py-4 bg-accent text-black text-xs tracking-[0.2em] uppercase font-semibold hover:bg-accent-dim transition-colors duration-300 whitespace-nowrap"
             >
               Enquire Now
             </button>
           </div>
 
-          {/* Decorative corner */}
-          <div className="absolute top-0 right-0 w-24 h-24 border-t border-r border-accent/20" />
+          <div className="absolute top-0 right-0 w-24 h-24 border-t border-r border-accent/10" />
         </motion.div>
       </div>
     </section>

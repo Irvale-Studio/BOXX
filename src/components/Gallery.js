@@ -24,7 +24,7 @@ function GalleryImage({ image, index }) {
       transition={{ duration: 0.7, delay: index * 0.1, ease: [0.22, 1, 0.36, 1] }}
       className={`relative overflow-hidden group ${image.span}`}
     >
-      <div className="relative w-full h-full min-h-[200px] md:min-h-[250px]">
+      <div className="relative w-full h-full min-h-[220px] md:min-h-[280px]">
         <Image
           src={image.src}
           alt={image.alt}
@@ -32,10 +32,9 @@ function GalleryImage({ image, index }) {
           className="object-cover transition-transform duration-700 group-hover:scale-110"
           sizes="(max-width: 768px) 100vw, 33vw"
         />
-        {/* Hover overlay */}
         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all duration-500" />
-        <div className="absolute inset-0 flex items-end p-4 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
-          <p className="text-xs tracking-widest uppercase text-white/80">
+        <div className="absolute inset-0 flex items-end p-5 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+          <p className="text-[10px] tracking-[0.2em] uppercase text-white/70">
             {image.alt}
           </p>
         </div>
@@ -57,16 +56,17 @@ export default function Gallery() {
   const marqueeX = useTransform(scrollYProgress, [0, 1], ['0%', '-30%']);
 
   return (
-    <section ref={sectionRef} className="relative py-32 lg:py-40">
+    <section ref={sectionRef} className="relative py-28 md:py-36 lg:py-44 bg-[#080808]">
       <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+      <div className="absolute bottom-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
 
       {/* Scrolling text marquee */}
-      <div className="overflow-hidden mb-16">
-        <motion.div style={{ x: marqueeX }} className="flex gap-8 whitespace-nowrap">
+      <div className="overflow-hidden mb-16 md:mb-20">
+        <motion.div style={{ x: marqueeX }} className="flex gap-12 whitespace-nowrap">
           {Array.from({ length: 6 }).map((_, i) => (
             <span
               key={i}
-              className="text-7xl md:text-9xl font-bold tracking-tighter text-white/[0.03]"
+              className="text-7xl md:text-9xl font-bold tracking-tighter text-white/[0.025]"
             >
               BOXX STUDIO
             </span>
@@ -75,12 +75,12 @@ export default function Gallery() {
       </div>
 
       <div className="max-w-7xl mx-auto px-6 lg:px-8">
-        <div className="mb-12">
+        <div className="mb-14 md:mb-16">
           <motion.p
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
             viewport={{ once: true }}
-            className="text-accent text-xs tracking-[0.4em] uppercase mb-4"
+            className="text-accent text-xs tracking-[0.4em] uppercase mb-5"
           >
             The Space
           </motion.p>
@@ -98,7 +98,7 @@ export default function Gallery() {
         </div>
 
         {/* Masonry-style grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3 auto-rows-[200px] md:auto-rows-[250px]">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 auto-rows-[220px] md:auto-rows-[280px]">
           {images.map((image, i) => (
             <GalleryImage key={image.src} image={image} index={i} />
           ))}

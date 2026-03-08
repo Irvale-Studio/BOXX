@@ -46,15 +46,15 @@ function FAQItem({ faq, index, isOpen, onToggle }) {
       initial={{ opacity: 0, y: 20 }}
       animate={inView ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
       transition={{ duration: 0.6, delay: index * 0.08 }}
-      className="border-b border-white/5"
+      className="border-b border-white/[0.04]"
     >
       <button
         onClick={onToggle}
-        className="w-full flex items-center justify-between py-6 text-left group"
+        className="w-full flex items-center justify-between py-7 md:py-8 text-left group"
       >
         <span
-          className={`text-lg transition-colors duration-300 ${
-            isOpen ? 'text-white' : 'text-white/70 group-hover:text-white'
+          className={`text-base md:text-lg transition-colors duration-300 pr-8 ${
+            isOpen ? 'text-white' : 'text-white/60 group-hover:text-white/80'
           }`}
         >
           {faq.question}
@@ -63,7 +63,7 @@ function FAQItem({ faq, index, isOpen, onToggle }) {
           animate={{ rotate: isOpen ? 45 : 0 }}
           transition={{ duration: 0.3 }}
           className={`text-xl ml-4 flex-shrink-0 transition-colors duration-300 ${
-            isOpen ? 'text-accent' : 'text-white/30'
+            isOpen ? 'text-accent' : 'text-white/20'
           }`}
         >
           +
@@ -79,7 +79,7 @@ function FAQItem({ faq, index, isOpen, onToggle }) {
             transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
             className="overflow-hidden"
           >
-            <p className="pb-6 text-white/50 leading-relaxed max-w-2xl">
+            <p className="pb-8 text-white/40 text-sm md:text-base leading-[1.8] max-w-2xl">
               {faq.answer}
             </p>
           </motion.div>
@@ -95,16 +95,16 @@ export default function FAQ() {
   const headingInView = useInView(headingRef, { once: true, margin: '-100px' });
 
   return (
-    <section className="relative py-32 lg:py-40">
+    <section className="relative py-28 md:py-36 lg:py-44">
       <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
 
       <div className="max-w-3xl mx-auto px-6 lg:px-8">
-        <div className="text-center mb-16">
+        <div className="text-center mb-16 md:mb-20">
           <motion.p
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
             viewport={{ once: true }}
-            className="text-accent text-xs tracking-[0.4em] uppercase mb-4"
+            className="text-accent text-xs tracking-[0.4em] uppercase mb-5"
           >
             FAQ
           </motion.p>

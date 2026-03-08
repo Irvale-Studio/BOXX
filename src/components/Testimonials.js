@@ -33,26 +33,25 @@ export default function Testimonials() {
   }, []);
 
   return (
-    <section className="relative py-32 lg:py-40 overflow-hidden">
-      {/* Top divider */}
+    <section className="relative py-32 md:py-40 lg:py-52 overflow-hidden">
       <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
 
       {/* Large decorative quote mark */}
-      <div className="absolute top-20 left-1/2 -translate-x-1/2 text-[20rem] leading-none text-white/[0.02] font-serif select-none pointer-events-none">
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[20rem] md:text-[28rem] leading-none text-white/[0.015] font-serif select-none pointer-events-none">
         &ldquo;
       </div>
 
-      <div ref={ref} className="max-w-4xl mx-auto px-6 lg:px-8 text-center">
+      <div ref={ref} className="max-w-5xl mx-auto px-6 lg:px-8 text-center">
         <motion.p
           initial={{ opacity: 0 }}
           animate={inView ? { opacity: 1 } : { opacity: 0 }}
-          className="text-accent text-xs tracking-[0.4em] uppercase mb-12"
+          className="text-accent text-xs tracking-[0.4em] uppercase mb-16 md:mb-20"
         >
           What People Say
         </motion.p>
 
         {/* Quote carousel */}
-        <div className="relative min-h-[200px] flex items-center justify-center">
+        <div className="relative min-h-[280px] md:min-h-[260px] flex items-center justify-center">
           <AnimatePresence mode="wait">
             <motion.blockquote
               key={active}
@@ -60,14 +59,14 @@ export default function Testimonials() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
               transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-              className="absolute"
+              className="absolute w-full px-4"
             >
-              <p className="text-2xl md:text-4xl lg:text-5xl font-light tracking-tight leading-snug text-white/90">
+              <p className="text-2xl md:text-3xl lg:text-5xl font-light tracking-tight leading-[1.4] text-white/85">
                 &ldquo;{testimonials[active].quote}&rdquo;
               </p>
-              <footer className="mt-8">
-                <div className="w-8 h-[1px] bg-accent mx-auto mb-4" />
-                <cite className="text-xs tracking-widest uppercase text-white/40 not-italic">
+              <footer className="mt-10 md:mt-12">
+                <div className="w-8 h-[1px] bg-accent mx-auto mb-5" />
+                <cite className="text-[11px] tracking-[0.3em] uppercase text-white/30 not-italic">
                   {testimonials[active].author}
                 </cite>
               </footer>
@@ -76,13 +75,13 @@ export default function Testimonials() {
         </div>
 
         {/* Dots */}
-        <div className="flex justify-center gap-3 mt-16">
+        <div className="flex justify-center gap-3 mt-20">
           {testimonials.map((_, i) => (
             <button
               key={i}
               onClick={() => setActive(i)}
-              className={`w-2 h-2 rounded-full transition-all duration-300 ${
-                i === active ? 'bg-accent w-8' : 'bg-white/20 hover:bg-white/40'
+              className={`h-1.5 rounded-full transition-all duration-300 ${
+                i === active ? 'bg-accent w-8' : 'bg-white/15 w-1.5 hover:bg-white/30'
               }`}
               aria-label={`Go to testimonial ${i + 1}`}
             />

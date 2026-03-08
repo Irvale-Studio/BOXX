@@ -13,19 +13,18 @@ export default function MarqueeBanner() {
   ];
 
   return (
-    <div className="relative py-8 border-y border-white/5 overflow-hidden">
+    <div className="relative py-10 md:py-12 border-y border-white/5 overflow-hidden">
       <motion.div
         animate={{ x: ['0%', '-50%'] }}
         transition={{ duration: 25, repeat: Infinity, ease: 'linear' }}
-        className="flex items-center gap-8 whitespace-nowrap"
+        className="flex items-center gap-12 md:gap-16 whitespace-nowrap"
       >
-        {/* Duplicate items for seamless loop */}
         {[...items, ...items].map((item, i) => (
-          <div key={i} className="flex items-center gap-8">
-            <span className="text-sm tracking-[0.5em] uppercase text-white/15 font-light">
+          <div key={i} className="flex items-center gap-12 md:gap-16">
+            <span className="text-sm md:text-base tracking-[0.5em] uppercase text-white/10 font-light">
               {item}
             </span>
-            <span className="text-accent/30 text-xs">&#9670;</span>
+            <span className="text-accent/20 text-[8px]">&#9670;</span>
           </div>
         ))}
       </motion.div>

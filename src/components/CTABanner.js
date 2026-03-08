@@ -14,7 +14,7 @@ export default function CTABanner() {
   const y = useTransform(scrollYProgress, [0, 1], ['-10%', '10%']);
 
   return (
-    <section ref={ref} className="relative h-[60vh] min-h-[400px] overflow-hidden">
+    <section ref={ref} className="relative h-[50vh] md:h-[60vh] min-h-[400px] overflow-hidden">
       {/* Parallax background */}
       <motion.div style={{ y }} className="absolute inset-0 scale-110">
         <Image
@@ -36,7 +36,7 @@ export default function CTABanner() {
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="text-accent text-xs tracking-[0.4em] uppercase mb-6"
+          className="text-accent text-xs tracking-[0.4em] uppercase mb-8"
         >
           Your Journey Starts Here
         </motion.p>
@@ -46,7 +46,7 @@ export default function CTABanner() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ delay: 0.1, duration: 0.8 }}
-          className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tighter"
+          className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tighter leading-[1.1]"
         >
           Ready to Step
           <br />
@@ -58,13 +58,13 @@ export default function CTABanner() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ delay: 0.3 }}
-          className="mt-8 flex flex-col sm:flex-row gap-4"
+          className="mt-10 flex flex-col sm:flex-row gap-4"
         >
           <button
             onClick={() => {
               document.querySelector('#contact')?.scrollIntoView({ behavior: 'smooth' });
             }}
-            className="px-8 py-3.5 bg-accent text-black text-sm tracking-widest uppercase font-semibold hover:bg-accent-dim transition-colors duration-300"
+            className="px-10 py-4 bg-accent text-black text-xs tracking-[0.2em] uppercase font-semibold hover:bg-accent-dim transition-colors duration-300"
           >
             Get in Touch
           </button>
@@ -72,7 +72,7 @@ export default function CTABanner() {
             href="https://wa.me/66934972306"
             target="_blank"
             rel="noopener noreferrer"
-            className="px-8 py-3.5 border border-white/20 text-sm tracking-widest uppercase hover:bg-white/5 transition-all duration-300"
+            className="px-10 py-4 border border-white/20 text-xs tracking-[0.2em] uppercase hover:bg-white/5 transition-all duration-300 text-center"
           >
             WhatsApp Us
           </a>

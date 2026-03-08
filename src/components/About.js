@@ -46,22 +46,21 @@ export default function About() {
     offset: ['start end', 'end start'],
   });
 
-  const imageY = useTransform(scrollYProgress, [0, 1], [80, -80]);
+  const imageY = useTransform(scrollYProgress, [0, 1], [60, -60]);
 
   return (
-    <section id="about" ref={sectionRef} className="relative py-32 lg:py-40">
-      {/* Section label */}
+    <section id="about" ref={sectionRef} className="relative py-28 md:py-36 lg:py-44">
       <div className="max-w-7xl mx-auto px-6 lg:px-8">
         <FadeIn>
-          <p className="text-accent text-xs tracking-[0.4em] uppercase mb-16">
+          <p className="text-accent text-xs tracking-[0.4em] uppercase mb-20 md:mb-24">
             Our Story
           </p>
         </FadeIn>
 
         {/* Main content grid */}
-        <div className="grid lg:grid-cols-2 gap-16 lg:gap-24 items-start">
+        <div className="grid lg:grid-cols-2 gap-16 lg:gap-28 items-start">
           {/* Left — Text */}
-          <div className="space-y-8">
+          <div>
             <RevealText>
               <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.1]">
                 Born in Thailand.
@@ -71,7 +70,7 @@ export default function About() {
             </RevealText>
 
             <FadeIn delay={0.2}>
-              <p className="text-white/60 text-lg leading-relaxed max-w-lg">
+              <p className="text-white/50 text-base md:text-lg leading-[1.8] max-w-lg mt-10">
                 Founded by Bert — born in Thailand and raised in Glasgow — BOXX brings
                 over a decade of UK personal training expertise to Chiang Mai. After
                 qualifying in Central London and building a career across boxing,
@@ -81,7 +80,7 @@ export default function About() {
             </FadeIn>
 
             <FadeIn delay={0.3}>
-              <p className="text-white/60 text-lg leading-relaxed max-w-lg">
+              <p className="text-white/50 text-base md:text-lg leading-[1.8] max-w-lg mt-6">
                 To create a space where Western boxing standards meet Thai warmth. Where
                 technique comes first, classes stay intimate, and every person who walks
                 through the door feels like they belong.
@@ -90,7 +89,7 @@ export default function About() {
 
             {/* Stats */}
             <FadeIn delay={0.4}>
-              <div className="grid grid-cols-3 gap-8 pt-8 border-t border-white/10">
+              <div className="grid grid-cols-3 gap-8 mt-14 pt-10 border-t border-white/[0.06]">
                 {[
                   { number: '10+', label: 'Years Experience' },
                   { number: '6', label: 'Max Per Class' },
@@ -100,7 +99,7 @@ export default function About() {
                     <p className="text-3xl md:text-4xl font-bold text-accent">
                       {stat.number}
                     </p>
-                    <p className="text-xs tracking-wider uppercase text-white/40 mt-1">
+                    <p className="text-[10px] md:text-xs tracking-wider uppercase text-white/30 mt-2">
                       {stat.label}
                     </p>
                   </div>
@@ -110,7 +109,7 @@ export default function About() {
           </div>
 
           {/* Right — Image with parallax */}
-          <div className="relative">
+          <div className="relative mt-4 lg:mt-0">
             <motion.div style={{ y: imageY }} className="relative">
               <div className="relative aspect-[3/4] overflow-hidden">
                 <Image
@@ -120,7 +119,6 @@ export default function About() {
                   className="object-cover"
                   sizes="(max-width: 1024px) 100vw, 50vw"
                 />
-                {/* Overlay gradient */}
                 <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-transparent to-transparent" />
               </div>
 
@@ -130,13 +128,13 @@ export default function About() {
                 whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: 0.6, duration: 0.8 }}
-                className="absolute -bottom-8 -left-4 lg:-left-12 bg-card border border-card-border p-6 max-w-[280px]"
+                className="absolute -bottom-6 -left-4 lg:-left-12 bg-card border border-card-border p-6 lg:p-8 max-w-[300px]"
               >
-                <p className="text-sm text-white/70 italic leading-relaxed">
+                <p className="text-sm text-white/60 italic leading-[1.8]">
                   &ldquo;More than a PT. He&apos;s a coach, a guide, and a partner in
                   your growth.&rdquo;
                 </p>
-                <div className="w-8 h-[1px] bg-accent mt-4" />
+                <div className="w-8 h-[1px] bg-accent mt-5" />
               </motion.div>
             </motion.div>
           </div>

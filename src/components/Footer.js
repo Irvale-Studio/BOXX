@@ -1,6 +1,5 @@
 'use client';
 
-import { motion } from 'framer-motion';
 import Image from 'next/image';
 
 const footerLinks = [
@@ -42,9 +41,9 @@ export default function Footer() {
   };
 
   return (
-    <footer className="relative border-t border-white/5">
-      <div className="max-w-7xl mx-auto px-6 lg:px-8 py-20">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-12">
+    <footer className="relative border-t border-white/[0.04]">
+      <div className="max-w-7xl mx-auto px-6 lg:px-8 py-20 md:py-24">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-12 md:gap-16">
           {/* Brand column */}
           <div className="col-span-2 md:col-span-1">
             <Image
@@ -52,13 +51,13 @@ export default function Footer() {
               alt="BOXX"
               width={80}
               height={32}
-              className="h-6 w-auto mb-6"
+              className="h-6 w-auto mb-8"
             />
-            <p className="text-sm text-white/40 leading-relaxed max-w-[200px]">
+            <p className="text-sm text-white/30 leading-[1.8] max-w-[220px]">
               Chiang Mai&apos;s first luxury boutique boxing &amp; personal training
               studio.
             </p>
-            <p className="text-xs text-white/20 mt-4">
+            <p className="text-xs text-white/15 mt-6 leading-relaxed">
               89/2 Bumruang Road, Wat Ket
               <br />
               Chiang Mai 50000
@@ -68,10 +67,10 @@ export default function Footer() {
           {/* Link columns */}
           {footerLinks.map((col) => (
             <div key={col.title}>
-              <p className="text-xs tracking-widest uppercase text-white/30 mb-4">
+              <p className="text-[10px] tracking-[0.3em] uppercase text-white/25 mb-6">
                 {col.title}
               </p>
-              <ul className="space-y-3">
+              <ul className="space-y-4">
                 {col.links.map((link) => (
                   <li key={link.name}>
                     {link.external ? (
@@ -79,14 +78,14 @@ export default function Footer() {
                         href={link.href}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-sm text-white/50 hover:text-accent transition-colors duration-300"
+                        className="text-sm text-white/40 hover:text-accent transition-colors duration-300"
                       >
                         {link.name}
                       </a>
                     ) : (
                       <button
                         onClick={() => scrollTo(link.href)}
-                        className="text-sm text-white/50 hover:text-accent transition-colors duration-300"
+                        className="text-sm text-white/40 hover:text-accent transition-colors duration-300"
                       >
                         {link.name}
                       </button>
@@ -99,11 +98,11 @@ export default function Footer() {
         </div>
 
         {/* Bottom bar */}
-        <div className="mt-16 pt-8 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-4">
-          <p className="text-xs text-white/20">
+        <div className="mt-20 pt-8 border-t border-white/[0.04] flex flex-col md:flex-row items-center justify-between gap-4">
+          <p className="text-[11px] text-white/15 tracking-wider">
             &copy; {new Date().getFullYear()} BOXX Boxing Studio. All rights reserved.
           </p>
-          <p className="text-xs text-white/20">
+          <p className="text-[11px] text-white/15 tracking-[0.3em]">
             #BOXXCNX
           </p>
         </div>
@@ -111,7 +110,7 @@ export default function Footer() {
 
       {/* Large background text */}
       <div className="absolute bottom-0 left-0 w-full overflow-hidden pointer-events-none">
-        <p className="text-[12rem] md:text-[20rem] font-bold tracking-tighter leading-none text-white/[0.015] text-center translate-y-1/3">
+        <p className="text-[12rem] md:text-[20rem] font-bold tracking-tighter leading-none text-white/[0.012] text-center translate-y-1/3">
           BOXX
         </p>
       </div>

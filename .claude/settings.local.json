@@ -5,7 +5,20 @@
       "Bash(cp:*)",
       "Bash(npm install:*)",
       "Bash(rm:*)",
-      "Bash(git:*)"
+      "Bash(git:*)",
+      "Bash(gh repo:*)",
+      "Bash",
+      "Yolo",
+      "WebFetch(domain:www.boxxthailand.com)",
+      "WebSearch",
+      "WebFetch(domain:www.koboxfitness.com)",
+      "WebFetch(domain:www.equinox.com)",
+      "WebFetch(domain:www.shadowboxnyc.com)",
+      "WebFetch(domain:equinox.com)",
+      "WebFetch(domain:www.1rebel.com)",
+      "WebFetch(domain:codepen.io)",
+      "WebFetch(domain:21st.dev)",
+      "WebFetch(domain:cdpn.io)"
     ]
   }
 }
