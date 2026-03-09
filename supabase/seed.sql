@@ -50,8 +50,8 @@ DELETE FROM class_schedule WHERE id IN (
   'c0000006-0000-0000-0000-000000000002',
   'c0000007-0000-0000-0000-000000000001'
 );
-DELETE FROM user_credits WHERE stripe_payment_id LIKE 'seed_%' OR stripe_payment_id LIKE 'direct_%' OR stripe_payment_id LIKE 'bert_seed_%';
-DELETE FROM users WHERE email IN ('sarah@example.com','tom@example.com','mia@example.com','jake@example.com','luna@example.com','bertduff@gmail.com');
+DELETE FROM user_credits WHERE stripe_payment_id LIKE 'seed_%' OR stripe_payment_id LIKE 'direct_%' OR stripe_payment_id LIKE 'bert_seed_%' OR stripe_payment_id LIKE 'test_seed_%';
+DELETE FROM users WHERE email IN ('sarah@example.com','tom@example.com','mia@example.com','jake@example.com','luna@example.com','bertduff@gmail.com','test@boxxthailand.com');
 DELETE FROM instructors WHERE id IN (
   'b1111111-1111-1111-1111-111111111111',
   'b2222222-2222-2222-2222-222222222222',
@@ -107,6 +107,16 @@ INSERT INTO users (id, email, name, bio, show_in_roster, role) VALUES
   ('d4444444-4444-4444-4444-444444444444', 'jake@example.com', 'Jake P.', 'Here for the BOXX&TRAIN sessions.', true, 'member'),
   ('d5555555-5555-5555-5555-555555555555', 'luna@example.com', 'Luna C.', '', false, 'member')
 ON CONFLICT (email) DO NOTHING;
+
+-- ─── TEST ACCOUNT (shareable login for anyone to test) ────
+-- Email: test@boxxthailand.com | Password: boxxtest123
+INSERT INTO users (id, email, name, bio, show_in_roster, role, password_hash) VALUES
+  ('d6666666-6666-6666-6666-666666666666', 'test@boxxthailand.com', 'Test User', 'Demo account for testing BOXX.', true, 'member',
+   '$2b$12$zDKgEOkopSp1ttz2rrnuy.WA.0a2n6x7YlbcwoNWcyWvcEaLSHAq.')
+ON CONFLICT (email) DO UPDATE SET
+  password_hash = '$2b$12$zDKgEOkopSp1ttz2rrnuy.WA.0a2n6x7YlbcwoNWcyWvcEaLSHAq.',
+  name = 'Test User',
+  bio = 'Demo account for testing BOXX.';
 
 -- ─── BERT'S ACCOUNT (admin + heavy user) ────
 -- Creates if not exists, promotes to admin if already signed in via Google
@@ -337,6 +347,7 @@ BEGIN
   SELECT id INTO v_user_id FROM users
     WHERE email NOT LIKE '%@example.com'
       AND email != 'bertduff@gmail.com'
+      AND email != 'test@boxxthailand.com'
     ORDER BY created_at ASC LIMIT 1;
 
   IF v_user_id IS NULL THEN
@@ -377,4 +388,54 @@ BEGIN
   VALUES (v_user_id, 'c0000001-0000-0000-0000-000000000003', 'cancelled', NOW() - INTERVAL '1 day', true, NOW() - INTERVAL '2 days');
 
   RAISE NOTICE 'Seeded for user: %', v_user_id;
+END $$;
+
+-- ─── TEST ACCOUNT: CREDITS + BOOKINGS (same data as your account) ────
+
+DO $$
+DECLARE
+  v_test_id UUID;
+  v_pack_10 UUID;
+  v_pack_5 UUID;
+  v_pack_1 UUID;
+BEGIN
+  SELECT id INTO v_test_id FROM users WHERE email = 'test@boxxthailand.com' LIMIT 1;
+  IF v_test_id IS NULL THEN
+    RAISE NOTICE 'Test user not found — skipping';
+    RETURN;
+  END IF;
+
+  SELECT id INTO v_pack_10 FROM class_packs WHERE credits = 10 AND NOT is_intro LIMIT 1;
+  SELECT id INTO v_pack_5 FROM class_packs WHERE credits = 5 AND NOT is_intro LIMIT 1;
+  SELECT id INTO v_pack_1 FROM class_packs WHERE credits = 1 AND NOT is_intro LIMIT 1;
+
+  -- Current active: 10 credits, 9 remaining
+  INSERT INTO user_credits (user_id, class_pack_id, credits_total, credits_remaining, expires_at, stripe_payment_id, status, purchased_at)
+  VALUES (v_test_id, v_pack_10, 10, 9, NOW() + INTERVAL '60 days', 'test_seed_001', 'active', NOW() - INTERVAL '5 days');
+
+  -- Old expired pack: 5 credits, fully used, 2 months ago
+  INSERT INTO user_credits (user_id, class_pack_id, credits_total, credits_remaining, expires_at, stripe_payment_id, status, purchased_at)
+  VALUES (v_test_id, v_pack_5, 5, 0, NOW() - INTERVAL '30 days', 'test_seed_002', 'active', NOW() - INTERVAL '60 days');
+
+  -- Old expired pack: 1 credit single, used, 3 months ago
+  INSERT INTO user_credits (user_id, class_pack_id, credits_total, credits_remaining, expires_at, stripe_payment_id, status, purchased_at)
+  VALUES (v_test_id, v_pack_1, 1, 0, NOW() - INTERVAL '60 days', 'test_seed_003', 'active', NOW() - INTERVAL '90 days');
+
+  -- Upcoming: tomorrow's BOXXINTER
+  INSERT INTO bookings (user_id, class_schedule_id, status) VALUES
+    (v_test_id, 'c0000002-0000-0000-0000-000000000001', 'confirmed');
+
+  -- Admin-cancelled: Day 3 BOXX&TRAIN was cancelled, credit returned
+  INSERT INTO bookings (user_id, class_schedule_id, status, cancelled_at, credit_returned)
+  VALUES (v_test_id, 'c0000004-0000-0000-0000-000000000001', 'cancelled', NOW(), true);
+
+  -- Past: attended today's morning class
+  INSERT INTO bookings (user_id, class_schedule_id, status, created_at)
+  VALUES (v_test_id, 'c0000001-0000-0000-0000-000000000001', 'attended', NOW() - INTERVAL '2 hours');
+
+  -- Past: cancelled yesterday
+  INSERT INTO bookings (user_id, class_schedule_id, status, cancelled_at, credit_returned, created_at)
+  VALUES (v_test_id, 'c0000001-0000-0000-0000-000000000003', 'cancelled', NOW() - INTERVAL '1 day', true, NOW() - INTERVAL '2 days');
+
+  RAISE NOTICE 'Seeded test account: %', v_test_id;
 END $$;
