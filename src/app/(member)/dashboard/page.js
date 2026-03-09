@@ -1295,15 +1295,15 @@ function ScheduleSection({ credits, onUpdate, sharedClassId, view, onViewChange 
 
   return (
     <div>
-      {/* Toast notification */}
+      {/* Toast notification — fixed bottom */}
       <AnimatePresence>
         {toast && (
           <motion.div
-            initial={{ opacity: 0, y: -10 }}
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
+            exit={{ opacity: 0, y: 20 }}
             className={cn(
-              'mb-4 px-4 py-3 rounded-lg border flex items-center justify-between gap-3',
+              'fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:bottom-6 z-50 px-4 py-3 rounded-lg border flex items-center justify-between gap-3 shadow-lg backdrop-blur-sm sm:max-w-sm',
               toast.type === 'error'
                 ? 'bg-red-500/10 border-red-500/20 text-red-400'
                 : 'bg-green-500/10 border-green-500/20 text-green-400'
@@ -1830,15 +1830,15 @@ function BookingsSection({ upcoming, past, onUpdate }) {
 
   return (
     <div>
-      {/* Toast notification */}
+      {/* Toast notification — fixed bottom */}
       <AnimatePresence>
         {toast && (
           <motion.div
-            initial={{ opacity: 0, y: -10 }}
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
+            exit={{ opacity: 0, y: 20 }}
             className={cn(
-              'mb-4 px-4 py-3 rounded-lg border flex items-center justify-between gap-3',
+              'fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:bottom-6 z-50 px-4 py-3 rounded-lg border flex items-center justify-between gap-3 shadow-lg backdrop-blur-sm sm:max-w-sm',
               toast.type === 'error'
                 ? 'bg-red-500/10 border-red-500/20 text-red-400'
                 : 'bg-green-500/10 border-green-500/20 text-green-400'

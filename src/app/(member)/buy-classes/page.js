@@ -102,16 +102,16 @@ function BuyClassesContent() {
       <h1 className="text-2xl font-bold text-foreground mb-2">Buy Packs</h1>
       <p className="text-muted mb-8">Choose a class pack to get started.</p>
 
-      {/* Toast */}
+      {/* Toast — fixed bottom */}
       {toast && (
         <div className={cn(
-          'mb-6 px-4 py-3 rounded-lg border flex items-center justify-between',
+          'fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:bottom-6 z-50 px-4 py-3 rounded-lg border flex items-center justify-between gap-3 shadow-lg backdrop-blur-sm sm:max-w-sm',
           toast.type === 'error'
             ? 'bg-red-500/10 border-red-500/20 text-red-400'
             : 'bg-green-500/10 border-green-500/20 text-green-400'
         )}>
           <span className="text-sm">{toast.message}</span>
-          <button onClick={() => setToast(null)} className="opacity-60 hover:opacity-100">
+          <button onClick={() => setToast(null)} className="opacity-60 hover:opacity-100 shrink-0">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
