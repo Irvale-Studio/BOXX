@@ -29,6 +29,8 @@ html {
   scroll-behavior: smooth;
   overflow-x: hidden;
   color-scheme: dark;
+  /* Prevent pinch-to-zoom on iOS Safari (which ignores user-scalable=no) */
+  touch-action: manipulation;
 }
 
 body {
