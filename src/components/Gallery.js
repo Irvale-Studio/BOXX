@@ -10,7 +10,7 @@ const images = [
   { src: '/images/studio/training.webp', alt: 'Training Session', caption: 'Training', subtitle: 'Strength meets technique' },
   { src: '/images/studio/storefront.webp', alt: 'BOXX Boxing Studio exterior', caption: 'The Space', subtitle: 'Chiang Mai\'s home of boxing' },
   { src: '/images/studio/pt-session.webp', alt: 'Personal Training', caption: 'Personal', subtitle: 'Tailored to your goals' },
-  { src: '/images/studio/boxing-wall.webp', alt: 'Boxing memorabilia wall', caption: 'Heritage', subtitle: 'Rooted in the sport' },
+  { src: '/images/studio/about-1.webp', alt: 'BOXX Boxing Studio entrance', caption: 'Welcome', subtitle: 'Step inside something different' },
 ];
 
 export default function Gallery() {

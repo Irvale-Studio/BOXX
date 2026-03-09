@@ -14,7 +14,7 @@ const classes = [
     capacity: '6 max',
     rounds: '10 rounds',
     image: '/images/studio/class-boxing.webp',
-    imagePosition: 'top',
+    imagePosition: 'center 25%',
     description:
       'Perfect for first-timers or anyone new to boxing. Move through shadow boxing, bag work, and 1:1 padwork with a focus on both offence and defence.',
     features: ['Shadow boxing', 'Bag work', '1:1 Padwork', 'Technique focus'],
