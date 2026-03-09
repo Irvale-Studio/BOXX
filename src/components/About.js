@@ -119,7 +119,7 @@ export default function About() {
                     src="/images/studio/about-bert.webp"
                     alt="Bert, founder of BOXX"
                     fill
-                    className="object-cover object-top"
+                    className="object-cover scale-150 object-[70%_15%]"
                     sizes="100vw"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-transparent to-transparent" />
@@ -178,7 +178,7 @@ export default function About() {
                   src="/images/studio/about-bert.webp"
                   alt="Bert, founder of BOXX"
                   fill
-                  className="object-cover scale-110 object-top"
+                  className="object-cover scale-150 object-[70%_15%]"
                   sizes="(max-width: 1024px) 100vw, 50vw"
                 />
                 {/* Edge blending gradients */}

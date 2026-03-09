@@ -56,14 +56,11 @@ const classes = [
 ];
 
 function ClassCard({ cls, index, isExpanded, onToggle }) {
-  const ref = useRef(null);
-  const inView = useInView(ref, { once: true, margin: '-50px' });
-
   return (
     <motion.div
-      ref={ref}
       initial={{ opacity: 0, y: 40 }}
-      animate={inView ? { opacity: 1, y: 0 } : { opacity: 0, y: 40 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: '-50px' }}
       transition={{ duration: 0.7, delay: index * 0.15, ease: [0.22, 1, 0.36, 1] }}
       onClick={onToggle}
       className={`group cursor-pointer relative overflow-hidden border transition-all duration-700 ${
