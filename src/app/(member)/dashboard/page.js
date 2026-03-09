@@ -1171,11 +1171,15 @@ function ScheduleSection({ credits, onUpdate, sharedClassId, view, onViewChange 
                   className="md:hidden fixed inset-0 bg-background/60 backdrop-blur-[2px] z-40"
                   onClick={() => setExpandedId(null)}
                 />
+                {/* Mobile: slide-up bottom sheet */}
                 <motion.div
-                  initial={{ opacity: 0, y: '100%' }}
+                  initial={{ opacity: 0, y: typeof window !== 'undefined' && window.innerWidth < 768 ? '100%' : 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: '100%' }}
-                  transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+                  exit={{ opacity: 0, y: typeof window !== 'undefined' && window.innerWidth < 768 ? '100%' : 10 }}
+                  transition={typeof window !== 'undefined' && window.innerWidth < 768
+                    ? { type: 'spring', damping: 28, stiffness: 300 }
+                    : { duration: 0.2 }
+                  }
                   drag={typeof window !== 'undefined' && window.innerWidth < 768 ? 'y' : false}
                   dragConstraints={{ top: 0 }}
                   dragElastic={0.2}
