@@ -283,11 +283,11 @@ export default function AdminSchedulePage() {
       </div>
 
       {loading ? (
-        <div className="grid grid-cols-7 gap-2">
-          {[1, 2, 3, 4, 5, 6, 7].map((i) => <div key={i} className="h-40 bg-card border border-card-border rounded-lg animate-pulse" />)}
+        <div className="grid grid-cols-7 gap-3">
+          {[1, 2, 3, 4, 5, 6, 7].map((i) => <div key={i} className="h-48 bg-card border border-card-border rounded-lg animate-pulse" />)}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-7 gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-7 gap-3">
           {weekDays.map((day) => {
             const dateKey = day.toLocaleDateString('en-CA', { timeZone: 'Asia/Bangkok' })
             const dayClasses = classesByDay[dateKey] || []
@@ -295,48 +295,67 @@ export default function AdminSchedulePage() {
             const isPast = day < today
 
             return (
-              <div key={dateKey} className={cn('border border-card-border rounded-lg overflow-hidden min-h-[160px]', isToday ? 'border-accent/30' : '', isPast ? 'opacity-60' : '')}>
-                <div className={cn('px-2 py-1.5 text-center border-b border-card-border', isToday ? 'bg-accent/10' : 'bg-card')}>
-                  <p className="text-xs text-muted">{day.toLocaleDateString('en-US', { weekday: 'short' })}</p>
-                  <p className={cn('text-sm font-medium', isToday ? 'text-accent' : 'text-foreground')}>{day.getDate()}</p>
+              <div key={dateKey} className={cn('border border-card-border rounded-lg overflow-hidden min-h-[200px]', isToday ? 'border-accent/40 shadow-[0_0_12px_rgba(200,167,80,0.08)]' : '', isPast ? 'opacity-50' : '')}>
+                <div className={cn('px-3 py-2 text-center border-b border-card-border', isToday ? 'bg-accent/10' : 'bg-card')}>
+                  <p className="text-xs text-muted uppercase tracking-wide">{day.toLocaleDateString('en-US', { weekday: 'short' })}</p>
+                  <p className={cn('text-lg font-bold', isToday ? 'text-accent' : 'text-foreground')}>{day.getDate()}</p>
                 </div>
-                <div className="p-1 space-y-1">
+                <div className="p-1.5 space-y-1.5">
                   {dayClasses.map((cls) => {
                     const time = new Date(cls.starts_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Asia/Bangkok' })
+                    const endTime = new Date(cls.ends_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Asia/Bangkok' })
                     const isCancelled = cls.status === 'cancelled'
                     const isFull = cls.booked_count >= cls.capacity
                     const isPrivate = cls.is_private || cls.class_types?.is_private
+                    const fillPct = cls.capacity > 0 ? Math.min((cls.booked_count / cls.capacity) * 100, 100) : 0
 
                     return (
                       <button
                         key={cls.id}
                         onClick={() => isCancelled ? null : openEditDialog(cls)}
-                        className={cn('w-full text-left px-1.5 py-1 rounded text-xs transition-colors', isCancelled ? 'bg-red-500/10 opacity-50 cursor-default' : 'bg-card hover:bg-white/5 cursor-pointer')}
+                        className={cn(
+                          'w-full text-left px-2.5 py-2 rounded-md transition-colors border-l-[3px]',
+                          isCancelled ? 'bg-red-500/5 opacity-50 cursor-default border-l-red-500/40' : 'bg-card hover:bg-white/[0.04] cursor-pointer',
+                          !isCancelled && 'border-l-transparent'
+                        )}
+                        style={!isCancelled ? { borderLeftColor: cls.class_types?.color || '#c8a750' } : undefined}
                       >
-                        <div className="flex items-center gap-1">
-                          <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: cls.class_types?.color || '#c8a750' }} />
-                          <span className={cn('truncate font-medium', isCancelled ? 'line-through text-muted' : 'text-foreground')}>
+                        <div className="flex items-center justify-between gap-1">
+                          <span className={cn('text-sm font-semibold truncate', isCancelled ? 'line-through text-muted' : 'text-foreground')}>
                             {cls.class_types?.name || 'Class'}
                           </span>
-                          {isPrivate && <span className="text-[8px] text-amber-400">🔒</span>}
+                          {isPrivate && <span className="text-[9px] text-amber-400 shrink-0">🔒</span>}
                         </div>
-                        <div className="flex items-center justify-between mt-0.5">
-                          <span className="text-muted">{time}</span>
-                          {!isCancelled && (
+                        <p className="text-[11px] text-muted mt-0.5">{time} – {endTime}</p>
+                        {cls.instructors?.name && (
+                          <p className="text-[10px] text-muted/70 truncate">{cls.instructors.name}</p>
+                        )}
+                        {!isCancelled && (
+                          <div className="flex items-center justify-between mt-1.5">
+                            <div className="flex items-center gap-1.5 flex-1">
+                              <div className="flex-1 h-1 bg-card-border rounded-full overflow-hidden">
+                                <div
+                                  className={cn('h-full rounded-full', isFull ? 'bg-red-500' : fillPct >= 75 ? 'bg-amber-500' : 'bg-green-500')}
+                                  style={{ width: `${fillPct}%` }}
+                                />
+                              </div>
+                            </div>
                             <button
                               onClick={(e) => { e.stopPropagation(); setRosterDialog(cls) }}
-                              className={cn('font-medium hover:text-accent transition-colors', isFull ? 'text-red-400' : 'text-muted')}
+                              className={cn('text-[11px] font-semibold hover:text-accent transition-colors ml-1.5 shrink-0', isFull ? 'text-red-400' : fillPct >= 75 ? 'text-amber-400' : 'text-muted')}
                             >
                               {cls.booked_count}/{cls.capacity}
                             </button>
-                          )}
-                          {isCancelled && <span className="text-red-400">X</span>}
-                        </div>
+                          </div>
+                        )}
+                        {isCancelled && (
+                          <p className="text-[10px] text-red-400 font-medium mt-1">Cancelled</p>
+                        )}
                       </button>
                     )
                   })}
                   {!isPast && (
-                    <button onClick={() => openAddDialog(dateKey)} className="w-full text-center text-xs text-muted hover:text-accent transition-colors py-1 rounded border border-dashed border-card-border hover:border-accent/30">+</button>
+                    <button onClick={() => openAddDialog(dateKey)} className="w-full text-center text-sm text-muted hover:text-accent transition-colors py-2 rounded-md border border-dashed border-card-border hover:border-accent/30">+</button>
                   )}
                 </div>
               </div>
