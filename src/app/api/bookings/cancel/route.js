@@ -1,5 +1,6 @@
 import { auth } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase/admin'
+import { promoteFromWaitlist } from '@/lib/waitlist'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 
@@ -86,25 +87,10 @@ export async function POST(request) {
       }
     }
 
-    // Check waitlist — promote first person
-    const { data: waitlistEntry } = await supabaseAdmin
-      .from('waitlist')
-      .select('*')
-      .eq('class_schedule_id', booking.class_schedule_id)
-      .eq('notified', false)
-      .order('position', { ascending: true })
-      .limit(1)
-      .single()
-
-    if (waitlistEntry) {
-      await supabaseAdmin
-        .from('waitlist')
-        .update({ notified: true, notified_at: new Date().toISOString() })
-        .eq('id', waitlistEntry.id)
-
-      // TODO: Phase 6 — Send waitlist spot available email
-      console.log(`[bookings/cancel] Waitlist notified: user=${waitlistEntry.user_id}`)
-    }
+    // Promote first eligible waitlisted user into the spot
+    promoteFromWaitlist(booking.class_schedule_id).catch((err) =>
+      console.error('[bookings/cancel] Waitlist promotion error:', err)
+    )
 
     return NextResponse.json({
       success: true,

@@ -1,5 +1,6 @@
 import { auth } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase/admin'
+import { promoteFromWaitlist } from '@/lib/waitlist'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 
@@ -169,6 +170,11 @@ export async function PUT(request) {
       target_id: bookingId,
       details: { userId: booking.user_id, refundCredit },
     })
+
+    // Promote first eligible waitlisted user into the freed spot
+    promoteFromWaitlist(booking.class_schedule_id).catch((err) =>
+      console.error('[admin/bookings] Waitlist promotion error:', err)
+    )
 
     return NextResponse.json({ success: true })
   } catch (error) {
