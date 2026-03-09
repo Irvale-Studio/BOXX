@@ -238,11 +238,14 @@ INSERT INTO bookings (user_id, class_schedule_id, status) VALUES
 INSERT INTO bookings (user_id, class_schedule_id, status) VALUES
   ('d1111111-1111-1111-1111-111111111111', 'c0000002-0000-0000-0000-000000000001', 'confirmed');
 
--- Tom, Mia, Jake in Day 2 BOXXBEGINNER
+-- ALL 6 SPOTS FILLED in Day 2 BOXXBEGINNER (full class — you are NOT in it)
 INSERT INTO bookings (user_id, class_schedule_id, status) VALUES
+  ('d1111111-1111-1111-1111-111111111111', 'c0000003-0000-0000-0000-000000000001', 'confirmed'),
   ('d2222222-2222-2222-2222-222222222222', 'c0000003-0000-0000-0000-000000000001', 'confirmed'),
   ('d3333333-3333-3333-3333-333333333333', 'c0000003-0000-0000-0000-000000000001', 'confirmed'),
-  ('d4444444-4444-4444-4444-444444444444', 'c0000003-0000-0000-0000-000000000001', 'confirmed');
+  ('d4444444-4444-4444-4444-444444444444', 'c0000003-0000-0000-0000-000000000001', 'confirmed'),
+  ('d5555555-5555-5555-5555-555555555555', 'c0000003-0000-0000-0000-000000000001', 'confirmed'),
+  ('d0000000-0000-0000-0000-000000000001', 'c0000003-0000-0000-0000-000000000001', 'confirmed');
 
 -- Sarah, Tom were in Day 3 BOXX&TRAIN (now cancelled by admin — credits returned)
 INSERT INTO bookings (user_id, class_schedule_id, status, cancelled_at, credit_returned) VALUES
