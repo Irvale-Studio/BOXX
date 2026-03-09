@@ -196,16 +196,16 @@ function PaymentsTab({ connected, error }) {
         <CardContent>
           {stripeStatus?.isConnected ? (
             <div className="space-y-4">
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                 <Badge variant="success">Connected</Badge>
-                <span className="text-sm text-muted">
+                <span className="text-sm text-muted break-all">
                   Account: {stripeStatus.accountId}
                 </span>
               </div>
               <p className="text-xs text-muted">
                 Payments go directly to your Stripe account — no middleman.
               </p>
-              <div className="flex gap-3">
+              <div className="flex flex-wrap gap-2 sm:gap-3">
                 <Button variant="outline" size="sm" asChild>
                   <a href="https://dashboard.stripe.com" target="_blank" rel="noopener noreferrer">
                     Open Stripe Dashboard ↗
@@ -264,15 +264,15 @@ function PaymentsTab({ connected, error }) {
               </p>
             )}
 
-            <div className="flex items-center gap-4 pt-2">
-              <Button onClick={handleSavePriceIds} disabled={saving}>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 pt-2">
+              <Button onClick={handleSavePriceIds} disabled={saving} className="w-full sm:w-auto">
                 {saving ? 'Saving...' : 'Save Price IDs'}
               </Button>
               <a
                 href="https://docs.stripe.com/products-prices/how-products-and-prices-work#what-is-a-price"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-xs text-accent hover:underline"
+                className="text-xs text-accent hover:underline text-center sm:text-left"
               >
                 How to find your Price IDs →
               </a>

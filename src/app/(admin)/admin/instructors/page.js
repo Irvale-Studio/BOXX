@@ -138,47 +138,63 @@ export default function AdminInstructorsPage() {
             <div
               key={inst.id}
               className={cn(
-                'flex items-center gap-3 sm:gap-4 px-3 sm:px-4 py-3',
+                'px-3 sm:px-4 py-3',
                 idx !== instructors.length - 1 && 'border-b border-card-border',
                 !inst.active && 'opacity-50'
               )}
             >
-              {/* Photo */}
-              <div className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center shrink-0 overflow-hidden">
-                {inst.photo_url ? (
-                  <img src={inst.photo_url} alt="" className="w-full h-full object-cover" />
-                ) : (
-                  <span className="text-accent text-sm font-medium">
-                    {inst.name?.[0]?.toUpperCase() || '?'}
-                  </span>
-                )}
-              </div>
-
-              {/* Info */}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <p className="text-sm font-medium text-foreground">{inst.name}</p>
-                  {!inst.active && (
-                    <span className="text-[10px] font-medium text-red-400 bg-red-400/10 px-1.5 py-0.5 rounded">
-                      Inactive
+              <div className="flex items-center gap-3 sm:gap-4">
+                {/* Photo */}
+                <div className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center shrink-0 overflow-hidden">
+                  {inst.photo_url ? (
+                    <img src={inst.photo_url} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-accent text-sm font-medium">
+                      {inst.name?.[0]?.toUpperCase() || '?'}
                     </span>
                   )}
                 </div>
-                {inst.bio && <p className="text-xs text-muted truncate mt-0.5">{inst.bio}</p>}
-                {inst.instagram_url && (
-                  <a href={inst.instagram_url} target="_blank" rel="noreferrer" className="text-xs text-accent hover:underline">
-                    Instagram
-                  </a>
-                )}
+
+                {/* Info */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-medium text-foreground truncate">{inst.name}</p>
+                    {!inst.active && (
+                      <span className="text-[10px] font-medium text-red-400 bg-red-400/10 px-1.5 py-0.5 rounded shrink-0">
+                        Inactive
+                      </span>
+                    )}
+                  </div>
+                  {inst.bio && <p className="text-xs text-muted truncate mt-0.5">{inst.bio}</p>}
+                  {inst.instagram_url && (
+                    <a href={inst.instagram_url} target="_blank" rel="noreferrer" className="text-xs text-accent hover:underline">
+                      Instagram
+                    </a>
+                  )}
+                </div>
+
+                {/* Actions — visible on sm+ inline */}
+                <div className="hidden sm:flex items-center gap-2 shrink-0">
+                  <Switch
+                    checked={inst.active}
+                    onCheckedChange={() => handleToggleActive(inst)}
+                  />
+                  <Button variant="outline" className="text-xs h-7 px-2" onClick={() => openEdit(inst)}>
+                    Edit
+                  </Button>
+                </div>
               </div>
 
-              {/* Actions */}
-              <div className="flex items-center gap-2 shrink-0">
-                <Switch
-                  checked={inst.active}
-                  onCheckedChange={() => handleToggleActive(inst)}
-                />
-                <Button variant="outline" className="text-xs h-7 px-2" onClick={() => openEdit(inst)}>
+              {/* Actions — mobile: below the main row */}
+              <div className="flex sm:hidden items-center gap-3 mt-2 ml-[52px]">
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={inst.active}
+                    onCheckedChange={() => handleToggleActive(inst)}
+                  />
+                  <span className="text-xs text-muted">{inst.active ? 'Active' : 'Inactive'}</span>
+                </div>
+                <Button variant="outline" className="text-xs h-7 px-3" onClick={() => openEdit(inst)}>
                   Edit
                 </Button>
               </div>
