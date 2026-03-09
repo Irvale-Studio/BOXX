@@ -21,7 +21,7 @@ const DialogOverlay = forwardRef(({ className, ...props }, ref) => (
 ))
 DialogOverlay.displayName = 'DialogOverlay'
 
-const DialogContent = forwardRef(({ className, children, ...props }, ref) => (
+const DialogContent = forwardRef(({ className, children, hideClose, ...props }, ref) => (
   <DialogPortal>
     <DialogOverlay />
     <DialogPrimitive.Content
@@ -39,12 +39,14 @@ const DialogContent = forwardRef(({ className, children, ...props }, ref) => (
       {...props}
     >
       {children}
-      <DialogPrimitive.Close className="absolute right-3 top-3 z-10 w-9 h-9 flex items-center justify-center rounded-full bg-card-border/60 text-muted hover:text-foreground hover:bg-card-border transition-colors sm:w-7 sm:h-7 sm:right-4 sm:top-4 sm:bg-transparent">
-        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-        </svg>
-        <span className="sr-only">Close</span>
-      </DialogPrimitive.Close>
+      {!hideClose && (
+        <DialogPrimitive.Close className="absolute right-3 top-3 z-10 w-9 h-9 flex items-center justify-center rounded-full bg-card-border/60 text-muted hover:text-foreground hover:bg-card-border transition-colors sm:w-7 sm:h-7 sm:right-4 sm:top-4 sm:bg-transparent">
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+          <span className="sr-only">Close</span>
+        </DialogPrimitive.Close>
+      )}
     </DialogPrimitive.Content>
   </DialogPortal>
 ))

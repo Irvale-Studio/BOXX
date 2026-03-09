@@ -183,7 +183,7 @@ export default function AdminInstructorsPage() {
 
       {/* Create/Edit Dialog */}
       <Dialog open={!!dialog} onOpenChange={(open) => !open && setDialog(null)}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md" onOpenAutoFocus={(e) => e.preventDefault()}>
           <DialogHeader>
             <DialogTitle>{dialog === 'create' ? 'Add Instructor' : 'Edit Instructor'}</DialogTitle>
             <DialogDescription>

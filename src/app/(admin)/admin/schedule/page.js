@@ -439,7 +439,7 @@ export default function AdminSchedulePage() {
 
       {/* Add Class Dialog */}
       <Dialog open={addDialog} onOpenChange={(open) => !open && setAddDialog(false)}>
-        <DialogContent className="sm:max-w-md p-0 gap-0">
+        <DialogContent className="sm:max-w-md p-0 gap-0" hideClose onOpenAutoFocus={(e) => e.preventDefault()}>
           {/* Color bar — class color into category hue */}
           {(() => {
             const ct = classTypes.find((c) => c.id === form.classTypeId)
@@ -447,11 +447,21 @@ export default function AdminSchedulePage() {
             const addHue = form.recurring ? '#a78bfa' : ct?.is_private ? '#fbbf24' : '#38bdf8'
             return <div className="h-1.5 w-full" style={{ background: `linear-gradient(90deg, ${addColor}, ${addHue}88)` }} />
           })()}
-          <div className="px-4 sm:px-6 pt-5 pb-2">
-            <DialogHeader>
-              <DialogTitle>Add Class</DialogTitle>
-              <DialogDescription>Schedule a new class — toggle recurring to create multiple.</DialogDescription>
-            </DialogHeader>
+          <div className="px-4 sm:px-6 pt-4 pb-2">
+            <div className="flex items-start justify-between gap-3">
+              <DialogHeader className="space-y-1 min-w-0">
+                <DialogTitle>Add Class</DialogTitle>
+                <DialogDescription>Schedule a new class — toggle recurring to create multiple.</DialogDescription>
+              </DialogHeader>
+              <button
+                onClick={() => setAddDialog(false)}
+                className="shrink-0 w-9 h-9 flex items-center justify-center rounded-full bg-card-border/60 text-muted hover:text-foreground hover:bg-card-border transition-colors sm:w-7 sm:h-7 sm:bg-transparent"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
           </div>
           <div className="px-4 sm:px-6 pb-2 relative">
             {(() => {
@@ -567,7 +577,7 @@ export default function AdminSchedulePage() {
 
       {/* Edit Class Dialog */}
       <Dialog open={!!editDialog} onOpenChange={(open) => !open && setEditDialog(null)}>
-        <DialogContent className="sm:max-w-3xl p-0 gap-0">
+        <DialogContent className="sm:max-w-3xl p-0 gap-0" hideClose onOpenAutoFocus={(e) => e.preventDefault()}>
           {/* Color banner header */}
           {editDialog && (() => {
             const color = editDialog.class_types?.color || '#c8a750'
@@ -589,42 +599,53 @@ export default function AdminSchedulePage() {
                 <div className="h-1.5 w-full rounded-t-lg" style={{ background: `linear-gradient(90deg, ${color}, ${categoryHue}88)` }} />
 
                 {/* Header section */}
-                <div className="px-4 sm:px-6 pt-5 pb-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="space-y-1 min-w-0">
-                      <div className="flex items-center gap-2.5 flex-wrap">
-                        <h2 className="text-lg sm:text-xl font-bold text-foreground">{editDialog.class_types?.name || 'Class'}</h2>
-                        {isRecurring && (
-                          <span className="text-[11px] font-medium text-purple-400 bg-purple-400/10 px-2 py-0.5 rounded-full flex items-center gap-1">
-                            <span className="text-sm">↻</span> Recurring
-                          </span>
-                        )}
-                        {isPrivate && (
-                          <span className="text-[11px] font-medium text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-full">🔒 Private</span>
-                        )}
-                      </div>
-                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted">
-                        <span className="flex items-center gap-1.5">
-                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
-                          </svg>
-                          {dateLabel}
+                <div className="px-4 sm:px-6 pt-4 pb-4">
+                  {/* Top row: title + close */}
+                  <div className="flex items-start justify-between gap-3 mb-1">
+                    <div className="flex items-center gap-2.5 flex-wrap min-w-0">
+                      <h2 className="text-lg sm:text-xl font-bold text-foreground">{editDialog.class_types?.name || 'Class'}</h2>
+                      {isRecurring && (
+                        <span className="text-[11px] font-medium text-purple-400 bg-purple-400/10 px-2 py-0.5 rounded-full flex items-center gap-1">
+                          <span className="text-sm">↻</span> Recurring
                         </span>
+                      )}
+                      {isPrivate && (
+                        <span className="text-[11px] font-medium text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-full">🔒 Private</span>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => setEditDialog(null)}
+                      className="shrink-0 w-9 h-9 flex items-center justify-center rounded-full bg-card-border/60 text-muted hover:text-foreground hover:bg-card-border transition-colors sm:w-7 sm:h-7 sm:bg-transparent"
+                    >
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+
+                  {/* Info row: date/time/instructor + capacity ring */}
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted min-w-0">
+                      <span className="flex items-center gap-1.5">
+                        <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+                        </svg>
+                        {dateLabel}
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        {timeLabel} – {endLabel}
+                      </span>
+                      {editDialog.instructors?.name && (
                         <span className="flex items-center gap-1.5">
-                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0" />
                           </svg>
-                          {timeLabel} – {endLabel}
+                          {editDialog.instructors.name}
                         </span>
-                        {editDialog.instructors?.name && (
-                          <span className="flex items-center gap-1.5">
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0" />
-                            </svg>
-                            {editDialog.instructors.name}
-                          </span>
-                        )}
-                      </div>
+                      )}
                     </div>
 
                     {/* Capacity ring */}
@@ -763,7 +784,7 @@ export default function AdminSchedulePage() {
 
       {/* Cancel Class Confirmation */}
       <Dialog open={!!cancelDialog} onOpenChange={(open) => !open && setCancelDialog(null)}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md" onOpenAutoFocus={(e) => e.preventDefault()}>
           <DialogHeader><DialogTitle>Cancel Class</DialogTitle><DialogDescription>This cannot be undone. All bookings will be cancelled and credits refunded.</DialogDescription></DialogHeader>
           {cancelDialog && (
             <div className="py-4 space-y-2">
@@ -821,7 +842,7 @@ export default function AdminSchedulePage() {
 
       {/* Notify Members Dialog */}
       <Dialog open={!!notifyDialog} onOpenChange={(open) => !open && setNotifyDialog(null)}>
-        <DialogContent className="sm:max-w-sm">
+        <DialogContent className="sm:max-w-sm" onOpenAutoFocus={(e) => e.preventDefault()}>
           <DialogHeader>
             <DialogTitle>Notify Members?</DialogTitle>
             <DialogDescription>
@@ -1070,7 +1091,7 @@ function RosterDialog({ cls, onClose, onUpdate, setToast }) {
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg" onOpenAutoFocus={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>Manage Roster</DialogTitle>
           <DialogDescription>

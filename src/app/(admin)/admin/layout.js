@@ -102,7 +102,7 @@ export default function AdminLayout({ children }) {
       </aside>
 
       {/* Main content */}
-      <div className={cn('flex-1 flex flex-col transition-all duration-300', collapsed ? 'lg:ml-16' : 'lg:ml-64')}>
+      <div className={cn('flex-1 flex flex-col min-w-0 overflow-x-hidden transition-all duration-300', collapsed ? 'lg:ml-16' : 'lg:ml-64')}>
         {/* Top bar */}
         <header className="h-16 bg-card border-b border-card-border flex items-center justify-between px-4 lg:px-6 sticky top-0 z-30">
           {/* Mobile hamburger */}

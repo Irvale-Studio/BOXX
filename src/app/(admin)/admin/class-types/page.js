@@ -207,7 +207,7 @@ export default function ClassTypesPage() {
 
       {/* Add Dialog */}
       <Dialog open={addDialog} onOpenChange={(open) => !open && setAddDialog(false)}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md" onOpenAutoFocus={(e) => e.preventDefault()}>
           <DialogHeader>
             <DialogTitle>New Class Type</DialogTitle>
             <DialogDescription>Create a new type of class that can be scheduled.</DialogDescription>
@@ -222,7 +222,7 @@ export default function ClassTypesPage() {
 
       {/* Edit Dialog */}
       <Dialog open={!!editDialog} onOpenChange={(open) => !open && setEditDialog(null)}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md" onOpenAutoFocus={(e) => e.preventDefault()}>
           <DialogHeader>
             <DialogTitle>Edit Class Type</DialogTitle>
             <DialogDescription>Update {editDialog?.name}</DialogDescription>

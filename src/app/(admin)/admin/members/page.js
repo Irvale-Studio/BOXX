@@ -414,7 +414,7 @@ export default function AdminMembersPage() {
 
         {/* Edit Dialog */}
         <Dialog open={editDialog} onOpenChange={(open) => !open && setEditDialog(false)}>
-          <DialogContent className="sm:max-w-md">
+          <DialogContent className="sm:max-w-md" onOpenAutoFocus={(e) => e.preventDefault()}>
             <DialogHeader>
               <DialogTitle>Edit Member</DialogTitle>
               <DialogDescription>Update {selectedMember?.name || 'member'}&apos;s profile</DialogDescription>
@@ -453,7 +453,7 @@ export default function AdminMembersPage() {
 
         {/* Delete Dialog */}
         <Dialog open={deleteDialog} onOpenChange={(open) => !open && setDeleteDialog(false)}>
-          <DialogContent className="sm:max-w-md">
+          <DialogContent className="sm:max-w-md" onOpenAutoFocus={(e) => e.preventDefault()}>
             <DialogHeader>
               <DialogTitle>Deactivate Member</DialogTitle>
               <DialogDescription>
@@ -471,7 +471,7 @@ export default function AdminMembersPage() {
 
         {/* Grant Credits Dialog */}
         <Dialog open={grantDialog} onOpenChange={(open) => !open && setGrantDialog(false)}>
-          <DialogContent className="sm:max-w-md">
+          <DialogContent className="sm:max-w-md" onOpenAutoFocus={(e) => e.preventDefault()}>
             <DialogHeader>
               <DialogTitle>Grant Credits</DialogTitle>
               <DialogDescription>Add a complimentary pack to {selectedMember?.name || selectedMember?.email}</DialogDescription>
