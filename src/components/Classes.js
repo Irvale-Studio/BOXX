@@ -172,10 +172,10 @@ export default function Classes() {
   const headingInView = useInView(headingRef, { once: true, margin: '-100px' });
 
   return (
-    <section id="classes" className="relative py-40 md:py-52 lg:py-60">
+    <section id="classes" className="relative py-34 md:py-44 lg:py-52">
       <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
 
-      <div className="max-w-[1400px] mx-auto px-10 lg:px-20">
+      <div className="max-w-[1600px] mx-auto px-10 lg:px-20">
         {/* Section header */}
         <div className="mb-16 md:mb-20">
           <motion.p
@@ -211,7 +211,7 @@ export default function Classes() {
         </div>
 
         {/* Class cards grid */}
-        <div className="grid md:grid-cols-2 gap-5 md:gap-6">
+        <div className="grid md:grid-cols-2 gap-5 md:gap-6 items-start">
           {classes.map((cls, i) => (
             <ClassCard
               key={cls.id}
@@ -231,7 +231,7 @@ export default function Classes() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ delay: 0.2, duration: 0.8 }}
-          className="mt-16 relative overflow-hidden border border-card-border bg-card/30 p-8 md:p-14"
+          className="mt-8 relative overflow-hidden border border-card-border bg-card/30 p-8 md:p-14"
         >
           <div className="grid md:grid-cols-[1fr,auto] gap-10 items-center">
             <div>

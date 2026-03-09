@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 
@@ -54,12 +54,34 @@ const socialLinks = [
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
+  const navBarRef = useRef(null);
+  const desktopLinksRef = useRef(null);
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 50);
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  // Detect when desktop links overflow and switch to burger
+  const checkOverflow = useCallback(() => {
+    const bar = navBarRef.current;
+    const links = desktopLinksRef.current;
+    if (!bar || !links) return;
+    // Temporarily show links to measure
+    links.style.display = 'flex';
+    const overflow = links.scrollWidth > bar.clientWidth - 140; // 140px reserved for logo
+    links.style.display = '';
+    setCollapsed(overflow);
+  }, []);
+
+  useEffect(() => {
+    checkOverflow();
+    const observer = new ResizeObserver(checkOverflow);
+    if (navBarRef.current) observer.observe(navBarRef.current);
+    return () => observer.disconnect();
+  }, [checkOverflow]);
 
   useEffect(() => {
     if (mobileOpen) {
@@ -88,9 +110,9 @@ export default function Navbar() {
             : 'bg-transparent'
         }`}
       >
-        <div className="max-w-[1400px] mx-auto px-10 lg:px-20 flex items-center justify-between h-20">
+        <div ref={navBarRef} className="max-w-[1600px] mx-auto px-10 lg:px-20 flex items-center justify-between h-20">
           {/* Logo */}
-          <button onClick={() => scrollTo('#hero')} className="relative z-10">
+          <button onClick={() => scrollTo('#hero')} className="relative z-10 shrink-0">
             <Image
               src="/images/brand/logo-primary-white.png"
               alt="BOXX"
@@ -102,7 +124,7 @@ export default function Navbar() {
           </button>
 
           {/* Desktop links */}
-          <div className="hidden md:flex items-center gap-2">
+          <div ref={desktopLinksRef} className={`${collapsed ? 'hidden' : 'flex'} items-center gap-2`}>
             {navLinks.map((link) => (
               <button
                 key={link.name}
@@ -140,7 +162,7 @@ export default function Navbar() {
           {/* Mobile toggle */}
           <button
             onClick={() => setMobileOpen(!mobileOpen)}
-            className="md:hidden relative z-10 w-8 h-8 flex flex-col justify-center items-center gap-1.5"
+            className={`${collapsed ? 'flex' : 'hidden'} relative z-10 w-8 h-8 flex-col justify-center items-center gap-1.5`}
             aria-label="Toggle menu"
           >
             <motion.span

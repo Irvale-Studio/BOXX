@@ -42,7 +42,7 @@ export default function Footer() {
 
   return (
     <footer className="relative border-t border-white/[0.04]">
-      <div className="max-w-[1400px] mx-auto px-10 lg:px-20 pt-24 md:pt-28 pb-16">
+      <div className="max-w-[1600px] mx-auto px-10 lg:px-20 pt-24 md:pt-28 pb-16">
         {/* Top row — Logo + tagline + link columns */}
         <div className="grid grid-cols-1 md:grid-cols-12 gap-16 md:gap-10">
           {/* Brand */}
@@ -55,7 +55,7 @@ export default function Footer() {
               className="h-8 md:h-10 w-auto mb-6"
             />
             <p className="text-base text-white/30 leading-[1.8] max-w-[340px]">
-              Chiang Mai&apos;s first luxury boutique boxing and personal training
+              Chiang Mai&apos;s luxury boutique boxing and personal training
               studio. UK-qualified coaches, intimate classes, premium space.
             </p>
           </div>

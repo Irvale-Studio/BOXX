@@ -56,6 +56,14 @@ export default function Hero() {
         }}
       />
 
+      {/* Radial vignette behind content for contrast */}
+      <div
+        className="absolute inset-0 z-[2] pointer-events-none"
+        style={{
+          background: 'radial-gradient(ellipse 60% 50% at 50% 50%, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.25) 55%, transparent 80%)',
+        }}
+      />
+
       {/* Content */}
       <motion.div
         style={{ y: textY }}
@@ -68,20 +76,26 @@ export default function Hero() {
           transition={{ delay: 0.5, duration: 0.8 }}
           className="text-accent text-[11px] md:text-xs tracking-[0.4em] uppercase mb-10 drop-shadow-lg"
         >
-          Chiang Mai&apos;s First Luxury Boxing Studio
+          Chiang Mai&apos;s Luxury Boxing Studio
         </motion.p>
 
-        {/* Main heading */}
+        {/* Main heading — logo */}
         <div className="overflow-hidden">
-          <motion.h1
+          <motion.div
             initial={{ y: '100%' }}
             animate={{ y: 0 }}
             transition={{ delay: 0.7, duration: 1, ease: [0.22, 1, 0.36, 1] }}
-            className="text-7xl sm:text-8xl md:text-9xl lg:text-[11rem] font-bold tracking-tighter leading-none drop-shadow-2xl"
-            style={{ textShadow: '0 4px 30px rgba(0,0,0,0.5)' }}
           >
-            BOXX
-          </motion.h1>
+            <Image
+              src="/images/brand/logo-secondary-bw.png"
+              alt="BOXX"
+              width={600}
+              height={240}
+              className="h-24 sm:h-28 md:h-32 lg:h-40 w-auto drop-shadow-2xl"
+              style={{ filter: 'drop-shadow(0 4px 30px rgba(0,0,0,0.5))' }}
+              priority
+            />
+          </motion.div>
         </div>
 
         {/* Subtitle */}

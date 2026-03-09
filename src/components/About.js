@@ -49,8 +49,8 @@ export default function About() {
   const imageY = useTransform(scrollYProgress, [0, 1], [60, -60]);
 
   return (
-    <section id="about" ref={sectionRef} className="relative py-40 md:py-52 lg:py-60">
-      <div className="max-w-[1400px] mx-auto px-10 lg:px-20">
+    <section id="about" ref={sectionRef} className="relative py-34 md:py-44 lg:py-52">
+      <div className="max-w-[1600px] mx-auto px-10 lg:px-20">
         <FadeIn>
           <p className="text-accent text-xs tracking-[0.4em] uppercase mb-24 md:mb-28">
             Our Story
@@ -115,7 +115,7 @@ export default function About() {
                   src="/images/studio/about-bert.webp"
                   alt="Bert, founder of BOXX"
                   fill
-                  className="object-cover"
+                  className="object-cover scale-110 object-top"
                   sizes="(max-width: 1024px) 100vw, 50vw"
                 />
                 {/* Edge blending gradients */}

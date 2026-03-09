@@ -33,7 +33,7 @@ export default function Testimonials() {
   }, []);
 
   return (
-    <section className="relative py-40 md:py-52 lg:py-64 overflow-hidden">
+    <section className="relative py-34 md:py-44 lg:py-56 overflow-hidden">
       <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
 
       {/* Large decorative quote mark */}
@@ -41,7 +41,7 @@ export default function Testimonials() {
         &ldquo;
       </div>
 
-      <div ref={ref} className="max-w-[1000px] mx-auto px-10 lg:px-20 text-center">
+      <div ref={ref} className="max-w-[1100px] mx-auto px-10 lg:px-20 text-center">
         <motion.p
           initial={{ opacity: 0 }}
           animate={inView ? { opacity: 1 } : { opacity: 0 }}

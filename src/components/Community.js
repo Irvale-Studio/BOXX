@@ -17,10 +17,10 @@ export default function Community() {
   const imageY = useTransform(scrollYProgress, [0, 1], [40, -40]);
 
   return (
-    <section id="community" ref={sectionRef} className="relative py-40 md:py-52 lg:py-60 overflow-hidden">
+    <section id="community" ref={sectionRef} className="relative py-34 md:py-44 lg:py-52 overflow-hidden">
       <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
 
-      <div className="max-w-[1400px] mx-auto px-10 lg:px-20">
+      <div className="max-w-[1600px] mx-auto px-10 lg:px-20">
         {/* Header */}
         <div className="mb-16 md:mb-20">
           <motion.p

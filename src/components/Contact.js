@@ -36,10 +36,10 @@ export default function Contact() {
   return (
     <>
       {/* Contact Info Section */}
-      <section id="contact" className="relative py-40 md:py-52 lg:py-60 bg-[#080808]">
+      <section id="contact" className="relative py-34 md:py-44 lg:py-52 bg-[#080808]">
         <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
 
-        <div className="max-w-[1400px] mx-auto px-10 lg:px-20">
+        <div className="max-w-[1600px] mx-auto px-10 lg:px-20">
           <div className="grid lg:grid-cols-2 gap-20 lg:gap-32">
             {/* Left — Heading + Details */}
             <div>
