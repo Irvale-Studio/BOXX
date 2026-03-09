@@ -6,10 +6,22 @@ import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
 
+function toDateStr(d) {
+  return d.toLocaleDateString('en-CA') // YYYY-MM-DD
+}
+
 export default function AdminDashboard() {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [expandedClass, setExpandedClass] = useState(null)
+  const [dayOffset, setDayOffset] = useState(0)
+  const [dayClasses, setDayClasses] = useState(null) // null = use data.todayClasses, array = fetched
+  const [dayLoading, setDayLoading] = useState(false)
+  const [attendanceLoading, setAttendanceLoading] = useState(null) // booking_id being updated
+
+  const selectedDate = new Date()
+  selectedDate.setDate(selectedDate.getDate() + dayOffset)
+  const isToday = dayOffset === 0
 
   useEffect(() => {
     async function fetchDashboard() {
@@ -27,6 +39,61 @@ export default function AdminDashboard() {
     }
     fetchDashboard()
   }, [])
+
+  // Fetch classes for non-today days
+  useEffect(() => {
+    if (dayOffset === 0) {
+      setDayClasses(null) // use initial dashboard data
+      return
+    }
+    async function fetchDay() {
+      setDayLoading(true)
+      try {
+        const res = await fetch(`/api/admin/dashboard?date=${toDateStr(selectedDate)}`)
+        if (res.ok) {
+          const json = await res.json()
+          setDayClasses(json.todayClasses || [])
+        }
+      } catch (err) {
+        console.error('Failed to fetch day classes:', err)
+      } finally {
+        setDayLoading(false)
+      }
+    }
+    fetchDay()
+  }, [dayOffset]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function markAttendance(bookingId, action) {
+    setAttendanceLoading(bookingId)
+    try {
+      const res = await fetch('/api/admin/bookings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookingId, action }),
+      })
+      if (res.ok) {
+        // Update roster status locally
+        const updateRoster = (classes) =>
+          classes.map((cls) => ({
+            ...cls,
+            roster: (cls.roster || []).map((m) =>
+              m.booking_id === bookingId ? { ...m, status: action } : m
+            ),
+          }))
+        if (dayClasses) {
+          setDayClasses(updateRoster(dayClasses))
+        } else if (data) {
+          setData({ ...data, todayClasses: updateRoster(data.todayClasses || []) })
+        }
+      }
+    } catch (err) {
+      console.error('Failed to mark attendance:', err)
+    } finally {
+      setAttendanceLoading(null)
+    }
+  }
+
+  const activeClasses = dayClasses ?? data?.todayClasses ?? []
 
   if (loading) {
     return (
@@ -46,7 +113,6 @@ export default function AdminDashboard() {
   }
 
   const stats = data?.stats || {}
-  const todayClasses = data?.todayClasses || []
   const recentSignups = data?.recentSignups || []
   const lowCreditMembers = data?.lowCreditMembers || []
 
@@ -72,11 +138,13 @@ export default function AdminDashboard() {
     },
     {
       title: 'Classes Today',
-      value: todayClasses.length,
+      value: activeClasses.length,
       icon: '📅',
-      sub: `${todayClasses.filter((c) => c.status !== 'cancelled').length} active`,
+      sub: `${activeClasses.filter((c) => c.status !== 'cancelled').length} active`,
     },
   ]
+
+  const dayLabel = selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', timeZone: 'Asia/Bangkok' })
 
   return (
     <div>
@@ -108,22 +176,52 @@ export default function AdminDashboard() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Today's Classes — expandable cards */}
+        {/* Day Classes — expandable with attendance marking */}
         <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base">Today&apos;s Classes</CardTitle>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between mb-2">
+              <CardTitle className="text-base">Classes</CardTitle>
               <Link href="/admin/schedule" className="text-xs text-accent hover:text-accent-dim transition-colors">
                 View Schedule →
               </Link>
             </div>
+            {/* Day navigation */}
+            <div className="flex items-center justify-between">
+              <button
+                onClick={() => { setDayOffset((o) => o - 1); setExpandedClass(null) }}
+                className="text-sm text-muted hover:text-foreground transition-colors px-2 py-1 border border-card-border rounded"
+              >
+                ←
+              </button>
+              <div className="text-center flex items-center gap-2">
+                <p className={cn('text-sm font-medium', isToday ? 'text-accent' : 'text-foreground')}>{dayLabel}</p>
+                {!isToday && (
+                  <button
+                    onClick={() => { setDayOffset(0); setExpandedClass(null) }}
+                    className="text-[10px] text-accent hover:text-accent-dim transition-colors px-2 py-0.5 border border-accent/30 rounded"
+                  >
+                    Today
+                  </button>
+                )}
+              </div>
+              <button
+                onClick={() => { setDayOffset((o) => o + 1); setExpandedClass(null) }}
+                className="text-sm text-muted hover:text-foreground transition-colors px-2 py-1 border border-card-border rounded"
+              >
+                →
+              </button>
+            </div>
           </CardHeader>
           <CardContent>
-            {todayClasses.length === 0 ? (
-              <p className="text-sm text-muted py-4 text-center">No classes scheduled today.</p>
+            {dayLoading ? (
+              <div className="space-y-2">
+                {[1, 2].map((i) => <div key={i} className="h-16 bg-card border border-card-border rounded-lg animate-pulse" />)}
+              </div>
+            ) : activeClasses.length === 0 ? (
+              <p className="text-sm text-muted py-4 text-center">No classes scheduled{isToday ? ' today' : ''}.</p>
             ) : (
               <div className="space-y-2">
-                {todayClasses.map((cls) => {
+                {activeClasses.map((cls) => {
                   const time = new Date(cls.starts_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Asia/Bangkok' })
                   const endTime = new Date(cls.ends_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Asia/Bangkok' })
                   const isCancelled = cls.status === 'cancelled'
@@ -187,19 +285,17 @@ export default function AdminDashboard() {
                       {/* Expanded content */}
                       {isExpanded && !isCancelled && (
                         <div className="px-3 pb-3 border-t border-card-border bg-white/[0.01]">
-                          {/* Class details */}
                           {cls.notes && (
                             <p className="text-xs text-muted mt-2 italic">{cls.notes}</p>
                           )}
-                          <p className="text-[11px] text-muted mt-2">Duration: {cls.class_types?.duration_mins || '–'} min</p>
 
-                          {/* Attendees */}
+                          {/* Attendees with attendance buttons */}
                           <div className="mt-3">
                             <p className="text-xs font-medium text-foreground mb-1.5">Attendees ({roster.length})</p>
                             {roster.length > 0 ? (
                               <div className="space-y-1">
                                 {roster.map((m, i) => (
-                                  <div key={m.id || i} className="flex items-center gap-2 py-1">
+                                  <div key={m.id || i} className="flex items-center gap-2 py-1.5 px-2 rounded border border-card-border">
                                     <div className="w-6 h-6 rounded-full bg-accent/10 flex items-center justify-center overflow-hidden shrink-0">
                                       {m.avatar_url ? (
                                         <img src={m.avatar_url} alt="" className="w-full h-full object-cover" />
@@ -208,9 +304,35 @@ export default function AdminDashboard() {
                                       )}
                                     </div>
                                     <span className="text-xs text-foreground truncate flex-1">{m.name || 'No name'}</span>
-                                    <Badge variant={m.status === 'attended' ? 'default' : m.status === 'no_show' ? 'outline' : 'success'} className="text-[9px] capitalize shrink-0">
-                                      {m.status === 'no_show' ? 'No show' : m.status}
-                                    </Badge>
+                                    {/* Attendance buttons */}
+                                    <div className="flex items-center gap-1 shrink-0">
+                                      <button
+                                        onClick={() => markAttendance(m.booking_id, 'attended')}
+                                        disabled={attendanceLoading === m.booking_id}
+                                        className={cn(
+                                          'text-[10px] font-medium px-2 py-0.5 rounded border transition-colors',
+                                          m.status === 'attended'
+                                            ? 'bg-green-500/20 border-green-500/40 text-green-400'
+                                            : 'border-card-border text-muted hover:text-green-400 hover:border-green-500/30'
+                                        )}
+                                        title="Mark attended"
+                                      >
+                                        {attendanceLoading === m.booking_id ? '...' : 'Attended'}
+                                      </button>
+                                      <button
+                                        onClick={() => markAttendance(m.booking_id, 'no_show')}
+                                        disabled={attendanceLoading === m.booking_id}
+                                        className={cn(
+                                          'text-[10px] font-medium px-2 py-0.5 rounded border transition-colors',
+                                          m.status === 'no_show'
+                                            ? 'bg-red-500/20 border-red-500/40 text-red-400'
+                                            : 'border-card-border text-muted hover:text-red-400 hover:border-red-500/30'
+                                        )}
+                                        title="Mark no show"
+                                      >
+                                        {attendanceLoading === m.booking_id ? '...' : 'No Show'}
+                                      </button>
+                                    </div>
                                   </div>
                                 ))}
                               </div>
@@ -241,7 +363,7 @@ export default function AdminDashboard() {
                             </div>
                           )}
 
-                          {/* Quick link to schedule */}
+                          {/* Quick link */}
                           <Link href="/admin/schedule" className="inline-block mt-3 text-[11px] text-accent hover:text-accent-dim transition-colors">
                             Edit in Schedule →
                           </Link>

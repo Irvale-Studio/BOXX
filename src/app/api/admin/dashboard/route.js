@@ -5,7 +5,7 @@ import { NextResponse } from 'next/server'
 /**
  * GET /api/admin/dashboard — Aggregate stats for admin dashboard
  */
-export async function GET() {
+export async function GET(request) {
   try {
     const session = await auth()
     if (!session || session.user.role !== 'admin') {
@@ -16,11 +16,18 @@ export async function GET() {
       return NextResponse.json({ error: 'Database unavailable' }, { status: 500 })
     }
 
+    const { searchParams } = new URL(request.url)
+    const dateParam = searchParams.get('date') // optional: YYYY-MM-DD for class list day
+
     const now = new Date()
     const todayStart = new Date(now)
     todayStart.setHours(0, 0, 0, 0)
     const todayEnd = new Date(now)
     todayEnd.setHours(23, 59, 59, 999)
+
+    // If a specific date is requested for classes, use that instead of today
+    const classesStart = dateParam ? new Date(dateParam + 'T00:00:00') : todayStart
+    const classesEnd = dateParam ? new Date(dateParam + 'T23:59:59.999') : todayEnd
 
     const sevenDaysAgo = new Date(now)
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
@@ -59,12 +66,12 @@ export async function GET() {
         .gte('created_at', todayStart.toISOString())
         .lte('created_at', todayEnd.toISOString()),
 
-      // Today's classes with booking counts
+      // Classes for the requested day
       supabaseAdmin
         .from('class_schedule')
         .select('id, starts_at, ends_at, capacity, status, notes, class_types(name, color, duration_mins), instructors(name)')
-        .gte('starts_at', todayStart.toISOString())
-        .lte('starts_at', todayEnd.toISOString())
+        .gte('starts_at', classesStart.toISOString())
+        .lte('starts_at', classesEnd.toISOString())
         .order('starts_at', { ascending: true }),
 
       // Revenue this month (sum of pack prices from user_credits purchased this month)
@@ -106,7 +113,7 @@ export async function GET() {
       const [bookingsRes, waitlistRes] = await Promise.all([
         supabaseAdmin
           .from('bookings')
-          .select('class_schedule_id, status, users(id, name, avatar_url, email)')
+          .select('id, class_schedule_id, status, users(id, name, avatar_url, email)')
           .in('class_schedule_id', classIds)
           .in('status', ['confirmed', 'attended', 'no_show']),
         supabaseAdmin
@@ -129,6 +136,7 @@ export async function GET() {
           avatar_url: b.users?.avatar_url,
           email: b.users?.email,
           status: b.status,
+          booking_id: b.id,
         })
       })
 
