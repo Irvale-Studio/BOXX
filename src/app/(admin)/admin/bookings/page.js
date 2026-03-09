@@ -14,6 +14,19 @@ export default function AdminBookingsPage() {
   const [statusFilter, setStatusFilter] = useState('all')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
+  const [searchInput, setSearchInput] = useState('')
+  const [search, setSearch] = useState('')
+  const [classTypeFilter, setClassTypeFilter] = useState('')
+  const [sortBy, setSortBy] = useState('newest')
+  const [classTypes, setClassTypes] = useState([])
+
+  // Fetch class types for filter dropdown
+  useEffect(() => {
+    fetch('/api/admin/schedule/options')
+      .then((res) => res.ok ? res.json() : { classTypes: [] })
+      .then((data) => setClassTypes(data.classTypes || []))
+      .catch(console.error)
+  }, [])
 
   useEffect(() => {
     async function fetchBookings() {
@@ -23,6 +36,9 @@ export default function AdminBookingsPage() {
         if (statusFilter !== 'all') params.set('status', statusFilter)
         if (dateFrom) params.set('dateFrom', dateFrom)
         if (dateTo) params.set('dateTo', dateTo)
+        if (search) params.set('search', search)
+        if (classTypeFilter) params.set('classType', classTypeFilter)
+        if (sortBy) params.set('sort', sortBy)
 
         const res = await fetch(`/api/admin/bookings?${params}`)
         if (res.ok) {
@@ -37,7 +53,13 @@ export default function AdminBookingsPage() {
       }
     }
     fetchBookings()
-  }, [page, statusFilter, dateFrom, dateTo])
+  }, [page, statusFilter, dateFrom, dateTo, search, classTypeFilter, sortBy])
+
+  function handleSearch(e) {
+    e.preventDefault()
+    setSearch(searchInput)
+    setPage(1)
+  }
 
   const totalPages = Math.ceil(total / 30)
 
@@ -48,47 +70,87 @@ export default function AdminBookingsPage() {
         <span className="text-sm text-muted">{total} total</span>
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-wrap items-end gap-3 mb-6">
-        <div>
-          <label className="text-xs text-muted block mb-1">Status</label>
-          <select
-            value={statusFilter}
-            onChange={(e) => { setStatusFilter(e.target.value); setPage(1) }}
-            className="rounded-md border border-card-border bg-card px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-accent"
-          >
-            <option value="all">All</option>
-            <option value="confirmed">Confirmed</option>
-            <option value="cancelled">Cancelled</option>
-          </select>
-        </div>
-        <div>
-          <label className="text-xs text-muted block mb-1">From</label>
+      {/* Search & Filters */}
+      <div className="space-y-3 mb-6">
+        <form onSubmit={handleSearch} className="flex gap-2">
           <Input
-            type="date"
-            value={dateFrom}
-            onChange={(e) => { setDateFrom(e.target.value); setPage(1) }}
-            className="w-auto"
+            placeholder="Search by member name or email..."
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            className="max-w-sm"
           />
+          <Button type="submit" variant="outline">Search</Button>
+          {search && (
+            <Button variant="outline" onClick={() => { setSearchInput(''); setSearch(''); setPage(1) }}>Clear</Button>
+          )}
+        </form>
+        <div className="flex flex-wrap items-end gap-3">
+          <div>
+            <label className="text-xs text-muted block mb-1">Status</label>
+            <select
+              value={statusFilter}
+              onChange={(e) => { setStatusFilter(e.target.value); setPage(1) }}
+              className="rounded-md border border-card-border bg-card px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-accent"
+            >
+              <option value="all">All</option>
+              <option value="confirmed">Confirmed</option>
+              <option value="attended">Attended</option>
+              <option value="no_show">No-show</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
+          </div>
+          <div>
+            <label className="text-xs text-muted block mb-1">Class Type</label>
+            <select
+              value={classTypeFilter}
+              onChange={(e) => { setClassTypeFilter(e.target.value); setPage(1) }}
+              className="rounded-md border border-card-border bg-card px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-accent"
+            >
+              <option value="">All Classes</option>
+              {classTypes.map((ct) => (
+                <option key={ct.id} value={ct.id}>{ct.name}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="text-xs text-muted block mb-1">From</label>
+            <Input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => { setDateFrom(e.target.value); setPage(1) }}
+              className="w-auto"
+            />
+          </div>
+          <div>
+            <label className="text-xs text-muted block mb-1">To</label>
+            <Input
+              type="date"
+              value={dateTo}
+              onChange={(e) => { setDateTo(e.target.value); setPage(1) }}
+              className="w-auto"
+            />
+          </div>
+          <div>
+            <label className="text-xs text-muted block mb-1">Sort</label>
+            <select
+              value={sortBy}
+              onChange={(e) => { setSortBy(e.target.value); setPage(1) }}
+              className="rounded-md border border-card-border bg-card px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-accent"
+            >
+              <option value="newest">Newest First</option>
+              <option value="oldest">Oldest First</option>
+            </select>
+          </div>
+          {(statusFilter !== 'all' || dateFrom || dateTo || classTypeFilter || search || sortBy !== 'newest') && (
+            <Button
+              variant="outline"
+              className="text-xs"
+              onClick={() => { setStatusFilter('all'); setDateFrom(''); setDateTo(''); setClassTypeFilter(''); setSearchInput(''); setSearch(''); setSortBy('newest'); setPage(1) }}
+            >
+              Clear All
+            </Button>
+          )}
         </div>
-        <div>
-          <label className="text-xs text-muted block mb-1">To</label>
-          <Input
-            type="date"
-            value={dateTo}
-            onChange={(e) => { setDateTo(e.target.value); setPage(1) }}
-            className="w-auto"
-          />
-        </div>
-        {(statusFilter !== 'all' || dateFrom || dateTo) && (
-          <Button
-            variant="outline"
-            className="text-xs"
-            onClick={() => { setStatusFilter('all'); setDateFrom(''); setDateTo(''); setPage(1) }}
-          >
-            Clear Filters
-          </Button>
-        )}
       </div>
 
       {/* Loading */}
@@ -127,7 +189,12 @@ export default function AdminBookingsPage() {
                 hour12: true,
                 timeZone: 'Asia/Bangkok',
               }) : '—'
-              const isConfirmed = booking.status === 'confirmed'
+              const statusStyles = {
+                confirmed: 'text-green-400 bg-green-400/10',
+                attended: 'text-blue-400 bg-blue-400/10',
+                no_show: 'text-amber-400 bg-amber-400/10',
+                cancelled: 'text-red-400 bg-red-400/10',
+              }
 
               return (
                 <div
@@ -176,11 +243,9 @@ export default function AdminBookingsPage() {
                   <div>
                     <span className={cn(
                       'text-[10px] font-medium px-1.5 py-0.5 rounded',
-                      isConfirmed
-                        ? 'text-green-400 bg-green-400/10'
-                        : 'text-red-400 bg-red-400/10'
+                      statusStyles[booking.status] || 'text-muted bg-muted/10'
                     )}>
-                      {booking.status}
+                      {booking.status === 'no_show' ? 'no-show' : booking.status}
                       {booking.late_cancel && ' (late)'}
                     </span>
                   </div>

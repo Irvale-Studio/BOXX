@@ -16,6 +16,9 @@ export default function AdminMembersPage() {
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
   const [searchInput, setSearchInput] = useState('')
+  const [roleFilter, setRoleFilter] = useState('')
+  const [creditsFilter, setCreditsFilter] = useState('')
+  const [sortBy, setSortBy] = useState('newest')
   const [toast, setToast] = useState(null)
 
   // Detail view
@@ -50,6 +53,9 @@ export default function AdminMembersPage() {
     try {
       const params = new URLSearchParams({ page: page.toString(), limit: '30' })
       if (search) params.set('search', search)
+      if (roleFilter) params.set('role', roleFilter)
+      if (creditsFilter) params.set('hasCredits', creditsFilter)
+      if (sortBy) params.set('sort', sortBy)
       const res = await fetch(`/api/admin/members?${params}`)
       if (res.ok) {
         const data = await res.json()
@@ -61,7 +67,7 @@ export default function AdminMembersPage() {
     } finally {
       setLoading(false)
     }
-  }, [page, search])
+  }, [page, search, roleFilter, creditsFilter, sortBy])
 
   useEffect(() => { fetchMembers() }, [fetchMembers])
 
@@ -537,19 +543,71 @@ export default function AdminMembersPage() {
         </div>
       )}
 
-      {/* Search */}
-      <form onSubmit={handleSearch} className="flex gap-2 mb-6">
-        <Input
-          placeholder="Search by name or email..."
-          value={searchInput}
-          onChange={(e) => setSearchInput(e.target.value)}
-          className="max-w-sm"
-        />
-        <Button type="submit" variant="outline">Search</Button>
-        {search && (
-          <Button variant="outline" onClick={() => { setSearchInput(''); setSearch(''); setPage(1) }}>Clear</Button>
-        )}
-      </form>
+      {/* Search & Filters */}
+      <div className="space-y-3 mb-6">
+        <form onSubmit={handleSearch} className="flex gap-2">
+          <Input
+            placeholder="Search by name or email..."
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            className="max-w-sm"
+          />
+          <Button type="submit" variant="outline">Search</Button>
+          {search && (
+            <Button variant="outline" onClick={() => { setSearchInput(''); setSearch(''); setPage(1) }}>Clear</Button>
+          )}
+        </form>
+        <div className="flex flex-wrap items-end gap-3">
+          <div>
+            <label className="text-xs text-muted block mb-1">Role</label>
+            <select
+              value={roleFilter}
+              onChange={(e) => { setRoleFilter(e.target.value); setPage(1) }}
+              className="rounded-md border border-card-border bg-card px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-accent"
+            >
+              <option value="">All Roles</option>
+              <option value="member">Member</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
+          <div>
+            <label className="text-xs text-muted block mb-1">Credits</label>
+            <select
+              value={creditsFilter}
+              onChange={(e) => { setCreditsFilter(e.target.value); setPage(1) }}
+              className="rounded-md border border-card-border bg-card px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-accent"
+            >
+              <option value="">All</option>
+              <option value="yes">Has Credits</option>
+              <option value="no">No Credits</option>
+            </select>
+          </div>
+          <div>
+            <label className="text-xs text-muted block mb-1">Sort</label>
+            <select
+              value={sortBy}
+              onChange={(e) => { setSortBy(e.target.value); setPage(1) }}
+              className="rounded-md border border-card-border bg-card px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-accent"
+            >
+              <option value="newest">Newest First</option>
+              <option value="oldest">Oldest First</option>
+              <option value="name_asc">Name A–Z</option>
+              <option value="name_desc">Name Z–A</option>
+              <option value="most_credits">Most Credits</option>
+              <option value="most_bookings">Most Bookings</option>
+            </select>
+          </div>
+          {(roleFilter || creditsFilter || sortBy !== 'newest') && (
+            <Button
+              variant="outline"
+              className="text-xs"
+              onClick={() => { setRoleFilter(''); setCreditsFilter(''); setSortBy('newest'); setPage(1) }}
+            >
+              Reset Filters
+            </Button>
+          )}
+        </div>
+      </div>
 
       {loading ? (
         <div className="space-y-2">

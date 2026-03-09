@@ -19,18 +19,32 @@ export async function GET(request) {
 
     const { searchParams } = new URL(request.url)
     const search = searchParams.get('search') || ''
+    const role = searchParams.get('role') || ''
+    const hasCredits = searchParams.get('hasCredits') || ''
+    const sort = searchParams.get('sort') || 'newest'
     const page = parseInt(searchParams.get('page') || '1')
     const limit = Math.min(parseInt(searchParams.get('limit') || '30'), 100)
     const offset = (page - 1) * limit
 
+    const sortMap = {
+      newest: { column: 'created_at', ascending: false },
+      oldest: { column: 'created_at', ascending: true },
+      name_asc: { column: 'name', ascending: true },
+      name_desc: { column: 'name', ascending: false },
+    }
+    const sortConfig = sortMap[sort] || sortMap.newest
+
     let query = supabaseAdmin
       .from('users')
       .select('id, name, email, avatar_url, role, created_at, phone', { count: 'exact' })
-      .order('created_at', { ascending: false })
+      .order(sortConfig.column, { ascending: sortConfig.ascending })
       .range(offset, offset + limit - 1)
 
     if (search) {
       query = query.or(`name.ilike.%${search}%,email.ilike.%${search}%`)
+    }
+    if (role) {
+      query = query.eq('role', role)
     }
 
     const { data: members, error, count } = await query
@@ -70,15 +84,29 @@ export async function GET(request) {
       })
     }
 
-    const enriched = (members || []).map((m) => ({
+    let enriched = (members || []).map((m) => ({
       ...m,
       activeCredits: creditsMap[m.id] || 0,
       totalBookings: bookingCountMap[m.id] || 0,
     }))
 
+    // Client-side filters that depend on enriched data
+    if (hasCredits === 'yes') {
+      enriched = enriched.filter((m) => m.activeCredits > 0)
+    } else if (hasCredits === 'no') {
+      enriched = enriched.filter((m) => m.activeCredits === 0)
+    }
+
+    // Sort by enriched fields
+    if (sort === 'most_credits') {
+      enriched.sort((a, b) => b.activeCredits - a.activeCredits)
+    } else if (sort === 'most_bookings') {
+      enriched.sort((a, b) => b.totalBookings - a.totalBookings)
+    }
+
     return NextResponse.json({
       members: enriched,
-      total: count || 0,
+      total: hasCredits ? enriched.length : (count || 0),
       page,
       limit,
     })

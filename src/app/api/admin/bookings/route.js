@@ -19,33 +19,52 @@ export async function GET(request) {
     }
 
     const { searchParams } = new URL(request.url)
-    const status = searchParams.get('status') // confirmed, cancelled, all
+    const status = searchParams.get('status') // confirmed, cancelled, attended, no_show, all
     const dateFrom = searchParams.get('dateFrom')
     const dateTo = searchParams.get('dateTo')
+    const search = searchParams.get('search') || ''
+    const classType = searchParams.get('classType') || ''
+    const sort = searchParams.get('sort') || 'newest'
     const page = parseInt(searchParams.get('page') || '1')
     const limit = Math.min(parseInt(searchParams.get('limit') || '50'), 100)
     const offset = (page - 1) * limit
+
+    // If searching by member name/email, find matching user IDs first
+    let searchUserIds = null
+    if (search) {
+      const { data: matchedUsers } = await supabaseAdmin
+        .from('users')
+        .select('id')
+        .or(`name.ilike.%${search}%,email.ilike.%${search}%`)
+      searchUserIds = (matchedUsers || []).map((u) => u.id)
+      if (searchUserIds.length === 0) {
+        return NextResponse.json({ bookings: [], total: 0, page, limit })
+      }
+    }
+
+    const sortAscending = sort === 'oldest'
 
     let query = supabaseAdmin
       .from('bookings')
       .select(`
         id, status, late_cancel, credit_returned, cancelled_at, created_at,
         users(id, name, email, avatar_url),
-        class_schedule(id, starts_at, ends_at, class_types(name, color), instructors(name)),
+        class_schedule(id, starts_at, ends_at, class_types(id, name, color), instructors(name)),
         user_credits(id, class_packs(name))
       `, { count: 'exact' })
-      .order('created_at', { ascending: false })
+      .order('created_at', { ascending: sortAscending })
       .range(offset, offset + limit - 1)
 
     if (status && status !== 'all') {
       query = query.eq('status', status)
     }
 
-    // Filter by class date range via the joined class_schedule
-    // We need to filter bookings where the class starts within the date range
-    // Supabase doesn't support filtering on joined tables easily, so we'll do a two-step approach
-    if (dateFrom || dateTo) {
-      // Get class IDs in the date range
+    if (searchUserIds) {
+      query = query.in('user_id', searchUserIds)
+    }
+
+    // Filter by class date range and/or class type
+    if (dateFrom || dateTo || classType) {
       let classQuery = supabaseAdmin.from('class_schedule').select('id')
       if (dateFrom) classQuery = classQuery.gte('starts_at', new Date(dateFrom).toISOString())
       if (dateTo) {
@@ -53,6 +72,7 @@ export async function GET(request) {
         endDate.setHours(23, 59, 59, 999)
         classQuery = classQuery.lte('starts_at', endDate.toISOString())
       }
+      if (classType) classQuery = classQuery.eq('class_type_id', classType)
       const { data: classIds } = await classQuery
       if (classIds && classIds.length > 0) {
         query = query.in('class_schedule_id', classIds.map((c) => c.id))
