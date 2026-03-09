@@ -7,6 +7,13 @@ const geistSans = Geist({
   subsets: ["latin"],
 });
 
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+}
+
 export const metadata = {
   metadataBase: new URL("https://www.boxxthailand.com"),
   title: "BOXX | Luxury Boutique Boxing & Personal Training Studio in Chiang Mai",

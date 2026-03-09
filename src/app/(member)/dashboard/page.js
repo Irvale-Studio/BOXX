@@ -504,13 +504,21 @@ function ScheduleSection({ credits, onUpdate, sharedClassId, view, onViewChange 
   // Lock body scroll when mobile overlay is open
   useEffect(() => {
     if (expandedId && view === 'calendar') {
-      const isMobile = window.innerWidth < 768
+      const isMobile = window.matchMedia('(max-width: 767px)').matches
       if (isMobile) {
+        const scrollY = window.scrollY
+        document.body.style.position = 'fixed'
+        document.body.style.top = `-${scrollY}px`
+        document.body.style.left = '0'
+        document.body.style.right = '0'
         document.body.style.overflow = 'hidden'
-        document.documentElement.style.overflow = 'hidden'
         return () => {
+          document.body.style.position = ''
+          document.body.style.top = ''
+          document.body.style.left = ''
+          document.body.style.right = ''
           document.body.style.overflow = ''
-          document.documentElement.style.overflow = ''
+          window.scrollTo(0, scrollY)
         }
       }
     }
@@ -962,7 +970,7 @@ function ScheduleSection({ credits, onUpdate, sharedClassId, view, onViewChange 
         {/* View toggle */}
         <div className="flex bg-card border border-card-border rounded p-0.5">
           <button
-            onClick={() => setView('calendar')}
+            onClick={() => { setExpandedId(null); setView('calendar') }}
             className={cn(
               'px-2.5 py-1 rounded text-xs font-medium transition-colors',
               view === 'calendar' ? 'bg-accent/10 text-accent' : 'text-muted hover:text-foreground'
@@ -974,7 +982,7 @@ function ScheduleSection({ credits, onUpdate, sharedClassId, view, onViewChange 
             </svg>
           </button>
           <button
-            onClick={() => setView('list')}
+            onClick={() => { setExpandedId(null); setView('list') }}
             className={cn(
               'px-2.5 py-1 rounded text-xs font-medium transition-colors',
               view === 'list' ? 'bg-accent/10 text-accent' : 'text-muted hover:text-foreground'
