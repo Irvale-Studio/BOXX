@@ -158,7 +158,7 @@ export default function AdminDashboard() {
             <div className="flex items-center justify-between">
               <button
                 onClick={() => { setDayOffset((o) => o - 1); setExpandedClass(null) }}
-                className="text-sm text-muted hover:text-foreground transition-colors px-2 py-1 border border-card-border rounded"
+                className="text-sm text-muted hover:text-foreground transition-colors px-3 py-2 min-w-[44px] min-h-[44px] flex items-center justify-center border border-card-border rounded"
               >
                 ←
               </button>
@@ -167,7 +167,7 @@ export default function AdminDashboard() {
                 {!isToday && (
                   <button
                     onClick={() => { setDayOffset(0); setExpandedClass(null) }}
-                    className="text-[10px] text-accent hover:text-accent-dim transition-colors px-2 py-0.5 border border-accent/30 rounded"
+                    className="text-[10px] text-accent hover:text-accent-dim transition-colors px-2 py-1 min-h-[32px] border border-accent/30 rounded"
                   >
                     Today
                   </button>
@@ -175,7 +175,7 @@ export default function AdminDashboard() {
               </div>
               <button
                 onClick={() => { setDayOffset((o) => o + 1); setExpandedClass(null) }}
-                className="text-sm text-muted hover:text-foreground transition-colors px-2 py-1 border border-card-border rounded"
+                className="text-sm text-muted hover:text-foreground transition-colors px-3 py-2 min-w-[44px] min-h-[44px] flex items-center justify-center border border-card-border rounded"
               >
                 →
               </button>

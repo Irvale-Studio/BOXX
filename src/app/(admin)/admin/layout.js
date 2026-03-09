@@ -108,7 +108,7 @@ export default function AdminLayout({ children }) {
           {/* Mobile hamburger */}
           <button
             onClick={() => setSidebarOpen(true)}
-            className="lg:hidden w-8 h-8 flex flex-col justify-center items-center gap-1"
+            className="lg:hidden w-10 h-10 flex flex-col justify-center items-center gap-1.5 -ml-1"
             aria-label="Open menu"
           >
             <span className="block w-5 h-[1.5px] bg-foreground" />
@@ -116,14 +116,14 @@ export default function AdminLayout({ children }) {
             <span className="block w-5 h-[1.5px] bg-foreground" />
           </button>
 
-          {/* Studio name */}
-          <div className="hidden lg:flex items-center gap-3">
+          {/* Studio name — show on mobile too */}
+          <div className="flex items-center gap-3">
             <Image
               src="/images/brand/logo-primary-white.png"
               alt="BOXX"
               width={80}
               height={32}
-              className="h-6 w-auto"
+              className="h-5 lg:h-6 w-auto"
             />
           </div>
 
@@ -135,7 +135,7 @@ export default function AdminLayout({ children }) {
             </div>
             <button
               onClick={() => signOut({ callbackUrl: '/' })}
-              className="text-xs text-muted hover:text-foreground transition-colors px-3 py-1.5 border border-card-border rounded"
+              className="text-xs text-muted hover:text-foreground transition-colors px-3 py-2 min-h-[36px] border border-card-border rounded"
             >
               Sign out
             </button>

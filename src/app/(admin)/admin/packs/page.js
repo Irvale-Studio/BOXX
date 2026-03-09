@@ -163,13 +163,13 @@ export default function AdminPacksPage() {
             <div
               key={pack.id}
               className={cn(
-                'flex items-center gap-4 px-4 py-3',
+                'flex flex-wrap sm:flex-nowrap items-center gap-3 sm:gap-4 px-4 py-3',
                 idx !== packs.length - 1 && 'border-b border-card-border',
                 !pack.active && 'opacity-50'
               )}
             >
               {/* Order */}
-              <span className="text-xs text-muted w-6 shrink-0 text-center">{pack.display_order}</span>
+              <span className="text-xs text-muted w-6 shrink-0 text-center hidden sm:block">{pack.display_order}</span>
 
               {/* Info */}
               <div className="flex-1 min-w-0">
@@ -243,7 +243,7 @@ export default function AdminPacksPage() {
                 className="mt-1"
               />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <Label>Credits (blank = unlimited)</Label>
                 <Input
@@ -264,7 +264,7 @@ export default function AdminPacksPage() {
                 />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <Label>Price (THB)</Label>
                 <Input

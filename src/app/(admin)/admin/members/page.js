@@ -242,21 +242,21 @@ export default function AdminMembersPage() {
           <div className="space-y-6">
             {/* Profile header */}
             <Card>
-              <CardContent className="p-6">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 rounded-full bg-accent/10 flex items-center justify-center overflow-hidden shrink-0">
+              <CardContent className="p-4 sm:p-6">
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                  <div className="flex items-center gap-3 sm:gap-4">
+                    <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-accent/10 flex items-center justify-center overflow-hidden shrink-0">
                       {detail.member.avatar_url ? (
                         <img src={detail.member.avatar_url} alt="" className="w-full h-full object-cover" />
                       ) : (
-                        <span className="text-accent text-xl font-bold">
+                        <span className="text-accent text-lg sm:text-xl font-bold">
                           {(detail.member.name || detail.member.email)?.[0]?.toUpperCase() || '?'}
                         </span>
                       )}
                     </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h2 className="text-xl font-bold text-foreground">{detail.member.name || 'No name'}</h2>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h2 className="text-lg sm:text-xl font-bold text-foreground">{detail.member.name || 'No name'}</h2>
                         <Badge variant={detail.member.role === 'admin' ? 'default' : 'outline'} className="text-[10px]">
                           {detail.member.role}
                         </Badge>
@@ -264,14 +264,14 @@ export default function AdminMembersPage() {
                           <span className="text-[10px] text-muted bg-card-border px-1.5 py-0.5 rounded">Google</span>
                         )}
                       </div>
-                      <p className="text-sm text-muted">{detail.member.email}</p>
+                      <p className="text-sm text-muted truncate">{detail.member.email}</p>
                       {detail.member.phone && <p className="text-xs text-muted mt-0.5">{detail.member.phone}</p>}
                       <p className="text-xs text-muted mt-1">
                         Joined {new Date(detail.member.created_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'Asia/Bangkok' })}
                       </p>
                     </div>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     <Button size="sm" variant="outline" onClick={openEditDialog}>Edit</Button>
                     <Button size="sm" variant="outline" onClick={() => { setGrantDialog(true); setGrantPackId(packs[0]?.id || ''); setGrantNotes('') }}>
                       Grant Credits
@@ -288,7 +288,7 @@ export default function AdminMembersPage() {
                 </div>
 
                 {/* Stats row */}
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 mt-6 pt-4 border-t border-card-border">
+                <div className="grid grid-cols-3 sm:grid-cols-5 gap-3 sm:gap-4 mt-4 sm:mt-6 pt-4 border-t border-card-border">
                   {[
                     { label: 'Active Credits', value: detail.stats.activeCredits },
                     { label: 'Total Bookings', value: detail.stats.totalBookings },
@@ -320,17 +320,17 @@ export default function AdminMembersPage() {
                       const isActive = c.status === 'active' && new Date(c.expires_at) > new Date()
                       const isComp = c.stripe_payment_id?.startsWith('admin_grant')
                       return (
-                        <div key={c.id} className={cn('flex items-center justify-between p-3 rounded-lg border', isActive ? 'border-card-border' : 'border-card-border/50 opacity-50')}>
-                          <div>
+                        <div key={c.id} className={cn('flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-2 p-3 rounded-lg border', isActive ? 'border-card-border' : 'border-card-border/50 opacity-50')}>
+                          <div className="min-w-0">
                             <div className="flex items-center gap-2">
-                              <span className="text-sm font-medium text-foreground">{c.class_packs?.name || 'Pack'}</span>
+                              <span className="text-sm font-medium text-foreground truncate">{c.class_packs?.name || 'Pack'}</span>
                               {isComp && <Badge variant="outline" className="text-[10px]">Comp</Badge>}
                             </div>
                             <p className="text-xs text-muted">
                               {c.credits_remaining ?? '∞'} / {c.credits_total ?? '∞'} remaining · expires {new Date(c.expires_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'Asia/Bangkok' })}
                             </p>
                           </div>
-                          <span className="text-xs text-muted">
+                          <span className="text-xs text-muted shrink-0">
                             {new Date(c.purchased_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'Asia/Bangkok' })}
                           </span>
                         </div>
@@ -355,25 +355,25 @@ export default function AdminMembersPage() {
                       const statusColor = b.status === 'confirmed' ? 'text-green-400' : 'text-red-400'
 
                       return (
-                        <div key={b.id} className="flex items-center justify-between p-3 rounded-lg border border-card-border">
-                          <div className="flex items-center gap-3">
+                        <div key={b.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 sm:gap-2 p-3 rounded-lg border border-card-border">
+                          <div className="flex items-center gap-3 min-w-0">
                             {cls?.class_types?.color && (
                               <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: cls.class_types.color }} />
                             )}
-                            <div>
-                              <span className="text-sm font-medium text-foreground">{cls?.class_types?.name || 'Class'}</span>
-                              <p className="text-xs text-muted">
+                            <div className="min-w-0">
+                              <span className="text-sm font-medium text-foreground truncate block">{cls?.class_types?.name || 'Class'}</span>
+                              <p className="text-xs text-muted truncate">
                                 {cls ? new Date(cls.starts_at).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'Asia/Bangkok' }) : '—'}
                                 {cls?.instructors?.name && ` · ${cls.instructors.name}`}
                               </p>
                             </div>
                           </div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 ml-5 sm:ml-0 shrink-0">
                             <span className={cn('text-xs font-medium capitalize', statusColor)}>{b.status}</span>
                             {b.status === 'confirmed' && isUpcoming && (
                               <button
                                 onClick={() => handleBookingAction(b.id, 'cancel', true)}
-                                className="text-[10px] px-2 py-1 rounded border border-red-400/30 text-red-400 hover:bg-red-400/10 transition-colors"
+                                className="text-[10px] px-2 py-1.5 rounded border border-red-400/30 text-red-400 hover:bg-red-400/10 transition-colors"
                               >
                                 Cancel
                               </button>
@@ -530,14 +530,14 @@ export default function AdminMembersPage() {
             placeholder="Search by name or email..."
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
-            className="max-w-sm"
+            className="flex-1 sm:max-w-sm"
           />
-          <Button type="submit" variant="outline">Search</Button>
+          <Button type="submit" variant="outline" className="shrink-0">Search</Button>
           {search && (
-            <Button variant="outline" onClick={() => { setSearchInput(''); setSearch(''); setPage(1) }}>Clear</Button>
+            <Button variant="outline" className="shrink-0" onClick={() => { setSearchInput(''); setSearch(''); setPage(1) }}>Clear</Button>
           )}
         </form>
-        <div className="flex flex-wrap items-end gap-3">
+        <div className="flex flex-wrap items-end gap-2 sm:gap-3">
           <div>
             <label className="text-xs text-muted block mb-1">Role</label>
             <select
@@ -638,7 +638,10 @@ export default function AdminMembersPage() {
                   </div>
                 </div>
                 <p className="hidden sm:block text-sm text-muted truncate">{member.email}</p>
-                <span className="text-sm font-medium text-foreground">{member.activeCredits}</span>
+                <span className="text-sm font-medium text-foreground">
+                  {member.activeCredits}
+                  <span className="sm:hidden text-xs text-muted font-normal"> credits</span>
+                </span>
                 <span className="hidden sm:block text-sm text-muted">{member.totalBookings}</span>
                 <span className="hidden sm:block text-xs text-muted">
                   {new Date(member.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'Asia/Bangkok' })}

@@ -328,7 +328,7 @@ export default function AdminSchedulePage() {
       </div>
 
       {toast && (
-        <div className={cn('fixed bottom-6 right-6 z-50 px-4 py-3 rounded-lg border flex items-center gap-3 shadow-lg max-w-sm animate-in slide-in-from-bottom-2', toast.type === 'error' ? 'bg-red-500/10 border-red-500/20 text-red-400 backdrop-blur-sm' : 'bg-green-500/10 border-green-500/20 text-green-400 backdrop-blur-sm')}>
+        <div className={cn('fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:bottom-6 z-50 px-4 py-3 rounded-lg border flex items-center gap-3 shadow-lg sm:max-w-sm animate-in slide-in-from-bottom-2', toast.type === 'error' ? 'bg-red-500/10 border-red-500/20 text-red-400 backdrop-blur-sm' : 'bg-green-500/10 border-green-500/20 text-green-400 backdrop-blur-sm')}>
           <span className="text-sm">{toast.message}</span>
           <button onClick={() => setToast(null)} className="opacity-60 hover:opacity-100 shrink-0">✕</button>
         </div>
@@ -336,22 +336,22 @@ export default function AdminSchedulePage() {
 
       {/* Week navigation */}
       <div className="flex items-center justify-between mb-4">
-        <button onClick={() => setWeekOffset((o) => o - 1)} className="text-sm text-muted hover:text-foreground transition-colors px-3 py-1.5 border border-card-border rounded">← Prev</button>
+        <button onClick={() => setWeekOffset((o) => o - 1)} className="text-sm text-muted hover:text-foreground transition-colors px-3 py-2 min-h-[44px] border border-card-border rounded">← Prev</button>
         <div className="text-center">
           <p className="text-sm font-medium text-foreground">{weekLabel}</p>
           {weekOffset !== 0 && (
-            <button onClick={() => setWeekOffset(0)} className="text-xs text-accent hover:text-accent-dim transition-colors">Today</button>
+            <button onClick={() => setWeekOffset(0)} className="text-xs text-accent hover:text-accent-dim transition-colors py-1">Today</button>
           )}
         </div>
-        <button onClick={() => setWeekOffset((o) => o + 1)} className="text-sm text-muted hover:text-foreground transition-colors px-3 py-1.5 border border-card-border rounded">Next →</button>
+        <button onClick={() => setWeekOffset((o) => o + 1)} className="text-sm text-muted hover:text-foreground transition-colors px-3 py-2 min-h-[44px] border border-card-border rounded">Next →</button>
       </div>
 
       {loading ? (
-        <div className="grid grid-cols-7 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2 sm:gap-3">
           {[1, 2, 3, 4, 5, 6, 7].map((i) => <div key={i} className="h-48 bg-card border border-card-border rounded-lg animate-pulse" />)}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-7 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2 sm:gap-3">
           {weekDays.map((day) => {
             const dateKey = day.toLocaleDateString('en-CA', { timeZone: 'Asia/Bangkok' })
             const dayClasses = classesByDay[dateKey] || []
@@ -359,7 +359,7 @@ export default function AdminSchedulePage() {
             const isPast = day < today
 
             return (
-              <div key={dateKey} className={cn('border border-card-border rounded-lg overflow-hidden min-h-[200px]', isToday ? 'border-accent/40 shadow-[0_0_12px_rgba(200,167,80,0.08)]' : '', isPast ? 'opacity-50' : '')}>
+              <div key={dateKey} className={cn('border border-card-border rounded-lg overflow-hidden min-h-[120px] md:min-h-[200px]', isToday ? 'border-accent/40 shadow-[0_0_12px_rgba(200,167,80,0.08)]' : '', isPast ? 'opacity-50' : '')}>
                 <div className={cn('px-3 py-2 text-center border-b border-card-border', isToday ? 'bg-accent/10' : 'bg-card')}>
                   <p className="text-xs text-muted uppercase tracking-wide">{day.toLocaleDateString('en-US', { weekday: 'short' })}</p>
                   <p className={cn('text-lg font-bold', isToday ? 'text-accent' : 'text-foreground')}>{day.getDate()}</p>
@@ -567,7 +567,7 @@ export default function AdminSchedulePage() {
 
       {/* Edit Class Dialog */}
       <Dialog open={!!editDialog} onOpenChange={(open) => !open && setEditDialog(null)}>
-        <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto p-0 gap-0">
+        <DialogContent className="sm:max-w-3xl max-h-[85vh] overflow-y-auto p-0 gap-0">
           {/* Color banner header */}
           {editDialog && (() => {
             const color = editDialog.class_types?.color || '#c8a750'
@@ -603,7 +603,7 @@ export default function AdminSchedulePage() {
                           <span className="text-[11px] font-medium text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-full">🔒 Private</span>
                         )}
                       </div>
-                      <div className="flex items-center gap-3 text-sm text-muted">
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted">
                         <span className="flex items-center gap-1.5">
                           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
@@ -727,28 +727,29 @@ export default function AdminSchedulePage() {
                 </div>
 
                 {/* Footer actions */}
-                <div className="border-t border-card-border px-6 py-4 flex flex-col sm:flex-row gap-2">
-                  <Button variant="outline" className="text-red-400 border-red-400/30 hover:bg-red-400/10" onClick={() => { setEditDialog(null); setCancelDialog(editDialog) }}>
+                <div className="border-t border-card-border px-4 sm:px-6 py-4 flex flex-col sm:flex-row gap-2">
+                  <Button variant="outline" className="text-red-400 border-red-400/30 hover:bg-red-400/10 w-full sm:w-auto" onClick={() => { setEditDialog(null); setCancelDialog(editDialog) }}>
                     {isRecurring ? 'Cancel...' : 'Cancel Class'}
                   </Button>
-                  <div className="flex gap-2 sm:ml-auto">
-                    <Button variant="outline" onClick={() => setEditDialog(null)}>Close</Button>
+                  <div className="flex flex-col sm:flex-row gap-2 sm:ml-auto">
+                    <Button variant="outline" className="w-full sm:w-auto" onClick={() => setEditDialog(null)}>Close</Button>
                     {isRecurring ? (
                       <>
                         <Button
                           variant="outline"
+                          className="w-full sm:w-auto"
                           onClick={() => handleUpdate('this')}
                           disabled={submitting}
                           title="Save changes to this class only and remove it from the recurring set"
                         >
                           {submitting ? 'Saving...' : 'Save This Only'}
                         </Button>
-                        <Button onClick={() => handleUpdate('all')} disabled={submitting}>
+                        <Button className="w-full sm:w-auto" onClick={() => handleUpdate('all')} disabled={submitting}>
                           {submitting ? 'Saving...' : 'Save All Recurring'}
                         </Button>
                       </>
                     ) : (
-                      <Button onClick={() => handleUpdate('this')} disabled={submitting}>
+                      <Button className="w-full sm:w-auto" onClick={() => handleUpdate('this')} disabled={submitting}>
                         {submitting ? 'Saving...' : form.recurring ? 'Save & Create Recurring' : 'Save Changes'}
                       </Button>
                     )}
@@ -906,7 +907,7 @@ function ClassForm({ form, setForm, classTypes, instructors, showRecurring, recu
           <Input id="endTime" type="time" value={form.endTime} onChange={(e) => setForm((f) => ({ ...f, endTime: e.target.value }))} className="mt-1.5" />
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div>
         <div>
           <Label htmlFor="capacity">Capacity</Label>
           <Input id="capacity" type="number" min={isEditing ? (bookedCount || 1) : 1} max={50} value={form.capacity} onChange={(e) => {

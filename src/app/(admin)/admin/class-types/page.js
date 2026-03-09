@@ -267,7 +267,7 @@ function ClassTypeForm({ form, setForm }) {
           className="mt-1 w-full rounded-lg bg-background/50 border border-card-border/60 px-3.5 py-2 text-sm text-foreground transition-colors focus:outline-none focus:ring-1 focus:ring-accent/50 focus:border-accent/30 resize-none"
         />
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <Label htmlFor="ct-duration">Duration (mins)</Label>
           <Input id="ct-duration" type="number" min={1} max={300} value={form.duration_mins} onChange={(e) => setForm((f) => ({ ...f, duration_mins: parseInt(e.target.value) || 60 }))} className="mt-1" />

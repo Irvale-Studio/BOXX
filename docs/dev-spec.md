@@ -1,6 +1,6 @@
 # BOXX Development Spec & Progress Tracker
 
-> Last updated: 2026-03-09
+> Last updated: 2026-03-09 (post technical PM review)
 
 ---
 
@@ -98,17 +98,22 @@
 - [x] Low-credit member alerts
 - [x] Schedule management page (weekly calendar, 7-column grid)
 - [x] Create class (dialog + form, class type + instructor selects)
-- [x] Edit class
-- [x] Cancel class API (`/api/admin/schedule/cancel`) — cascading: cancel bookings → refund credits → clear waitlist
+- [x] Edit class (single, all recurring, or unlink from recurring)
+- [x] Cancel class API — single or all recurring, cascading: cancel bookings → refund credits → clear waitlist
 - [x] Schedule options API (`/api/admin/schedule/options`)
+- [x] Category hue system: purple=recurring, amber=private, sky=singular (cards + dialogs)
+- [x] Business logic: lock class type after creation, capacity floor, time clash detection
+- [x] Add members when creating private events (search + invite flow)
+- [x] Private event default capacity = 1
 
 ---
 
 ## Phase 5 — Admin Panel: Bookings, Members, Packs, Instructors
 
-### 5.1 Bookings Management
-- [x] Bookings list page (paginated, filterable by status/date)
-- [x] Bookings API (`/api/admin/bookings`)
+### 5.1 Activity / Events Log (was Bookings)
+- [x] Activity log page — unified feed of bookings, cancellations, signups, admin actions
+- [x] Events API (`/api/admin/events`) — aggregates from bookings, users, audit log
+- [x] Filters: event type, date range, search by member, sort
 
 ### 5.2 Members Management
 - [x] Members list page (searchable, credits + booking counts)
@@ -162,6 +167,8 @@
 - [x] **Booking cancel on behalf** — admin can cancel a member's booking (with optional credit refund)
 - [x] **Mark attendance** — attended / no-show buttons on bookings
 - [x] **Recurring class generation** — day picker + weeks selector, grouped by recurring_id
+- [x] **Recurring class management** — delete one/all, edit one/all, unlink from recurring set
+- [x] **Time clash detection** — prevents overlapping classes for same instructor (create, edit, recurring)
 - [x] **Class roster view** — click booking count in admin schedule to see full roster
 - [x] **Private classes** — `is_private` on class_types, auto-applied to scheduled classes, hidden from public schedule
 - [x] **Recurring in add class** — recurring toggle in main add class form (days + weeks), no separate dialog
@@ -179,7 +186,7 @@
 - [ ] **Private class notifications** — email members when added to a private class
 
 ### Admin Panel — Other
-- [ ] **Admin activity feed** — view admin audit log in UI
+- [x] **Admin activity feed** — unified events log on Activity page (replaced old Bookings page)
 - [ ] **Pack reorder** — drag to change display_order
 - [ ] **Instructor photo upload** to Supabase Storage
 
@@ -233,12 +240,50 @@
 - [ ] **Run migration SQL** — add `is_private BOOLEAN DEFAULT false` column to `class_schedule` table
 - [ ] **Run migration SQL** — add `is_private BOOLEAN DEFAULT false` column to `class_types` table
 
+### Missing Pages
+- [ ] **Forgot password page** (`/forgot-password`) — token-based email reset flow
+- [ ] **Privacy policy page** (`/privacy`)
+- [ ] **Terms of service page** (`/terms`)
+- [ ] **404 page**
+
+### Member Dashboard Gaps
+- [ ] **Waitlist UI in dashboard** — backend exists but member can't see their waitlist positions
+- [ ] **Calendar view** — referenced in member dashboard tabs but not rendered
+
 ### Quality
 - [ ] Mobile QA pass on all member pages
 - [ ] Accessibility audit (ARIA, keyboard nav, contrast)
 - [ ] Loading states and error boundaries on all pages
 - [ ] Empty states for all lists
-- [ ] 404 page
+
+---
+
+## Technical PM Review — Critical Findings (2026-03-09)
+
+### Blockers for Production Launch
+
+1. **Stripe not wired to UI** — Checkout sessions, webhook handler, and billing portal are all built but the Buy Classes page has no working payment flow. Direct purchase only (no real money moves).
+2. **Email not functional** — `RESEND_API_KEY` not set. All email code (confirmations, reminders, waitlist promotions, expiry warnings) is dead code until configured.
+3. **Notify endpoint is a stub** — `/api/admin/schedule/notify` sends no actual emails.
+4. **Rate limiting is in-memory** — `Map`-based rate limiter resets on each Vercel cold start and doesn't share state across instances. Needs Redis or Vercel KV for production.
+5. **Missing DB migrations** — `is_private` on `class_types`, `expiry_warned` on `user_credits` may not exist in production Supabase. Must run migration SQL.
+
+### High Priority
+
+6. **Admin Settings page** — 3 of 4 tabs are stubs (Studio Info, Booking Rules, Reminders). Only Emails tab is rendered (also placeholder).
+7. **Admin Emails page** — placeholder, no functionality.
+8. **No instructor photo upload** — form field exists but no upload-to-storage flow.
+9. **No reporting/analytics** — no revenue, attendance, or retention reports.
+10. **Forgot password flow missing** — no page, no token generation, no reset email.
+
+### Medium Priority
+
+11. **No `/privacy` or `/terms` pages** — footer links to nowhere.
+12. **Member waitlist UI missing** — backend fully built but dashboard doesn't show waitlist positions.
+13. **Calendar view tab** in member dashboard referenced but not rendered.
+14. **Google account linking** — can't merge email + Google identities.
+15. **Booking cancellation email** — member cancels but gets no confirmation.
+16. **Class cancelled by admin** — booked members get no notification.
 
 ---
 
@@ -315,3 +360,16 @@
 - **Email:** Resend
 - **UI Components:** shadcn/ui (Button, Card, Input, Label, Badge, Tabs, Dialog, Switch)
 - **Hosting:** Vercel (planned)
+
+
+
+
+
+My notes for claude to pick up and add into the file, mark as crossed out when reviewed and added
+- Update the public ui to include the Hue effect
+- Improve the dashboard
+- Include a send email to attendees option in the events
+- More business logic tests, what happens if a class type gets deleted? etc
+- ~~Test the admin on mobile~~ (done — mobile responsive fixes applied across all admin pages)
+- Add a new image for the private classes for when it shows in a users my bookings
+- redo the buy packs screen

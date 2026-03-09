@@ -70,17 +70,17 @@ export default function AdminEventsPage() {
       <div className="space-y-3 mb-6">
         <form onSubmit={handleSearch} className="flex gap-2">
           <Input
-            placeholder="Search by member name or email..."
+            placeholder="Search by name or email..."
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
-            className="max-w-sm"
+            className="flex-1 sm:max-w-sm"
           />
-          <Button type="submit" variant="outline">Search</Button>
+          <Button type="submit" variant="outline" className="shrink-0">Search</Button>
           {search && (
-            <Button variant="outline" onClick={() => { setSearchInput(''); setSearch(''); setPage(1) }}>Clear</Button>
+            <Button variant="outline" className="shrink-0" onClick={() => { setSearchInput(''); setSearch(''); setPage(1) }}>Clear</Button>
           )}
         </form>
-        <div className="flex flex-wrap items-end gap-3">
+        <div className="flex flex-wrap items-end gap-2 sm:gap-3">
           <div>
             <label className="text-xs text-muted block mb-1">Event Type</label>
             <select
@@ -177,7 +177,7 @@ export default function AdminEventsPage() {
                 <div
                   key={event.id}
                   className={cn(
-                    'grid sm:grid-cols-[40px_1fr_1fr_100px_100px] gap-2 sm:gap-4 px-4 py-3 items-center',
+                    'sm:grid sm:grid-cols-[40px_1fr_1fr_100px_100px] gap-2 sm:gap-4 px-4 py-3 sm:items-center',
                     idx !== events.length - 1 && 'border-b border-card-border'
                   )}
                 >
@@ -188,9 +188,12 @@ export default function AdminEventsPage() {
 
                   {/* Event description */}
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-foreground truncate">
-                      {event.label}
-                    </p>
+                    <div className="flex items-center gap-2 sm:block">
+                      <span className="sm:hidden text-base">{config.icon}</span>
+                      <p className="text-sm font-medium text-foreground truncate">
+                        {event.label}
+                      </p>
+                    </div>
                     <p className="text-xs text-muted truncate">
                       {event.detail}
                       {event.meta?.classTime && (
@@ -224,15 +227,16 @@ export default function AdminEventsPage() {
                     )}
                   </div>
 
-                  {/* Type badge */}
-                  <div>
+                  {/* Type badge + Timestamp — inline on mobile */}
+                  <div className="flex items-center gap-2 mt-1.5 sm:mt-0 sm:block">
                     <span className={cn('text-[10px] font-medium px-1.5 py-0.5 rounded capitalize', config.color)}>
                       {event.type}
                     </span>
+                    <span className="text-xs text-muted sm:hidden">{time}</span>
                   </div>
 
-                  {/* Timestamp */}
-                  <span className="text-xs text-muted">{time}</span>
+                  {/* Timestamp — desktop only */}
+                  <span className="hidden sm:block text-xs text-muted">{time}</span>
                 </div>
               )
             })}

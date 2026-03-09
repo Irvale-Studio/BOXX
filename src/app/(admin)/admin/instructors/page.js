@@ -138,7 +138,7 @@ export default function AdminInstructorsPage() {
             <div
               key={inst.id}
               className={cn(
-                'flex items-center gap-4 px-4 py-3',
+                'flex items-center gap-3 sm:gap-4 px-3 sm:px-4 py-3',
                 idx !== instructors.length - 1 && 'border-b border-card-border',
                 !inst.active && 'opacity-50'
               )}
