@@ -439,7 +439,7 @@ export default function AdminSchedulePage() {
 
       {/* Add Class Dialog */}
       <Dialog open={addDialog} onOpenChange={(open) => !open && setAddDialog(false)}>
-        <DialogContent className="sm:max-w-md p-0 gap-0 overflow-hidden">
+        <DialogContent className="sm:max-w-md p-0 gap-0">
           {/* Color bar — class color into category hue */}
           {(() => {
             const ct = classTypes.find((c) => c.id === form.classTypeId)
@@ -567,7 +567,7 @@ export default function AdminSchedulePage() {
 
       {/* Edit Class Dialog */}
       <Dialog open={!!editDialog} onOpenChange={(open) => !open && setEditDialog(null)}>
-        <DialogContent className="sm:max-w-3xl max-h-[85vh] overflow-y-auto p-0 gap-0">
+        <DialogContent className="sm:max-w-3xl p-0 gap-0">
           {/* Color banner header */}
           {editDialog && (() => {
             const color = editDialog.class_types?.color || '#c8a750'
