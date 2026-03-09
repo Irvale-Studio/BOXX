@@ -136,7 +136,8 @@
 - [x] Booking confirmation email (wired into `/api/bookings/create`)
 - [x] Class reminder cron (`/api/cron/reminders`) — 1hr before, every 15min
 - [x] Credit expiry cron (`/api/cron/expire-credits`) — daily, zeros expired + warns 3-day
-- [x] Waitlist processing cron (`/api/cron/process-waitlist`) — every 5min, auto-book + email
+- [x] Waitlist auto-promotion (`src/lib/waitlist.js`) — instant promotion when spot opens (cancel/remove)
+- [x] Waitlist processing cron (`/api/cron/process-waitlist`) — every 5min safety net, uses shared utility
 - [x] Vercel cron config (`vercel.json`)
 
 **Env vars needed:** `RESEND_API_KEY`, `CRON_SECRET`
@@ -199,24 +200,35 @@
 
 ### Email Notifications (all need `RESEND_API_KEY`)
 
-**Already coded (need Resend API key to activate):**
-- [ ] Booking confirmation email (in `/api/bookings/create`)
-- [ ] Class reminder — 1hr before (in `/api/cron/reminders`)
-- [ ] Waitlist promotion notification (in `/api/cron/process-waitlist`)
-- [ ] Credit expiry warning — 3 days (in `/api/cron/expire-credits`)
+All email templates live in `src/lib/email.js` (Resend, branded dark HTML).
 
-**Stub/API ready, email template needed:**
-- [ ] Class change notification — admin edits class, notify booked members (`/api/admin/schedule/notify`)
-- [ ] Private class invitation — admin adds member to private class
+**Coded & wired — just needs RESEND_API_KEY to go live:**
+| # | Email Event | Trigger | Template fn | Called from |
+|---|-------------|---------|-------------|------------|
+| 1 | Booking confirmation | Member books a class | `sendBookingConfirmation` | `/api/bookings/create` |
+| 2 | Class reminder (1hr before) | Cron every 15min | `sendClassReminder` | `/api/cron/reminders` |
+| 3 | Waitlist auto-promotion | Spot opens (cancel/remove) | `sendWaitlistPromotion` | `src/lib/waitlist.js` (called from cancel, roster remove, admin booking cancel) |
+| 4 | Waitlist promotion (cron) | Cron every 5min safety net | `sendWaitlistPromotion` | `/api/cron/process-waitlist` |
+| 5 | Credit expiry warning (3 days) | Cron daily midnight | `sendCreditExpiryWarning` | `/api/cron/expire-credits` |
 
-**Not yet built:**
-- [ ] Welcome email on registration
-- [ ] Cancellation confirmation email (member cancels booking)
-- [ ] Class cancelled by admin — notify booked members
-- [ ] Pack purchase confirmation email
-- [ ] Credits low warning email (1 credit remaining)
-- [ ] Admin direct email to individual member
-- [ ] Password reset email (token-based link)
+**Stub/API ready — needs email template + wiring:**
+| # | Email Event | Trigger | Status |
+|---|-------------|---------|--------|
+| 6 | Class change notification | Admin edits class with bookings | API stub at `/api/admin/schedule/notify`, no template |
+| 7 | Private class invitation | Admin adds member to private class | No template, no call wired |
+
+**Not yet built — needs template + API + wiring:**
+| # | Email Event | Trigger | Notes |
+|---|-------------|---------|-------|
+| 8 | Welcome email | User registers | Send from `/api/auth/register` |
+| 9 | Cancellation confirmation | Member cancels booking | Send from `/api/bookings/cancel` |
+| 10 | Class cancelled by admin | Admin cancels a class | Notify all booked members |
+| 11 | Pack purchase confirmation | Stripe webhook payment success | Send from `/api/stripe/webhook` |
+| 12 | Credits low warning | Credit drops to 1 remaining | Could be in booking create or cron |
+| 13 | Admin direct email | Admin sends message to member | Needs compose UI + API on Emails page |
+| 14 | Password reset | User requests reset | Needs forgot-password flow + token |
+| 15 | Admin removes from class | Admin removes member via roster | Notify the removed member |
+| 16 | Admin cancels booking | Admin cancels on behalf of member | Notify the member |
 
 ### Dashboard Enhancements
 - [x] **Today's classes** — schedule-style cards on admin dashboard (colored border, time range, capacity bar, clickable to schedule page)
@@ -365,13 +377,83 @@
 
 
 
-My notes for claude to pick up and add into the file, mark as crossed out when reviewed and added
-- Update the public ui to include the Hue effect
-- Improve the dashboard
-- Include a send email to attendees option in the events
-- More business logic tests, what happens if a class type gets deleted? etc
+---
+
+## BUILD BATCH 1 — Autonomous Build (no Stripe/Resend keys needed)
+
+> **Instructions for Claude:** This is the next batch to build. Work through items in order of section.
+> All email code is safe without RESEND_API_KEY (guarded by `if (!resend) return`).
+> Do NOT attempt: Stripe key wiring, Resend domain verification, password reset (needs email), Google account linking, reporting dashboards.
+
+### A. Admin Emails Page — Full Build
+- [ ] A1. **Email log viewer** — replace placeholder with reference table of all 16 email events (live/stubbed/not built status)
+- [ ] A2. **Branded email template system** — create a rich Mailchimp-style HTML base template (dark theme, gold accents, BOXX logo, footer). All emails share this base.
+- [ ] A3. **Build remaining email templates** in `src/lib/email.js`: `sendWelcomeEmail`, `sendCancellationConfirmation`, `sendClassCancelledByAdmin`, `sendPackPurchaseConfirmation`, `sendCreditsLowWarning`, `sendRemovedFromClass`, `sendAdminCancelledBooking`
+- [ ] A4. **Wire templates into trigger points** — register route, cancel route, admin cancel class, stripe webhook, booking create (low credit check), admin roster remove, admin booking cancel
+- [ ] A5. **Admin compose email** — form on Emails page to send a direct email to any member (select member, subject, body)
+- [ ] A6. **Admin email template editor** — let admins preview and customize email copy/branding from Emails page (store overrides in `studio_settings`)
+
+### B. Admin Settings — Build Real Tabs
+- [ ] B1. **Studio Info tab** — name, address, phone, email, website (read/write `studio_settings`)
+- [ ] B2. **Booking Rules tab** — default capacity, cancellation window hours, max advance booking days
+- [ ] B3. **Reminders tab** — toggle 24h/1h reminders on/off
+
+### C. Missing Pages
+- [ ] C1. **Privacy Policy page** (`/privacy`) — standard template with BOXX details
+- [ ] C2. **Terms of Service page** (`/terms`) — standard template
+- [ ] C3. **404 page** (`not-found.js`) — branded dark theme with back/home links
+
+### D. Admin Activity Page — Redesign
+- [ ] D1. **Richer event cards** — more details (member name, class, time, credit info), color-coded by event type
+- [ ] D2. **Expandable event detail view** — click to expand with full context (booking details, credit used, admin who actioned, timestamps)
+- [ ] D3. **Better filtering and grouping** — group by day, clearer visual hierarchy
+
+### E. Employee Role
+- [ ] E1. **New `employee` role** — can view entire admin dashboard, schedule, members, activity. Restricted from: deleting/deactivating members, changing settings, managing packs/pricing, connecting Stripe. Can: mark attendance, manage roster (add/remove members), create/edit classes, view activity. Middleware + UI enforcement.
+
+### F. Member Dashboard Gaps
+- [ ] F1. **Waitlist positions in dashboard** — show active waitlist entries with position badges
+- [ ] F2. **Private class image/badge** — distinct visual for private classes in My Bookings
+- [ ] F3. **Fix iCal/Add to Calendar** — debug the JSON error page on `.ics` download
+- [ ] F4. **Hue effect on My Bookings calendar** — category color system like admin schedule (purple=recurring, amber=private, sky=regular)
+
+### G. Buy Packs Page — Full Redesign
+- [ ] G1. **Research-driven redesign** — study pricing psychology (anchoring, "Most Popular" badge, urgency, value framing, comparison layout). Tiered cards with visual hierarchy, per-class price breakdown, savings percentage, social proof, smooth purchase flow. Make it a genuinely compelling sales page.
+
+### H. Gamification & Member Profiles
+- [ ] H1. **Weekly streak tracker** — consecutive weeks with at least 1 class
+- [ ] H2. **Total classes counter** — lifetime attendance
+- [ ] H3. **Achievement badges** — milestones (First Class, 10/25/50/100 classes, streak badges, class variety)
+- [ ] H4. **Profile gamification display** — show streak, total classes, badges on member profile visible in Book Classes view
+- [ ] H5. **Badge showcase** — visual badge grid on profile
+
+### I. Admin Dashboard Review
+- [ ] I1. **Audit and improve admin dashboard** — review current stats, assess usefulness for a studio owner. Add/replace with: today's revenue, week-over-week trends, upcoming classes needing attention (low bookings, full), recent cancellations, quick actions.
+
+### J. Admin Design/CMS Page
+- [ ] J1. **New `/admin/design` page** — let admins customize public homepage: social media links, gallery images (upload/reorder), hero text/CTA, contact info overrides. Store in `studio_settings`, read from public pages.
+
+### K. Notify Endpoint + Business Logic
+- [ ] K1. **Complete `/api/admin/schedule/notify`** — build `sendClassChanged` template, wire actual sending
+- [ ] K2. **Class type deletion safety** — soft-delete or prevent if future classes exist
+- [ ] K3. **Instructor deletion safety** — same pattern
+- [ ] K4. **Pack deletion safety** — prevent deleting packs with active credits
+- [ ] K5. **Freeze member** (instead of deactivate) — preserves data, blocks login, reversible by admin
+- [ ] K6. **Fix login redirect** — ensure proper same-tab redirect behavior
+
+### L. CSV Export
+- [ ] L1. **Bookings CSV export** — download button on Activity page
+
+---
+
+### Handwritten Notes (reviewed → absorbed into batch above)
+- ~~Update the public UI to include the Hue effect~~ → F4
+- ~~Improve the dashboard~~ → I1
+- ~~Include a send email to attendees option in the events~~ → K1
+- ~~More business logic tests, what happens if a class type gets deleted? etc~~ → K2, K3, K4
 - ~~Test the admin on mobile~~ (done — mobile responsive fixes applied across all admin pages)
-- Add a new image for the private classes for when it shows in a users my bookings
-- redo the buy packs screen
-- open new tab when logging in
-- change location of toast message on the public app, make it like a proper bottom screen toast
+- ~~Add a new image for the private classes for when it shows in a users my bookings~~ → F2
+- ~~redo the buy packs screen~~ → G1
+- ~~open new tab when logging in~~ → K6
+- ~~change location of toast message on the public app~~ (done — member dashboard + buy-classes toasts moved to fixed bottom-right floating)
+- ~~Freeze member instead of deactivate is better~~ → K5
