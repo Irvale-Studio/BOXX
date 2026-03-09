@@ -41,7 +41,6 @@ export async function GET(request) {
         instructors(id, name, photo_url, bio)
       `)
       .in('status', ['active', 'cancelled'])
-      .or('is_private.is.null,is_private.eq.false')
       .gte('starts_at', startDate.toISOString())
       .lte('starts_at', endDate.toISOString())
       .order('starts_at', { ascending: true })
