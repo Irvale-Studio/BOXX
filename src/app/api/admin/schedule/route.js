@@ -44,22 +44,38 @@ export async function GET(request) {
     // Get booking counts for each class
     const classIds = (classes || []).map((c) => c.id)
     let bookingCounts = {}
+    let rosterByClass = {}
 
     if (classIds.length > 0) {
       const { data: bookings } = await supabaseAdmin
         .from('bookings')
-        .select('class_schedule_id')
+        .select('class_schedule_id, status, users(id, name, avatar_url, email)')
         .in('class_schedule_id', classIds)
-        .eq('status', 'confirmed')
+        .in('status', ['confirmed', 'attended', 'no_show'])
 
       ;(bookings || []).forEach((b) => {
-        bookingCounts[b.class_schedule_id] = (bookingCounts[b.class_schedule_id] || 0) + 1
+        if (b.status === 'confirmed' || b.status === 'attended') {
+          bookingCounts[b.class_schedule_id] = (bookingCounts[b.class_schedule_id] || 0) + 1
+        }
+      })
+
+      // Build roster per class
+      ;(bookings || []).forEach((b) => {
+        if (!rosterByClass[b.class_schedule_id]) rosterByClass[b.class_schedule_id] = []
+        rosterByClass[b.class_schedule_id].push({
+          id: b.users?.id,
+          name: b.users?.name,
+          avatar_url: b.users?.avatar_url,
+          email: b.users?.email,
+          status: b.status,
+        })
       })
     }
 
     const enriched = (classes || []).map((cls) => ({
       ...cls,
       booked_count: bookingCounts[cls.id] || 0,
+      roster: rosterByClass[cls.id] || [],
     }))
 
     return NextResponse.json({ classes: enriched })
@@ -76,6 +92,7 @@ const createClassSchema = z.object({
   endsAt: z.string().min(1),
   capacity: z.number().int().min(1).max(50).optional(),
   notes: z.string().optional(),
+  isPrivate: z.boolean().optional(),
 })
 
 /**
@@ -98,7 +115,7 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Invalid input', details: parsed.error.flatten() }, { status: 400 })
     }
 
-    const { classTypeId, instructorId, startsAt, endsAt, capacity, notes } = parsed.data
+    const { classTypeId, instructorId, startsAt, endsAt, capacity, notes, isPrivate } = parsed.data
 
     const { data: cls, error } = await supabaseAdmin
       .from('class_schedule')
@@ -110,6 +127,7 @@ export async function POST(request) {
         capacity: capacity || 6,
         notes: notes || null,
         status: 'active',
+        is_private: isPrivate || false,
       })
       .select('*, class_types(id, name, color), instructors(id, name)')
       .single()
@@ -143,6 +161,7 @@ const updateClassSchema = z.object({
   endsAt: z.string().min(1).optional(),
   capacity: z.number().int().min(1).max(50).optional(),
   notes: z.string().nullable().optional(),
+  isPrivate: z.boolean().optional(),
 })
 
 /**
@@ -165,7 +184,7 @@ export async function PUT(request) {
       return NextResponse.json({ error: 'Invalid input' }, { status: 400 })
     }
 
-    const { id, classTypeId, instructorId, startsAt, endsAt, capacity, notes } = parsed.data
+    const { id, classTypeId, instructorId, startsAt, endsAt, capacity, notes, isPrivate } = parsed.data
 
     const updates = {}
     if (classTypeId) updates.class_type_id = classTypeId
@@ -174,6 +193,7 @@ export async function PUT(request) {
     if (endsAt) updates.ends_at = endsAt
     if (capacity !== undefined) updates.capacity = capacity
     if (notes !== undefined) updates.notes = notes
+    if (isPrivate !== undefined) updates.is_private = isPrivate
 
     const { data: cls, error } = await supabaseAdmin
       .from('class_schedule')

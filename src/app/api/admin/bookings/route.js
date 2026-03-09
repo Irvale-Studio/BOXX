@@ -1,6 +1,7 @@
 import { auth } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
+import { z } from 'zod'
 
 /**
  * GET /api/admin/bookings — Get bookings with filters
@@ -75,6 +76,95 @@ export async function GET(request) {
     })
   } catch (error) {
     console.error('[admin/bookings] Error:', error)
+    return NextResponse.json({ error: 'Something went wrong.' }, { status: 500 })
+  }
+}
+
+const updateBookingSchema = z.object({
+  bookingId: z.string().min(1),
+  action: z.enum(['attended', 'no_show', 'cancel']),
+  refundCredit: z.boolean().optional(),
+})
+
+/**
+ * PUT /api/admin/bookings — Mark attendance or cancel booking on behalf of member
+ */
+export async function PUT(request) {
+  try {
+    const session = await auth()
+    if (!session || session.user.role !== 'admin') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    if (!supabaseAdmin) {
+      return NextResponse.json({ error: 'Database unavailable' }, { status: 500 })
+    }
+
+    const body = await request.json()
+    const parsed = updateBookingSchema.safeParse(body)
+    if (!parsed.success) {
+      return NextResponse.json({ error: 'Invalid input' }, { status: 400 })
+    }
+
+    const { bookingId, action, refundCredit } = parsed.data
+
+    const { data: booking } = await supabaseAdmin
+      .from('bookings')
+      .select('id, user_id, credit_id, status, class_schedule_id')
+      .eq('id', bookingId)
+      .single()
+
+    if (!booking) {
+      return NextResponse.json({ error: 'Booking not found' }, { status: 404 })
+    }
+
+    if (action === 'attended') {
+      await supabaseAdmin
+        .from('bookings')
+        .update({ status: 'attended' })
+        .eq('id', bookingId)
+    } else if (action === 'no_show') {
+      await supabaseAdmin
+        .from('bookings')
+        .update({ status: 'no_show' })
+        .eq('id', bookingId)
+    } else if (action === 'cancel') {
+      await supabaseAdmin
+        .from('bookings')
+        .update({
+          status: 'cancelled',
+          cancelled_at: new Date().toISOString(),
+          credit_returned: refundCredit !== false,
+        })
+        .eq('id', bookingId)
+
+      // Refund credit if requested
+      if (refundCredit !== false && booking.credit_id) {
+        const { data: credit } = await supabaseAdmin
+          .from('user_credits')
+          .select('id, credits_remaining')
+          .eq('id', booking.credit_id)
+          .single()
+
+        if (credit && credit.credits_remaining !== null) {
+          await supabaseAdmin
+            .from('user_credits')
+            .update({ credits_remaining: credit.credits_remaining + 1 })
+            .eq('id', credit.id)
+        }
+      }
+    }
+
+    await supabaseAdmin.from('admin_audit_log').insert({
+      admin_id: session.user.id,
+      action: `booking_${action}`,
+      target_type: 'booking',
+      target_id: bookingId,
+      details: { userId: booking.user_id, refundCredit },
+    })
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('[admin/bookings] PUT error:', error)
     return NextResponse.json({ error: 'Something went wrong.' }, { status: 500 })
   }
 }

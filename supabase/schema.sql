@@ -80,6 +80,7 @@ CREATE TABLE class_schedule (
   status            TEXT DEFAULT 'active',
   notes             TEXT,
   recurring_id      UUID,
+  is_private        BOOLEAN DEFAULT false,
   created_at        TIMESTAMPTZ DEFAULT now()
 );
 
@@ -123,6 +124,7 @@ CREATE TABLE user_credits (
   stripe_payment_id   TEXT,
   stripe_sub_id       TEXT,
   status              TEXT DEFAULT 'active',
+  expiry_warned       BOOLEAN DEFAULT false,
   purchased_at        TIMESTAMPTZ DEFAULT now()
 );
 

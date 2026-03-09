@@ -1,5 +1,6 @@
 import { auth } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase/admin'
+import { sendBookingConfirmation } from '@/lib/email'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 
@@ -35,7 +36,7 @@ export async function POST(request) {
     // 1. Get the class
     const { data: cls, error: clsError } = await supabaseAdmin
       .from('class_schedule')
-      .select('*, class_types(name)')
+      .select('*, class_types(name), instructors(name)')
       .eq('id', classScheduleId)
       .eq('status', 'active')
       .single()
@@ -127,6 +128,34 @@ export async function POST(request) {
           .eq('id', credit.id)
       }
       return NextResponse.json({ error: 'Failed to create booking. Please try again.' }, { status: 500 })
+    }
+
+    // Send confirmation email (non-blocking)
+    const { data: emailUser } = await supabaseAdmin
+      .from('users')
+      .select('email, name')
+      .eq('id', userId)
+      .single()
+
+    if (emailUser?.email) {
+      const startDate = new Date(cls.starts_at)
+      sendBookingConfirmation({
+        to: emailUser.email,
+        name: emailUser.name,
+        className: cls.class_types?.name || 'BOXX Class',
+        instructor: cls.instructors?.name,
+        date: startDate.toLocaleDateString('en-US', {
+          weekday: 'long',
+          month: 'long',
+          day: 'numeric',
+          timeZone: 'Asia/Bangkok',
+        }),
+        time: startDate.toLocaleTimeString('en-US', {
+          hour: 'numeric',
+          minute: '2-digit',
+          timeZone: 'Asia/Bangkok',
+        }),
+      }).catch((err) => console.error('[bookings/create] Email failed:', err))
     }
 
     return NextResponse.json({

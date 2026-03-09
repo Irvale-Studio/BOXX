@@ -136,7 +136,70 @@ function ProfileSection({ user, credits, onUpdate, creditAnimation }) {
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [showCredits, setShowCredits] = useState(false)
+  const [showAccount, setShowAccount] = useState(false)
+  const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' })
+  const [changingPassword, setChangingPassword] = useState(false)
+  const [passwordMsg, setPasswordMsg] = useState(null)
+  const [deleteConfirm, setDeleteConfirm] = useState('')
+  const [deleting, setDeleting] = useState(false)
   const fileInputRef = useRef(null)
+
+  const isGoogleUser = !!user?.google_id
+
+  async function handleChangePassword() {
+    setPasswordMsg(null)
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      setPasswordMsg({ type: 'error', text: 'Passwords do not match' })
+      return
+    }
+    if (passwordForm.newPassword.length < 8) {
+      setPasswordMsg({ type: 'error', text: 'Password must be at least 8 characters' })
+      return
+    }
+    setChangingPassword(true)
+    try {
+      const res = await fetch('/api/profile/password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          currentPassword: passwordForm.currentPassword,
+          newPassword: passwordForm.newPassword,
+        }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setPasswordMsg({ type: 'success', text: 'Password updated successfully' })
+        setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' })
+      } else {
+        setPasswordMsg({ type: 'error', text: data.error || 'Failed to change password' })
+      }
+    } catch {
+      setPasswordMsg({ type: 'error', text: 'Something went wrong' })
+    } finally {
+      setChangingPassword(false)
+    }
+  }
+
+  async function handleDeleteAccount() {
+    if (deleteConfirm !== 'DELETE') return
+    setDeleting(true)
+    try {
+      const res = await fetch('/api/profile', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ confirmation: 'DELETE' }),
+      })
+      if (res.ok) {
+        window.location.href = '/login'
+      }
+    } catch {
+      setDeleting(false)
+    }
+  }
+
+  async function handleExportData() {
+    window.open('/api/profile/export', '_blank')
+  }
 
   async function handleSave() {
     setSaving(true)
@@ -457,6 +520,105 @@ function ProfileSection({ user, credits, onUpdate, creditAnimation }) {
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Account Management toggle — only visible when editing profile */}
+        {editing && <div className="mt-4 pt-4 border-t border-card-border">
+          <button
+            onClick={() => setShowAccount(!showAccount)}
+            className="flex items-center gap-2 text-xs text-muted hover:text-foreground transition-colors"
+          >
+            <svg className={cn('w-3.5 h-3.5 transition-transform', showAccount && 'rotate-90')} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+            Account Settings
+          </button>
+
+          <AnimatePresence>
+            {showAccount && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                className="overflow-hidden"
+              >
+                <div className="mt-4 space-y-6">
+                  {/* Change Password — only for email users */}
+                  {!isGoogleUser && (
+                    <div className="space-y-3">
+                      <h4 className="text-sm font-semibold text-foreground">Change Password</h4>
+                      <div className="grid gap-3 sm:grid-cols-3">
+                        <Input
+                          type="password"
+                          placeholder="Current password"
+                          value={passwordForm.currentPassword}
+                          onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
+                        />
+                        <Input
+                          type="password"
+                          placeholder="New password"
+                          value={passwordForm.newPassword}
+                          onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+                        />
+                        <Input
+                          type="password"
+                          placeholder="Confirm new password"
+                          value={passwordForm.confirmPassword}
+                          onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
+                        />
+                      </div>
+                      {passwordMsg && (
+                        <p className={cn('text-xs', passwordMsg.type === 'error' ? 'text-red-400' : 'text-green-400')}>
+                          {passwordMsg.text}
+                        </p>
+                      )}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={handleChangePassword}
+                        disabled={changingPassword || !passwordForm.currentPassword || !passwordForm.newPassword}
+                      >
+                        {changingPassword ? 'Updating...' : 'Update Password'}
+                      </Button>
+                    </div>
+                  )}
+
+                  {/* Export Data */}
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-semibold text-foreground">Export Your Data</h4>
+                    <p className="text-xs text-muted">Download all your data including profile, bookings, and credits.</p>
+                    <Button size="sm" variant="outline" onClick={handleExportData}>
+                      Download Data
+                    </Button>
+                  </div>
+
+                  {/* Delete Account */}
+                  <div className="space-y-3 p-4 rounded-lg border border-red-500/20 bg-red-500/5">
+                    <h4 className="text-sm font-semibold text-red-400">Delete Account</h4>
+                    <p className="text-xs text-muted">
+                      This will cancel all bookings, void credits, and anonymize your account. This cannot be undone.
+                    </p>
+                    <div className="flex items-center gap-3">
+                      <Input
+                        placeholder='Type "DELETE" to confirm'
+                        value={deleteConfirm}
+                        onChange={(e) => setDeleteConfirm(e.target.value)}
+                        className="max-w-[200px] text-sm"
+                      />
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={handleDeleteAccount}
+                        disabled={deleteConfirm !== 'DELETE' || deleting}
+                      >
+                        {deleting ? 'Deleting...' : 'Delete Account'}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>}
       </CardContent>
     </Card>
   )
@@ -513,6 +675,8 @@ function ScheduleSection({ credits, onUpdate, sharedClassId, view, onViewChange 
   const [expandedId, setExpandedId] = useState(null)
   const [confirming, setConfirming] = useState(null)
   const [cancelling, setCancelling] = useState(null)
+  const [joiningWaitlist, setJoiningWaitlist] = useState(null)
+  const [leavingWaitlist, setLeavingWaitlist] = useState(null)
   const [selectedDay, setSelectedDay] = useState(null)
   const [shared, setShared] = useState(false)
   const [sharedResolved, setSharedResolved] = useState(!sharedClassId)
@@ -750,6 +914,66 @@ function ScheduleSection({ credits, onUpdate, sharedClassId, view, onViewChange 
     }
   }
 
+  async function handleJoinWaitlist(classId) {
+    setJoiningWaitlist(classId)
+    try {
+      const res = await fetch('/api/waitlist/join', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ classScheduleId: classId }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setToast({ message: data.error || 'Failed to join waitlist', type: 'error' })
+        return
+      }
+      setToast({ message: data.message || 'Joined waitlist', type: 'success' })
+      // Re-fetch schedule
+      const start = getWeekStart(weekOffset)
+      const end = new Date(start)
+      end.setDate(end.getDate() + 7)
+      const refetch = await fetch(`/api/schedule?start=${start.toISOString()}&end=${end.toISOString()}`)
+      if (refetch.ok) {
+        const d = await refetch.json()
+        setSchedule(d.schedule || [])
+      }
+    } catch (err) {
+      setToast({ message: 'Something went wrong.', type: 'error' })
+    } finally {
+      setJoiningWaitlist(null)
+    }
+  }
+
+  async function handleLeaveWaitlist(classId) {
+    setLeavingWaitlist(classId)
+    try {
+      const res = await fetch('/api/waitlist/leave', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ classScheduleId: classId }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setToast({ message: data.error || 'Failed to leave waitlist', type: 'error' })
+        return
+      }
+      setToast({ message: 'Removed from waitlist', type: 'success' })
+      // Re-fetch schedule
+      const start = getWeekStart(weekOffset)
+      const end = new Date(start)
+      end.setDate(end.getDate() + 7)
+      const refetch = await fetch(`/api/schedule?start=${start.toISOString()}&end=${end.toISOString()}`)
+      if (refetch.ok) {
+        const d = await refetch.json()
+        setSchedule(d.schedule || [])
+      }
+    } catch (err) {
+      setToast({ message: 'Something went wrong.', type: 'error' })
+    } finally {
+      setLeavingWaitlist(null)
+    }
+  }
+
   // Shared class card renderer (used by both views)
   function renderClassCard(cls, compact = false) {
     const isExpanded = expandedId === cls.id
@@ -960,6 +1184,26 @@ function ScheduleSection({ credits, onUpdate, sharedClassId, view, onViewChange 
               </div>
             </div>
           )}
+
+          {cls.waitlist_roster?.length > 0 && (
+            <div>
+              <p className="text-xs text-muted/60 mb-2">Waitlist ({cls.waitlist_roster.length})</p>
+              <div className="flex flex-wrap gap-2">
+                {cls.waitlist_roster.map((m, i) => (
+                  <div key={m.id || i} className="flex items-center gap-1.5 bg-background/50 rounded-full px-2 py-1 opacity-50">
+                    <div className="w-5 h-5 rounded-full bg-muted/20 flex items-center justify-center overflow-hidden">
+                      {m.avatar_url ? (
+                        <Image src={m.avatar_url} alt={m.name || ''} width={20} height={20} className="w-full h-full object-cover grayscale" />
+                      ) : (
+                        <span className="text-[8px] font-bold text-muted">{(m.name || '?').charAt(0)}</span>
+                      )}
+                    </div>
+                    <span className="text-[10px] text-muted">#{m.position} {m.name?.split(' ')[0]}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="flex items-center justify-between pt-2">
@@ -984,6 +1228,15 @@ function ScheduleSection({ credits, onUpdate, sharedClassId, view, onViewChange 
               <span className="text-[10px] text-muted">
                 {(new Date(cls.starts_at) - Date.now()) / 36e5 <= 24 ? 'Credit will not be returned' : 'Free cancellation'}
               </span>
+              <button
+                onClick={() => window.open(`/api/bookings/ical?id=${cls.booking_id}`, '_blank')}
+                className="p-1.5 text-muted hover:text-accent transition-colors"
+                title="Add to calendar"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              </button>
               <Button
                 size="sm"
                 variant="outline"
@@ -994,8 +1247,28 @@ function ScheduleSection({ credits, onUpdate, sharedClassId, view, onViewChange 
                 {cancelling === cls.booking_id ? 'Cancelling...' : 'Cancel'}
               </Button>
             </div>
+          ) : cls.waitlist_position ? (
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-muted">Waitlist #{cls.waitlist_position}</span>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => handleLeaveWaitlist(cls.id)}
+                disabled={leavingWaitlist === cls.id}
+                className="text-amber-400 border-amber-400/30 hover:bg-amber-400/10 hover:text-amber-300"
+              >
+                {leavingWaitlist === cls.id ? 'Leaving...' : 'Leave Waitlist'}
+              </Button>
+            </div>
           ) : cls.spots_left <= 0 ? (
-            <Button size="sm" variant="outline" disabled>Class Full</Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => handleJoinWaitlist(cls.id)}
+              disabled={joiningWaitlist === cls.id}
+            >
+              {joiningWaitlist === cls.id ? 'Joining...' : 'Join Waitlist'}
+            </Button>
           ) : totalCredits <= 0 ? (
             <Button size="sm" variant="outline" asChild>
               <Link href="/buy-classes">Buy Packs</Link>
@@ -1520,6 +1793,15 @@ function BookingsSection({ upcoming, past, onUpdate }) {
                         <span className="text-[10px] text-muted">
                           {isLate ? 'Credit will not be returned' : 'Free cancellation'}
                         </span>
+                        <button
+                          onClick={() => window.open(`/api/bookings/ical?id=${b.id}`, '_blank')}
+                          className="p-1.5 text-muted hover:text-accent transition-colors"
+                          title="Add to calendar"
+                        >
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                        </button>
                         <Button
                           size="sm"
                           variant="outline"

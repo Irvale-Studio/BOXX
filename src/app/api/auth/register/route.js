@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
+import { rateLimit } from '@/lib/rate-limit'
 import bcrypt from 'bcryptjs'
 import { z } from 'zod'
 
@@ -12,6 +13,12 @@ const registerSchema = z.object({
 
 export async function POST(request) {
   try {
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown'
+    const { limited } = rateLimit(`register:${ip}`, 5, 15 * 60 * 1000) // 5 per 15 min
+    if (limited) {
+      return NextResponse.json({ error: 'Too many attempts. Please try again later.' }, { status: 429 })
+    }
+
     if (!supabaseAdmin) {
       return NextResponse.json({ error: 'Database not configured' }, { status: 503 })
     }

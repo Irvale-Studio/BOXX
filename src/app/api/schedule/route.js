@@ -41,6 +41,7 @@ export async function GET(request) {
         instructors(id, name, photo_url, bio)
       `)
       .in('status', ['active', 'cancelled'])
+      .neq('is_private', true)
       .gte('starts_at', startDate.toISOString())
       .lte('starts_at', endDate.toISOString())
       .order('starts_at', { ascending: true })
@@ -58,7 +59,7 @@ export async function GET(request) {
     }
 
     // Fetch booking counts, user bookings, waitlist, and roster in parallel
-    const [countsRes, userBookingsRes, waitlistRes, rosterRes] = await Promise.all([
+    const [countsRes, userBookingsRes, waitlistRes, rosterRes, waitlistRosterRes] = await Promise.all([
       supabaseAdmin
         .from('bookings')
         .select('class_schedule_id')
@@ -80,6 +81,11 @@ export async function GET(request) {
         .select('class_schedule_id, users(id, name, avatar_url, bio, show_in_roster)')
         .in('class_schedule_id', scheduleIds)
         .eq('status', 'confirmed'),
+      supabaseAdmin
+        .from('waitlist')
+        .select('class_schedule_id, position, users(id, name, avatar_url, show_in_roster)')
+        .in('class_schedule_id', scheduleIds)
+        .order('position', { ascending: true }),
     ])
 
     const bookingCounts = {}
@@ -110,6 +116,19 @@ export async function GET(request) {
       }
     })
 
+    const waitlistByClass = {}
+    ;(waitlistRosterRes.data || []).forEach((w) => {
+      if (!waitlistByClass[w.class_schedule_id]) waitlistByClass[w.class_schedule_id] = []
+      if (w.users?.show_in_roster !== false) {
+        waitlistByClass[w.class_schedule_id].push({
+          id: w.users?.id,
+          name: w.users?.name,
+          avatar_url: w.users?.avatar_url,
+          position: w.position,
+        })
+      }
+    })
+
     const enriched = schedule.map((cls) => ({
       ...cls,
       booked_count: bookingCounts[cls.id] || 0,
@@ -118,6 +137,7 @@ export async function GET(request) {
       booking_id: userBookedMap[cls.id] || null,
       waitlist_position: userWaitlist[cls.id] || null,
       roster: rosterByClass[cls.id] || [],
+      waitlist_roster: waitlistByClass[cls.id] || [],
     }))
 
     return NextResponse.json({ schedule: enriched })
