@@ -36,6 +36,8 @@ function DashboardContent() {
   const { data: session } = useSession()
   const searchParams = useSearchParams()
   const sharedClassId = searchParams.get('class')
+  const tabParam = searchParams.get('tab')
+  const [activeTab, setActiveTab] = useState(tabParam === 'bookings' ? 'bookings' : 'classes')
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -62,14 +64,46 @@ function DashboardContent() {
   if (!data) return null
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-6">
       <ProfileSection user={data.user} credits={data.credits} onUpdate={fetchDashboard} />
-      <ScheduleSection credits={data.credits} onUpdate={fetchDashboard} sharedClassId={sharedClassId} />
-      <BookingsSection
-        upcoming={data.upcomingBookings}
-        past={data.pastBookings}
-        onUpdate={fetchDashboard}
-      />
+
+      {/* Tab switcher */}
+      <div className="flex bg-card border border-card-border rounded p-0.5">
+        <button
+          onClick={() => setActiveTab('classes')}
+          className={cn(
+            'flex-1 px-4 py-2 rounded text-sm font-medium transition-colors',
+            activeTab === 'classes' ? 'bg-accent/10 text-accent' : 'text-muted hover:text-foreground'
+          )}
+        >
+          Book Classes
+        </button>
+        <button
+          onClick={() => setActiveTab('bookings')}
+          className={cn(
+            'flex-1 px-4 py-2 rounded text-sm font-medium transition-colors',
+            activeTab === 'bookings' ? 'bg-accent/10 text-accent' : 'text-muted hover:text-foreground'
+          )}
+        >
+          My Bookings
+          {data.upcomingBookings?.length > 0 && (
+            <span className="ml-1.5 inline-flex items-center justify-center w-5 h-5 rounded-full bg-accent/20 text-accent text-[10px] font-bold">
+              {data.upcomingBookings.length}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {activeTab === 'classes' && (
+        <ScheduleSection credits={data.credits} onUpdate={fetchDashboard} sharedClassId={sharedClassId} />
+      )}
+      {activeTab === 'bookings' && (
+        <BookingsSection
+          upcoming={data.upcomingBookings}
+          past={data.pastBookings}
+          onUpdate={fetchDashboard}
+        />
+      )}
     </div>
   )
 }
