@@ -506,7 +506,11 @@ function ScheduleSection({ credits, onUpdate, sharedClassId }) {
       const isMobile = window.innerWidth < 768
       if (isMobile) {
         document.body.style.overflow = 'hidden'
-        return () => { document.body.style.overflow = '' }
+        document.documentElement.style.overflow = 'hidden'
+        return () => {
+          document.body.style.overflow = ''
+          document.documentElement.style.overflow = ''
+        }
       }
     }
   }, [expandedId, view])
