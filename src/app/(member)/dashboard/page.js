@@ -466,6 +466,17 @@ function ScheduleSection({ credits, onUpdate, sharedClassId }) {
     fetchSchedule()
   }, [weekOffset, sharedResolved])
 
+  // Lock body scroll when mobile overlay is open
+  useEffect(() => {
+    if (expandedId && view === 'calendar') {
+      const isMobile = window.innerWidth < 768
+      if (isMobile) {
+        document.body.style.overflow = 'hidden'
+        return () => { document.body.style.overflow = '' }
+      }
+    }
+  }, [expandedId, view])
+
   async function handleShare(classId) {
     const url = `${window.location.origin}/dashboard?class=${classId}`
     if (navigator.share) {
@@ -1012,15 +1023,15 @@ function ScheduleSection({ credits, onUpdate, sharedClassId }) {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  transition={{ duration: 0.15 }}
-                  className="md:hidden fixed inset-0 bg-background/80 backdrop-blur-sm z-40"
+                  transition={{ duration: 0.25 }}
+                  className="md:hidden fixed inset-0 bg-background/60 backdrop-blur-[2px] z-40"
                   onClick={() => setExpandedId(null)}
                 />
                 <motion.div
-                  initial={{ opacity: 0, y: 20 }}
+                  initial={{ opacity: 0, y: '100%' }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 20 }}
-                  transition={{ duration: 0.2 }}
+                  exit={{ opacity: 0, y: '100%' }}
+                  transition={{ type: 'spring', damping: 28, stiffness: 300 }}
                   className="md:relative md:z-auto fixed inset-x-0 bottom-0 z-50 md:static max-h-[85vh] md:max-h-none overflow-y-auto"
                 >
                 {(() => {
