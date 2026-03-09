@@ -51,6 +51,7 @@ CREATE TABLE class_types (
   duration_mins INT DEFAULT 60,
   color         TEXT,
   icon          TEXT,
+  is_private    BOOLEAN DEFAULT false,
   active        BOOLEAN DEFAULT true
 );
 

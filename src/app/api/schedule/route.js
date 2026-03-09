@@ -37,7 +37,7 @@ export async function GET(request) {
       .from('class_schedule')
       .select(`
         *,
-        class_types(id, name, description, duration_mins, color, icon),
+        class_types(id, name, description, duration_mins, color, icon, is_private),
         instructors(id, name, photo_url, bio)
       `)
       .in('status', ['active', 'cancelled'])
@@ -51,7 +51,8 @@ export async function GET(request) {
       return NextResponse.json({ error: 'Failed to load schedule' }, { status: 500 })
     }
 
-    const schedule = scheduleData || []
+    // Also filter out classes whose class_type is private
+    const schedule = (scheduleData || []).filter((cls) => !cls.class_types?.is_private)
     const scheduleIds = schedule.map((s) => s.id)
 
     if (scheduleIds.length === 0) {

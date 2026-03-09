@@ -19,7 +19,7 @@ export async function GET() {
     const [classTypesRes, instructorsRes] = await Promise.all([
       supabaseAdmin
         .from('class_types')
-        .select('id, name, color, duration_mins')
+        .select('id, name, color, duration_mins, is_private')
         .eq('active', true)
         .order('name'),
       supabaseAdmin

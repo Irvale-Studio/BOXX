@@ -13,7 +13,6 @@ const recurringSchema = z.object({
   weeks: z.number().int().min(1).max(12), // how many weeks to generate
   startDate: z.string().min(1), // YYYY-MM-DD, first date to start from
   notes: z.string().optional(),
-  isPrivate: z.boolean().optional(),
 })
 
 /**
@@ -35,7 +34,14 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Invalid input', details: parsed.error.flatten() }, { status: 400 })
     }
 
-    const { classTypeId, instructorId, startTime, endTime, capacity, days, weeks, startDate, notes, isPrivate } = parsed.data
+    const { classTypeId, instructorId, startTime, endTime, capacity, days, weeks, startDate, notes } = parsed.data
+
+    // Auto-detect private from class type
+    const { data: classType } = await supabaseAdmin
+      .from('class_types')
+      .select('is_private')
+      .eq('id', classTypeId)
+      .single()
 
     // Generate a recurring_id to group these classes
     const recurringId = crypto.randomUUID()
@@ -71,7 +77,7 @@ export async function POST(request) {
           status: 'active',
           notes: notes || null,
           recurring_id: recurringId,
-          is_private: isPrivate || false,
+          is_private: classType?.is_private || false,
         })
       }
     }

@@ -24,17 +24,13 @@ export default function AdminSchedulePage() {
   const [editDialog, setEditDialog] = useState(null)
   const [cancelDialog, setCancelDialog] = useState(null)
   const [rosterDialog, setRosterDialog] = useState(null)
-  const [recurringDialog, setRecurringDialog] = useState(false)
+  const [notifyDialog, setNotifyDialog] = useState(null) // { classId, message }
   const [submitting, setSubmitting] = useState(false)
 
-  // Form state for add/edit
+  // Form state for add/edit (recurring fields included)
   const [form, setForm] = useState({
-    classTypeId: '', instructorId: '', date: '', startTime: '07:00', endTime: '07:55', capacity: 6, notes: '', isPrivate: false,
-  })
-
-  // Recurring form
-  const [recurForm, setRecurForm] = useState({
-    classTypeId: '', instructorId: '', startTime: '07:00', endTime: '07:55', capacity: 6, days: [], weeks: 4, startDate: '', notes: '',
+    classTypeId: '', instructorId: '', date: '', startTime: '07:00', endTime: '07:55', capacity: 6, notes: '',
+    recurring: false, days: [], weeks: 4,
   })
 
   useEffect(() => {
@@ -95,7 +91,8 @@ export default function AdminSchedulePage() {
     setForm({
       classTypeId: classTypes[0]?.id || '', instructorId: instructors[0]?.id || '',
       date: date || new Date().toISOString().split('T')[0],
-      startTime: '07:00', endTime: '07:55', capacity: 6, notes: '', isPrivate: false,
+      startTime: '07:00', endTime: '07:55', capacity: 6, notes: '',
+      recurring: false, days: [], weeks: 4,
     })
     setAddDialog(true)
   }
@@ -108,18 +105,10 @@ export default function AdminSchedulePage() {
       date: startsAt.toLocaleDateString('en-CA', { timeZone: 'Asia/Bangkok' }),
       startTime: startsAt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Bangkok' }),
       endTime: endsAt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Bangkok' }),
-      capacity: cls.capacity, notes: cls.notes || '', isPrivate: cls.is_private || false,
+      capacity: cls.capacity, notes: cls.notes || '',
+      recurring: false, days: [], weeks: 4,
     })
     setEditDialog(cls)
-  }
-
-  function openRecurringDialog() {
-    setRecurForm({
-      classTypeId: classTypes[0]?.id || '', instructorId: instructors[0]?.id || '',
-      startTime: '07:00', endTime: '07:55', capacity: 6, days: [1, 3, 5], weeks: 4,
-      startDate: new Date().toISOString().split('T')[0], notes: '',
-    })
-    setRecurringDialog(true)
   }
 
   function buildDatetime(date, time) {
@@ -129,18 +118,36 @@ export default function AdminSchedulePage() {
   async function handleCreate() {
     setSubmitting(true)
     try {
-      const res = await fetch('/api/admin/schedule', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          classTypeId: form.classTypeId, instructorId: form.instructorId,
-          startsAt: buildDatetime(form.date, form.startTime), endsAt: buildDatetime(form.date, form.endTime),
-          capacity: form.capacity, notes: form.notes || null, isPrivate: form.isPrivate,
-        }),
-      })
-      const data = await res.json()
-      if (!res.ok) { setToast({ message: data.error || 'Failed to create class', type: 'error' }); return }
-      setToast({ message: 'Class created', type: 'success' })
+      if (form.recurring && form.days.length > 0) {
+        // Recurring: use the recurring endpoint
+        const res = await fetch('/api/admin/schedule/recurring', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            classTypeId: form.classTypeId, instructorId: form.instructorId,
+            startTime: form.startTime, endTime: form.endTime,
+            capacity: form.capacity, notes: form.notes || undefined,
+            days: form.days, weeks: form.weeks, startDate: form.date,
+          }),
+        })
+        const data = await res.json()
+        if (!res.ok) { setToast({ message: data.error || 'Failed to create', type: 'error' }); return }
+        setToast({ message: `Created ${data.created} classes`, type: 'success' })
+      } else {
+        // Single class
+        const res = await fetch('/api/admin/schedule', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            classTypeId: form.classTypeId, instructorId: form.instructorId,
+            startsAt: buildDatetime(form.date, form.startTime), endsAt: buildDatetime(form.date, form.endTime),
+            capacity: form.capacity, notes: form.notes || null,
+          }),
+        })
+        const data = await res.json()
+        if (!res.ok) { setToast({ message: data.error || 'Failed to create class', type: 'error' }); return }
+        setToast({ message: 'Class created', type: 'success' })
+      }
       setAddDialog(false); fetchClasses()
     } catch { setToast({ message: 'Something went wrong', type: 'error' }) }
     finally { setSubmitting(false) }
@@ -156,15 +163,44 @@ export default function AdminSchedulePage() {
         body: JSON.stringify({
           id: editDialog.id, classTypeId: form.classTypeId, instructorId: form.instructorId,
           startsAt: buildDatetime(form.date, form.startTime), endsAt: buildDatetime(form.date, form.endTime),
-          capacity: form.capacity, notes: form.notes || null, isPrivate: form.isPrivate,
+          capacity: form.capacity, notes: form.notes || null,
         }),
       })
       const data = await res.json()
       if (!res.ok) { setToast({ message: data.error || 'Failed to update', type: 'error' }); return }
       setToast({ message: 'Class updated', type: 'success' })
-      setEditDialog(null); fetchClasses()
+      // If the class has bookings, offer to notify members
+      const bookedCount = editDialog.booked_count || 0
+      const savedClassId = editDialog.id
+      setEditDialog(null)
+      fetchClasses()
+      if (bookedCount > 0) {
+        setNotifyDialog({ classId: savedClassId, count: bookedCount })
+      }
     } catch { setToast({ message: 'Something went wrong', type: 'error' }) }
     finally { setSubmitting(false) }
+  }
+
+  async function handleNotifyMembers() {
+    if (!notifyDialog) return
+    setSubmitting(true)
+    try {
+      const res = await fetch('/api/admin/schedule/notify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ classId: notifyDialog.classId }),
+      })
+      if (res.ok) {
+        setToast({ message: 'Notification sent to members', type: 'success' })
+      } else {
+        setToast({ message: 'Email not configured yet — notification skipped', type: 'error' })
+      }
+    } catch {
+      setToast({ message: 'Email not configured yet — notification skipped', type: 'error' })
+    } finally {
+      setNotifyDialog(null)
+      setSubmitting(false)
+    }
   }
 
   async function handleCancel() {
@@ -184,22 +220,6 @@ export default function AdminSchedulePage() {
     finally { setSubmitting(false) }
   }
 
-  async function handleRecurringCreate() {
-    setSubmitting(true)
-    try {
-      const res = await fetch('/api/admin/schedule/recurring', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(recurForm),
-      })
-      const data = await res.json()
-      if (!res.ok) { setToast({ message: data.error || 'Failed to create', type: 'error' }); return }
-      setToast({ message: `Created ${data.created} classes`, type: 'success' })
-      setRecurringDialog(false); fetchClasses()
-    } catch { setToast({ message: 'Something went wrong', type: 'error' }) }
-    finally { setSubmitting(false) }
-  }
-
   const weekLabel = (() => {
     const s = weekDays[0], e = weekDays[6]
     const sM = s.toLocaleDateString('en-US', { month: 'short' })
@@ -211,10 +231,7 @@ export default function AdminSchedulePage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-foreground">Schedule</h1>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={openRecurringDialog}>Recurring</Button>
-          <Button onClick={() => openAddDialog()}>+ Add Class</Button>
-        </div>
+        <Button onClick={() => openAddDialog()}>+ Add Class</Button>
       </div>
 
       {toast && (
@@ -259,7 +276,7 @@ export default function AdminSchedulePage() {
                     const time = new Date(cls.starts_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Asia/Bangkok' })
                     const isCancelled = cls.status === 'cancelled'
                     const isFull = cls.booked_count >= cls.capacity
-                    const isPrivate = cls.is_private
+                    const isPrivate = cls.is_private || cls.class_types?.is_private
 
                     return (
                       <button
@@ -302,11 +319,18 @@ export default function AdminSchedulePage() {
       {/* Add Class Dialog */}
       <Dialog open={addDialog} onOpenChange={(open) => !open && setAddDialog(false)}>
         <DialogContent className="sm:max-w-md">
-          <DialogHeader><DialogTitle>Add Class</DialogTitle><DialogDescription>Schedule a new class.</DialogDescription></DialogHeader>
-          <ClassForm form={form} setForm={setForm} classTypes={classTypes} instructors={instructors} showPrivate />
+          <DialogHeader><DialogTitle>Add Class</DialogTitle><DialogDescription>Schedule a new class — toggle recurring to create multiple.</DialogDescription></DialogHeader>
+          <ClassForm form={form} setForm={setForm} classTypes={classTypes} instructors={instructors} showRecurring />
+          {form.recurring && form.days.length > 0 && (
+            <p className="text-xs text-muted -mt-2">
+              Will create ~{form.days.length * form.weeks} classes ({form.days.map((d) => DAY_NAMES[d]).join(', ')} for {form.weeks} week{form.weeks !== 1 ? 's' : ''})
+            </p>
+          )}
           <DialogFooter className="gap-2 sm:gap-0">
             <Button variant="outline" onClick={() => setAddDialog(false)}>Cancel</Button>
-            <Button onClick={handleCreate} disabled={submitting}>{submitting ? 'Creating...' : 'Create Class'}</Button>
+            <Button onClick={handleCreate} disabled={submitting || (form.recurring && form.days.length === 0)}>
+              {submitting ? 'Creating...' : form.recurring ? `Create ${form.days.length * form.weeks} Classes` : 'Create Class'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -318,7 +342,7 @@ export default function AdminSchedulePage() {
             <DialogTitle>Edit Class</DialogTitle>
             <DialogDescription>{editDialog?.class_types?.name} — {editDialog?.booked_count || 0} booking{editDialog?.booked_count !== 1 ? 's' : ''}</DialogDescription>
           </DialogHeader>
-          <ClassForm form={form} setForm={setForm} classTypes={classTypes} instructors={instructors} showPrivate />
+          <ClassForm form={form} setForm={setForm} classTypes={classTypes} instructors={instructors} />
           <DialogFooter className="flex-col sm:flex-row gap-2">
             <Button variant="outline" className="text-red-400 border-red-400/30 hover:bg-red-400/10" onClick={() => { setEditDialog(null); setCancelDialog(editDialog) }}>Cancel Class</Button>
             <div className="flex gap-2 sm:ml-auto">
@@ -394,60 +418,19 @@ export default function AdminSchedulePage() {
         </DialogContent>
       </Dialog>
 
-      {/* Recurring Classes Dialog */}
-      <Dialog open={recurringDialog} onOpenChange={(open) => !open && setRecurringDialog(false)}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader><DialogTitle>Create Recurring Classes</DialogTitle><DialogDescription>Generate a weekly schedule template.</DialogDescription></DialogHeader>
-          <div className="space-y-4 py-2">
-            <div>
-              <Label>Class Type</Label>
-              <select value={recurForm.classTypeId} onChange={(e) => setRecurForm({ ...recurForm, classTypeId: e.target.value })} className="mt-1 w-full rounded-md border border-card-border bg-card px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-accent">
-                {classTypes.map((ct) => <option key={ct.id} value={ct.id}>{ct.name}</option>)}
-              </select>
-            </div>
-            <div>
-              <Label>Instructor</Label>
-              <select value={recurForm.instructorId} onChange={(e) => setRecurForm({ ...recurForm, instructorId: e.target.value })} className="mt-1 w-full rounded-md border border-card-border bg-card px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-accent">
-                {instructors.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}
-              </select>
-            </div>
-            <div>
-              <Label>Days</Label>
-              <div className="flex gap-2 mt-1">
-                {DAY_NAMES.map((name, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => {
-                      const days = recurForm.days.includes(idx) ? recurForm.days.filter((d) => d !== idx) : [...recurForm.days, idx]
-                      setRecurForm({ ...recurForm, days })
-                    }}
-                    className={cn(
-                      'w-10 h-10 rounded text-xs font-medium transition-colors border',
-                      recurForm.days.includes(idx) ? 'bg-accent text-background border-accent' : 'bg-card border-card-border text-muted hover:border-accent/30'
-                    )}
-                  >
-                    {name}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div><Label>Start Time</Label><Input type="time" value={recurForm.startTime} onChange={(e) => setRecurForm({ ...recurForm, startTime: e.target.value })} className="mt-1" /></div>
-              <div><Label>End Time</Label><Input type="time" value={recurForm.endTime} onChange={(e) => setRecurForm({ ...recurForm, endTime: e.target.value })} className="mt-1" /></div>
-            </div>
-            <div className="grid grid-cols-3 gap-3">
-              <div><Label>Capacity</Label><Input type="number" min={1} max={50} value={recurForm.capacity} onChange={(e) => setRecurForm({ ...recurForm, capacity: parseInt(e.target.value) || 6 })} className="mt-1" /></div>
-              <div><Label>Weeks</Label><Input type="number" min={1} max={12} value={recurForm.weeks} onChange={(e) => setRecurForm({ ...recurForm, weeks: parseInt(e.target.value) || 4 })} className="mt-1" /></div>
-              <div><Label>Start From</Label><Input type="date" value={recurForm.startDate} onChange={(e) => setRecurForm({ ...recurForm, startDate: e.target.value })} className="mt-1" /></div>
-            </div>
-            <p className="text-xs text-muted">
-              This will create ~{recurForm.days.length * recurForm.weeks} classes ({recurForm.days.map((d) => DAY_NAMES[d]).join(', ')} for {recurForm.weeks} week{recurForm.weeks !== 1 ? 's' : ''})
-            </p>
-          </div>
+      {/* Notify Members Dialog */}
+      <Dialog open={!!notifyDialog} onOpenChange={(open) => !open && setNotifyDialog(null)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Notify Members?</DialogTitle>
+            <DialogDescription>
+              {notifyDialog?.count} member{notifyDialog?.count !== 1 ? 's are' : ' is'} booked into this class. Would you like to notify them about the changes?
+            </DialogDescription>
+          </DialogHeader>
           <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setRecurringDialog(false)}>Cancel</Button>
-            <Button onClick={handleRecurringCreate} disabled={submitting || recurForm.days.length === 0}>
-              {submitting ? 'Creating...' : `Create ${recurForm.days.length * recurForm.weeks} Classes`}
+            <Button variant="outline" onClick={() => setNotifyDialog(null)}>Skip</Button>
+            <Button onClick={handleNotifyMembers} disabled={submitting}>
+              {submitting ? 'Sending...' : 'Notify Members'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -456,15 +439,23 @@ export default function AdminSchedulePage() {
   )
 }
 
-function ClassForm({ form, setForm, classTypes, instructors, showPrivate }) {
+function ClassForm({ form, setForm, classTypes, instructors, showRecurring }) {
+  const selectedType = classTypes.find((ct) => ct.id === form.classTypeId)
+  const isPrivateType = selectedType?.is_private
+
   return (
     <div className="space-y-4 py-2">
       <div>
         <Label htmlFor="classType">Class Type</Label>
         <select id="classType" value={form.classTypeId} onChange={(e) => setForm((f) => ({ ...f, classTypeId: e.target.value }))} className="mt-1 w-full rounded-md border border-card-border bg-card px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-accent">
           <option value="">Select class type</option>
-          {classTypes.map((ct) => <option key={ct.id} value={ct.id}>{ct.name}</option>)}
+          {classTypes.map((ct) => (
+            <option key={ct.id} value={ct.id}>{ct.name}{ct.is_private ? ' (Private)' : ''}</option>
+          ))}
         </select>
+        {isPrivateType && (
+          <p className="text-xs text-amber-400 mt-1">This class type is private — it won&apos;t appear on the public schedule.</p>
+        )}
       </div>
       <div>
         <Label htmlFor="instructor">Instructor</Label>
@@ -473,26 +464,59 @@ function ClassForm({ form, setForm, classTypes, instructors, showPrivate }) {
           {instructors.map((inst) => <option key={inst.id} value={inst.id}>{inst.name}</option>)}
         </select>
       </div>
-      <div><Label htmlFor="date">Date</Label><Input id="date" type="date" value={form.date} onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))} className="mt-1" /></div>
+      <div><Label htmlFor="date">{form.recurring ? 'Start Date' : 'Date'}</Label><Input id="date" type="date" value={form.date} onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))} className="mt-1" /></div>
       <div className="grid grid-cols-2 gap-3">
         <div><Label htmlFor="startTime">Start Time</Label><Input id="startTime" type="time" value={form.startTime} onChange={(e) => setForm((f) => ({ ...f, startTime: e.target.value }))} className="mt-1" /></div>
         <div><Label htmlFor="endTime">End Time</Label><Input id="endTime" type="time" value={form.endTime} onChange={(e) => setForm((f) => ({ ...f, endTime: e.target.value }))} className="mt-1" /></div>
       </div>
       <div><Label htmlFor="capacity">Capacity</Label><Input id="capacity" type="number" min={1} max={50} value={form.capacity} onChange={(e) => setForm((f) => ({ ...f, capacity: parseInt(e.target.value) || 6 }))} className="mt-1" /></div>
       <div><Label htmlFor="notes">Notes (optional)</Label><Input id="notes" value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} placeholder="e.g. Special event, substitute instructor" className="mt-1" /></div>
-      {showPrivate && (
-        <label className="flex items-center gap-3 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={form.isPrivate}
-            onChange={(e) => setForm((f) => ({ ...f, isPrivate: e.target.checked }))}
-            className="w-4 h-4 rounded border-card-border bg-card accent-accent"
-          />
-          <div>
-            <span className="text-sm text-foreground">Private class</span>
-            <p className="text-xs text-muted">Hidden from public schedule. Only visible in admin panel.</p>
-          </div>
-        </label>
+
+      {showRecurring && (
+        <>
+          <label className="flex items-center gap-3 cursor-pointer pt-2 border-t border-card-border">
+            <input
+              type="checkbox"
+              checked={form.recurring}
+              onChange={(e) => setForm((f) => ({ ...f, recurring: e.target.checked, days: e.target.checked ? [1, 3, 5] : [] }))}
+              className="w-4 h-4 rounded border-card-border bg-card accent-accent"
+            />
+            <div>
+              <span className="text-sm text-foreground">Make recurring</span>
+              <p className="text-xs text-muted">Repeat this class on selected days for multiple weeks</p>
+            </div>
+          </label>
+
+          {form.recurring && (
+            <div className="space-y-3 pl-7">
+              <div>
+                <Label>Days</Label>
+                <div className="flex gap-2 mt-1">
+                  {DAY_NAMES.map((name, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => {
+                        const days = form.days.includes(idx) ? form.days.filter((d) => d !== idx) : [...form.days, idx]
+                        setForm((f) => ({ ...f, days }))
+                      }}
+                      className={cn(
+                        'w-9 h-9 rounded text-xs font-medium transition-colors border',
+                        form.days.includes(idx) ? 'bg-accent text-background border-accent' : 'bg-card border-card-border text-muted hover:border-accent/30'
+                      )}
+                    >
+                      {name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <Label>Weeks</Label>
+                <Input type="number" min={1} max={12} value={form.weeks} onChange={(e) => setForm((f) => ({ ...f, weeks: parseInt(e.target.value) || 4 }))} className="mt-1 w-24" />
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   )

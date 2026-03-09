@@ -29,7 +29,7 @@ export async function GET(request) {
       .from('class_schedule')
       .select(`
         *,
-        class_types(id, name, description, duration_mins, color, icon),
+        class_types(id, name, description, duration_mins, color, icon, is_private),
         instructors(id, name, photo_url)
       `)
       .gte('starts_at', new Date(start).toISOString())
@@ -92,7 +92,6 @@ const createClassSchema = z.object({
   endsAt: z.string().min(1),
   capacity: z.number().int().min(1).max(50).optional(),
   notes: z.string().optional(),
-  isPrivate: z.boolean().optional(),
 })
 
 /**
@@ -115,7 +114,14 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Invalid input', details: parsed.error.flatten() }, { status: 400 })
     }
 
-    const { classTypeId, instructorId, startsAt, endsAt, capacity, notes, isPrivate } = parsed.data
+    const { classTypeId, instructorId, startsAt, endsAt, capacity, notes } = parsed.data
+
+    // Auto-detect private from class type
+    const { data: classType } = await supabaseAdmin
+      .from('class_types')
+      .select('is_private')
+      .eq('id', classTypeId)
+      .single()
 
     const { data: cls, error } = await supabaseAdmin
       .from('class_schedule')
@@ -127,7 +133,7 @@ export async function POST(request) {
         capacity: capacity || 6,
         notes: notes || null,
         status: 'active',
-        is_private: isPrivate || false,
+        is_private: classType?.is_private || false,
       })
       .select('*, class_types(id, name, color), instructors(id, name)')
       .single()
@@ -161,7 +167,6 @@ const updateClassSchema = z.object({
   endsAt: z.string().min(1).optional(),
   capacity: z.number().int().min(1).max(50).optional(),
   notes: z.string().nullable().optional(),
-  isPrivate: z.boolean().optional(),
 })
 
 /**
@@ -184,16 +189,24 @@ export async function PUT(request) {
       return NextResponse.json({ error: 'Invalid input' }, { status: 400 })
     }
 
-    const { id, classTypeId, instructorId, startsAt, endsAt, capacity, notes, isPrivate } = parsed.data
+    const { id, classTypeId, instructorId, startsAt, endsAt, capacity, notes } = parsed.data
 
     const updates = {}
-    if (classTypeId) updates.class_type_id = classTypeId
+    if (classTypeId) {
+      updates.class_type_id = classTypeId
+      // Auto-update is_private based on class type
+      const { data: ct } = await supabaseAdmin
+        .from('class_types')
+        .select('is_private')
+        .eq('id', classTypeId)
+        .single()
+      updates.is_private = ct?.is_private || false
+    }
     if (instructorId) updates.instructor_id = instructorId
     if (startsAt) updates.starts_at = startsAt
     if (endsAt) updates.ends_at = endsAt
     if (capacity !== undefined) updates.capacity = capacity
     if (notes !== undefined) updates.notes = notes
-    if (isPrivate !== undefined) updates.is_private = isPrivate
 
     const { data: cls, error } = await supabaseAdmin
       .from('class_schedule')

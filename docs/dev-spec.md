@@ -163,7 +163,9 @@
 - [x] **Mark attendance** — attended / no-show buttons on bookings
 - [x] **Recurring class generation** — day picker + weeks selector, grouped by recurring_id
 - [x] **Class roster view** — click booking count in admin schedule to see full roster
-- [x] **Private classes** — `is_private` flag, hidden from public schedule, visible in admin panel
+- [x] **Private classes** — `is_private` on class_types, auto-applied to scheduled classes, hidden from public schedule
+- [x] **Recurring in add class** — recurring toggle in main add class form (days + weeks), no separate dialog
+- [x] **Notify members on class change** — popup after editing a class with bookings, stub API ready for Resend
 - [ ] **Booking override** — admin can manually book a member into a class (bypass capacity/credits)
 - [ ] **CSV export** of bookings
 
@@ -183,12 +185,26 @@
 - [ ] **Roster tab** — default show/hide setting
 - [ ] **Data tab** — export all data, danger zone
 
-### Email Enhancements
+### Email Notifications (all need `RESEND_API_KEY`)
+
+**Already coded (need Resend API key to activate):**
+- [ ] Booking confirmation email (in `/api/bookings/create`)
+- [ ] Class reminder — 1hr before (in `/api/cron/reminders`)
+- [ ] Waitlist promotion notification (in `/api/cron/process-waitlist`)
+- [ ] Credit expiry warning — 3 days (in `/api/cron/expire-credits`)
+
+**Stub/API ready, email template needed:**
+- [ ] Class change notification — admin edits class, notify booked members (`/api/admin/schedule/notify`)
+- [ ] Private class invitation — admin adds member to private class
+
+**Not yet built:**
 - [ ] Welcome email on registration
-- [ ] Cancellation confirmation email
+- [ ] Cancellation confirmation email (member cancels booking)
+- [ ] Class cancelled by admin — notify booked members
 - [ ] Pack purchase confirmation email
 - [ ] Credits low warning email (1 credit remaining)
-- [ ] Admin email to individual member
+- [ ] Admin direct email to individual member
+- [ ] Password reset email (token-based link)
 
 ### Dashboard Enhancements
 - [ ] Password reset / forgot password flow (token-based, email link)
@@ -209,6 +225,7 @@
 - [ ] Resend domain verification
 - [ ] **Run migration SQL** — add `expiry_warned` column to `user_credits` table (see schema.sql)
 - [ ] **Run migration SQL** — add `is_private BOOLEAN DEFAULT false` column to `class_schedule` table
+- [ ] **Run migration SQL** — add `is_private BOOLEAN DEFAULT false` column to `class_types` table
 
 ### Quality
 - [ ] Mobile QA pass on all member pages
