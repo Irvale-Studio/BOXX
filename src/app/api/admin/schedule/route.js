@@ -45,22 +45,32 @@ export async function GET(request) {
     const classIds = (classes || []).map((c) => c.id)
     let bookingCounts = {}
     let rosterByClass = {}
+    let waitlistByClass = {}
 
     if (classIds.length > 0) {
-      const { data: bookings } = await supabaseAdmin
-        .from('bookings')
-        .select('class_schedule_id, status, users(id, name, avatar_url, email)')
-        .in('class_schedule_id', classIds)
-        .in('status', ['confirmed', 'attended', 'no_show'])
+      const [bookingsRes, waitlistRes] = await Promise.all([
+        supabaseAdmin
+          .from('bookings')
+          .select('class_schedule_id, status, users(id, name, avatar_url, email)')
+          .in('class_schedule_id', classIds)
+          .in('status', ['confirmed', 'attended', 'no_show']),
+        supabaseAdmin
+          .from('waitlist')
+          .select('class_schedule_id, position, users(id, name, avatar_url, email)')
+          .in('class_schedule_id', classIds)
+          .order('position', { ascending: true }),
+      ])
 
-      ;(bookings || []).forEach((b) => {
+      const bookings = bookingsRes.data || []
+
+      bookings.forEach((b) => {
         if (b.status === 'confirmed' || b.status === 'attended') {
           bookingCounts[b.class_schedule_id] = (bookingCounts[b.class_schedule_id] || 0) + 1
         }
       })
 
       // Build roster per class
-      ;(bookings || []).forEach((b) => {
+      bookings.forEach((b) => {
         if (!rosterByClass[b.class_schedule_id]) rosterByClass[b.class_schedule_id] = []
         rosterByClass[b.class_schedule_id].push({
           id: b.users?.id,
@@ -70,12 +80,25 @@ export async function GET(request) {
           status: b.status,
         })
       })
+
+      // Build waitlist per class
+      ;(waitlistRes.data || []).forEach((w) => {
+        if (!waitlistByClass[w.class_schedule_id]) waitlistByClass[w.class_schedule_id] = []
+        waitlistByClass[w.class_schedule_id].push({
+          id: w.users?.id,
+          name: w.users?.name,
+          avatar_url: w.users?.avatar_url,
+          email: w.users?.email,
+          position: w.position,
+        })
+      })
     }
 
     const enriched = (classes || []).map((cls) => ({
       ...cls,
       booked_count: bookingCounts[cls.id] || 0,
       roster: rosterByClass[cls.id] || [],
+      waitlist: waitlistByClass[cls.id] || [],
     }))
 
     return NextResponse.json({ classes: enriched })

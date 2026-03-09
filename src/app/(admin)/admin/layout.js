@@ -13,6 +13,7 @@ const sidebarLinks = [
   { name: 'Bookings', href: '/admin/bookings', icon: '📋' },
   { name: 'Members', href: '/admin/members', icon: '👥' },
   { name: 'Class Packs', href: '/admin/packs', icon: '📦' },
+  { name: 'Class Types', href: '/admin/class-types', icon: '🏷️' },
   { name: 'Instructors', href: '/admin/instructors', icon: '🥊' },
   { name: 'Emails', href: '/admin/emails', icon: '✉️' },
   { name: 'Settings', href: '/admin/settings', icon: '⚙️' },

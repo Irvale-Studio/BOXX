@@ -1,6 +1,6 @@
 # BOXX Development Spec & Progress Tracker
 
-> Last updated: 2026-03-09 (Batch 1 complete)
+> Last updated: 2026-03-09
 
 ---
 
@@ -93,7 +93,7 @@
 
 - [x] Admin dashboard page (stats: members, credits, bookings, revenue)
 - [x] Admin dashboard API (`/api/admin/dashboard`)
-- [x] Today's classes with capacity indicators
+- [x] Today's classes with capacity indicators (schedule-style cards, clickable)
 - [x] Recent signups list
 - [x] Low-credit member alerts
 - [x] Schedule management page (weekly calendar, 7-column grid)
@@ -166,11 +166,16 @@
 - [x] **Private classes** — `is_private` on class_types, auto-applied to scheduled classes, hidden from public schedule
 - [x] **Recurring in add class** — recurring toggle in main add class form (days + weeks), no separate dialog
 - [x] **Notify members on class change** — popup after editing a class with bookings, stub API ready for Resend
-- [ ] **Booking override** — admin can manually book a member into a class (bypass capacity/credits)
+- [x] **Booking override** — admin can manually book a member into a class (bypass capacity/credits) via roster dialog
+- [x] **Roster waitlist management** — view waitlist, promote to attendee, remove from waitlist
 - [ ] **CSV export** of bookings
 
+### Admin Panel — Class Types
+- [x] **Class types CRUD page** (`/admin/class-types`) — create/edit/toggle active, color picker, private toggle
+- [x] **Class types API** (`/api/admin/class-types`) — GET, POST, PUT with audit logging
+
 ### Admin Panel — Private Classes (remaining)
-- [ ] **Add members to private class** — admin selects users to add, auto-creates bookings
+- [x] **Add members to private class** — admin selects users to add via roster dialog, auto-creates bookings
 - [ ] **Private class notifications** — email members when added to a private class
 
 ### Admin Panel — Other
@@ -207,6 +212,7 @@
 - [ ] Password reset email (token-based link)
 
 ### Dashboard Enhancements
+- [x] **Today's classes** — schedule-style cards on admin dashboard (colored border, time range, capacity bar, clickable to schedule page)
 - [ ] Password reset / forgot password flow (token-based, email link)
 - [ ] Google account linking (merge email + Google accounts)
 
@@ -233,6 +239,49 @@
 - [ ] Loading states and error boundaries on all pages
 - [ ] Empty states for all lists
 - [ ] 404 page
+
+---
+
+## Potential Extra Features
+
+### Analytics & Reporting
+- [ ] **Admin analytics dashboard** — visual charts (attendance trends, popular class times, busiest days)
+- [ ] **Instructor performance** — classes taught, avg attendance rate, member ratings
+- [ ] **Class popularity ranking** — most booked class types, fill rate comparison
+- [ ] **Peak hours heatmap** — visualize busiest booking times across the week
+- [ ] **Member retention metrics** — active vs lapsed members, churn rate, avg lifetime
+- [ ] **Revenue reports** — daily/weekly/monthly breakdown, pack sales, avg revenue per member
+- [ ] **Export reports to CSV/PDF**
+
+### Member Badges & Awards
+- [ ] **Achievement badges** — auto-awarded milestones (first class, 10 classes, 50 classes, 100 classes, etc.)
+- [ ] **Streak tracking** — consecutive weeks attending, longest streak record
+- [ ] **Class variety badge** — attended X different class types
+- [ ] **Early bird / night owl** — badges for morning vs evening attendance patterns
+- [ ] **Loyalty badge** — member for 3/6/12 months
+- [ ] **Leaderboard** — opt-in monthly attendance leaderboard among members
+- [ ] **Badge showcase on profile** — members can view their collection on dashboard
+- [ ] **Admin badge management** — create custom badges, manually award to members
+
+### Manual Member Management
+- [ ] **Admin manual member creation** — add a member directly (name, email, phone) without them registering
+- [ ] **Assign credits manually** — give a new member a pack/credits on creation
+- [ ] **Invite member via email** — send a registration link with pre-filled details
+- [ ] **Bulk member import** — CSV upload to onboard multiple members at once
+- [ ] **Walk-in registration** — simplified form for front-desk sign-up (minimal fields)
+
+### Community & Engagement
+- [ ] **Class reviews/ratings** — members rate classes after attending
+- [ ] **Announcements/news feed** — admin posts updates visible on member dashboard
+- [ ] **Referral program** — members share a referral link, earn bonus credits
+- [ ] **Birthday perks** — auto-detect birthday month, trigger reward or email
+- [ ] **Push notifications** — browser push for class reminders, waitlist promotions
+
+### Scheduling Enhancements
+- [ ] **Instructor availability** — instructors set their own availability, admin sees conflicts
+- [ ] **Substitute instructor flow** — assign a sub, notify booked members
+- [ ] **Class templates** — save a weekly template, one-click apply to future weeks
+- [ ] **Holiday/closure management** — mark dates as closed, auto-cancel affected classes
 
 ---
 

@@ -2,12 +2,14 @@
 
 import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
 
 export default function AdminDashboard() {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [expandedClass, setExpandedClass] = useState(null)
 
   useEffect(() => {
     async function fetchDashboard() {
@@ -69,9 +71,10 @@ export default function AdminDashboard() {
       href: '/admin/bookings',
     },
     {
-      title: 'Revenue (This Month)',
-      value: `฿${(stats.revenueThisMonth || 0).toLocaleString()}`,
-      icon: '💰',
+      title: 'Classes Today',
+      value: todayClasses.length,
+      icon: '📅',
+      sub: `${todayClasses.filter((c) => c.status !== 'cancelled').length} active`,
     },
   ]
 
@@ -105,7 +108,7 @@ export default function AdminDashboard() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Today's Classes */}
+        {/* Today's Classes — expandable cards */}
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -121,65 +124,127 @@ export default function AdminDashboard() {
             ) : (
               <div className="space-y-2">
                 {todayClasses.map((cls) => {
-                  const time = new Date(cls.starts_at).toLocaleTimeString('en-US', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    hour12: true,
-                    timeZone: 'Asia/Bangkok',
-                  })
+                  const time = new Date(cls.starts_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Asia/Bangkok' })
+                  const endTime = new Date(cls.ends_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Asia/Bangkok' })
                   const isCancelled = cls.status === 'cancelled'
                   const isFull = cls.booked >= cls.capacity
                   const fillPct = cls.capacity > 0 ? Math.min((cls.booked / cls.capacity) * 100, 100) : 0
+                  const isExpanded = expandedClass === cls.id
+                  const roster = cls.roster || []
+                  const waitlist = cls.waitlist || []
 
                   return (
-                    <div
-                      key={cls.id}
-                      className={cn(
-                        'flex items-center gap-3 px-3 py-2.5 rounded-lg border border-card-border',
-                        isCancelled && 'opacity-50'
-                      )}
-                    >
-                      {/* Color dot */}
-                      <div
-                        className="w-2 h-2 rounded-full shrink-0"
-                        style={{ backgroundColor: cls.class_types?.color || '#c8a750' }}
-                      />
-
-                      {/* Class info */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <p className={cn('text-sm font-medium text-foreground truncate', isCancelled && 'line-through')}>
-                            {cls.class_types?.name || 'Class'}
-                          </p>
-                          {isCancelled && (
-                            <span className="text-[10px] font-medium text-red-400 bg-red-400/10 px-1.5 py-0.5 rounded shrink-0">
-                              Cancelled
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-xs text-muted">
-                          {time} · {cls.instructors?.name || 'TBA'}
-                        </p>
-                      </div>
-
-                      {/* Capacity indicator */}
-                      {!isCancelled && (
-                        <div className="text-right shrink-0">
-                          <p className={cn(
-                            'text-sm font-medium',
-                            isFull ? 'text-red-400' : fillPct >= 75 ? 'text-amber-400' : 'text-green-400'
-                          )}>
-                            {cls.booked}/{cls.capacity}
-                          </p>
-                          <div className="w-12 h-1 bg-card-border rounded-full mt-1 overflow-hidden">
-                            <div
-                              className={cn(
-                                'h-full rounded-full transition-all',
-                                isFull ? 'bg-red-500' : fillPct >= 75 ? 'bg-amber-500' : 'bg-green-500'
+                    <div key={cls.id} className="rounded-lg border border-card-border overflow-hidden">
+                      {/* Clickable header */}
+                      <button
+                        onClick={() => setExpandedClass(isExpanded ? null : cls.id)}
+                        className={cn(
+                          'w-full text-left px-3 py-2.5 transition-colors border-l-[3px]',
+                          isCancelled ? 'opacity-50 border-l-red-500/40' : 'hover:bg-white/[0.04]',
+                          !isCancelled && 'border-l-transparent',
+                          isExpanded && !isCancelled && 'bg-white/[0.02]'
+                        )}
+                        style={!isCancelled ? { borderLeftColor: cls.class_types?.color || '#c8a750' } : undefined}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className={cn('text-sm font-semibold truncate', isCancelled ? 'line-through text-muted' : 'text-foreground')}>
+                                {cls.class_types?.name || 'Class'}
+                              </span>
+                              {isCancelled && (
+                                <span className="text-[10px] font-medium text-red-400 bg-red-400/10 px-1.5 py-0.5 rounded shrink-0">Cancelled</span>
                               )}
-                              style={{ width: `${fillPct}%` }}
-                            />
+                            </div>
+                            <p className="text-xs text-muted mt-0.5">{time} – {endTime} · {cls.instructors?.name || 'TBA'}</p>
                           </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            {!isCancelled && (
+                              <span className={cn(
+                                'text-sm font-semibold',
+                                isFull ? 'text-red-400' : fillPct >= 75 ? 'text-amber-400' : 'text-green-400'
+                              )}>
+                                {cls.booked}/{cls.capacity}
+                              </span>
+                            )}
+                            <svg className={cn('w-4 h-4 text-muted transition-transform', isExpanded && 'rotate-180')} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </div>
+                        </div>
+                        {!isCancelled && (
+                          <div className="mt-1.5">
+                            <div className="h-1 bg-card-border rounded-full overflow-hidden">
+                              <div
+                                className={cn('h-full rounded-full', isFull ? 'bg-red-500' : fillPct >= 75 ? 'bg-amber-500' : 'bg-green-500')}
+                                style={{ width: `${fillPct}%` }}
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </button>
+
+                      {/* Expanded content */}
+                      {isExpanded && !isCancelled && (
+                        <div className="px-3 pb-3 border-t border-card-border bg-white/[0.01]">
+                          {/* Class details */}
+                          {cls.notes && (
+                            <p className="text-xs text-muted mt-2 italic">{cls.notes}</p>
+                          )}
+                          <p className="text-[11px] text-muted mt-2">Duration: {cls.class_types?.duration_mins || '–'} min</p>
+
+                          {/* Attendees */}
+                          <div className="mt-3">
+                            <p className="text-xs font-medium text-foreground mb-1.5">Attendees ({roster.length})</p>
+                            {roster.length > 0 ? (
+                              <div className="space-y-1">
+                                {roster.map((m, i) => (
+                                  <div key={m.id || i} className="flex items-center gap-2 py-1">
+                                    <div className="w-6 h-6 rounded-full bg-accent/10 flex items-center justify-center overflow-hidden shrink-0">
+                                      {m.avatar_url ? (
+                                        <img src={m.avatar_url} alt="" className="w-full h-full object-cover" />
+                                      ) : (
+                                        <span className="text-accent text-[9px] font-bold">{(m.name || '?')[0]?.toUpperCase()}</span>
+                                      )}
+                                    </div>
+                                    <span className="text-xs text-foreground truncate flex-1">{m.name || 'No name'}</span>
+                                    <Badge variant={m.status === 'attended' ? 'default' : m.status === 'no_show' ? 'outline' : 'success'} className="text-[9px] capitalize shrink-0">
+                                      {m.status === 'no_show' ? 'No show' : m.status}
+                                    </Badge>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-[11px] text-muted">No bookings yet</p>
+                            )}
+                          </div>
+
+                          {/* Waitlist */}
+                          {waitlist.length > 0 && (
+                            <div className="mt-3">
+                              <p className="text-xs font-medium text-foreground mb-1.5">Waitlist ({waitlist.length})</p>
+                              <div className="space-y-1">
+                                {waitlist.map((m, i) => (
+                                  <div key={m.id || i} className="flex items-center gap-2 py-1">
+                                    <span className="text-[9px] text-muted font-bold w-4 text-center shrink-0">#{m.position || i + 1}</span>
+                                    <div className="w-6 h-6 rounded-full bg-accent/10 flex items-center justify-center overflow-hidden shrink-0">
+                                      {m.avatar_url ? (
+                                        <img src={m.avatar_url} alt="" className="w-full h-full object-cover" />
+                                      ) : (
+                                        <span className="text-accent text-[9px] font-bold">{(m.name || '?')[0]?.toUpperCase()}</span>
+                                      )}
+                                    </div>
+                                    <span className="text-xs text-foreground truncate flex-1">{m.name || 'No name'}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Quick link to schedule */}
+                          <Link href="/admin/schedule" className="inline-block mt-3 text-[11px] text-accent hover:text-accent-dim transition-colors">
+                            Edit in Schedule →
+                          </Link>
                         </div>
                       )}
                     </div>
@@ -291,6 +356,7 @@ export default function AdminDashboard() {
               {[
                 { label: 'Add a Class', href: '/admin/schedule', icon: '📅' },
                 { label: 'Manage Members', href: '/admin/members', icon: '👥' },
+                { label: 'Class Types', href: '/admin/class-types', icon: '🏷️' },
                 { label: 'Edit Packs', href: '/admin/packs', icon: '📦' },
                 { label: 'View Bookings', href: '/admin/bookings', icon: '📋' },
                 { label: 'Manage Instructors', href: '/admin/instructors', icon: '🥊' },

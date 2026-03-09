@@ -1,0 +1,312 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { Card, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Badge } from '@/components/ui/badge'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
+import { cn } from '@/lib/utils'
+
+const COLOR_OPTIONS = [
+  { label: 'Gold', value: '#c8a750' },
+  { label: 'Red', value: '#ef4444' },
+  { label: 'Blue', value: '#3b82f6' },
+  { label: 'Green', value: '#22c55e' },
+  { label: 'Purple', value: '#a855f7' },
+  { label: 'Orange', value: '#f97316' },
+  { label: 'Pink', value: '#ec4899' },
+  { label: 'Teal', value: '#14b8a6' },
+]
+
+export default function ClassTypesPage() {
+  const [classTypes, setClassTypes] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [toast, setToast] = useState(null)
+  const [addDialog, setAddDialog] = useState(false)
+  const [editDialog, setEditDialog] = useState(null)
+  const [submitting, setSubmitting] = useState(false)
+  const [form, setForm] = useState({ name: '', description: '', duration_mins: 60, color: '#c8a750', icon: '', is_private: false })
+
+  useEffect(() => {
+    if (!toast) return
+    const t = setTimeout(() => setToast(null), 4000)
+    return () => clearTimeout(t)
+  }, [toast])
+
+  async function fetchClassTypes() {
+    try {
+      const res = await fetch('/api/admin/class-types')
+      if (res.ok) {
+        const data = await res.json()
+        setClassTypes(data.classTypes || [])
+      }
+    } catch (err) {
+      console.error('Failed to fetch class types:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => { fetchClassTypes() }, [])
+
+  function openAdd() {
+    setForm({ name: '', description: '', duration_mins: 60, color: '#c8a750', icon: '', is_private: false })
+    setAddDialog(true)
+  }
+
+  function openEdit(ct) {
+    setForm({
+      name: ct.name,
+      description: ct.description || '',
+      duration_mins: ct.duration_mins || 60,
+      color: ct.color || '#c8a750',
+      icon: ct.icon || '',
+      is_private: ct.is_private || false,
+    })
+    setEditDialog(ct)
+  }
+
+  async function handleCreate() {
+    if (!form.name.trim()) { setToast({ message: 'Name is required', type: 'error' }); return }
+    setSubmitting(true)
+    try {
+      const res = await fetch('/api/admin/class-types', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: form.name,
+          description: form.description || undefined,
+          duration_mins: form.duration_mins,
+          color: form.color,
+          icon: form.icon || undefined,
+          is_private: form.is_private,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) { setToast({ message: data.error || 'Failed to create', type: 'error' }); return }
+      setToast({ message: `"${data.classType.name}" created`, type: 'success' })
+      setAddDialog(false)
+      fetchClassTypes()
+    } catch {
+      setToast({ message: 'Something went wrong', type: 'error' })
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  async function handleUpdate() {
+    if (!editDialog || !form.name.trim()) return
+    setSubmitting(true)
+    try {
+      const res = await fetch('/api/admin/class-types', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: editDialog.id,
+          name: form.name,
+          description: form.description || null,
+          duration_mins: form.duration_mins,
+          color: form.color,
+          icon: form.icon || null,
+          is_private: form.is_private,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) { setToast({ message: data.error || 'Failed to update', type: 'error' }); return }
+      setToast({ message: `"${data.classType.name}" updated`, type: 'success' })
+      setEditDialog(null)
+      fetchClassTypes()
+    } catch {
+      setToast({ message: 'Something went wrong', type: 'error' })
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  async function toggleActive(ct) {
+    try {
+      const res = await fetch('/api/admin/class-types', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: ct.id, active: !ct.active }),
+      })
+      if (res.ok) {
+        setToast({ message: `"${ct.name}" ${ct.active ? 'deactivated' : 'activated'}`, type: 'success' })
+        fetchClassTypes()
+      }
+    } catch {
+      setToast({ message: 'Something went wrong', type: 'error' })
+    }
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold text-foreground">Class Types</h1>
+        <Button onClick={openAdd}>+ New Class Type</Button>
+      </div>
+
+      {toast && (
+        <div className={cn('mb-6 px-4 py-3 rounded-lg border flex items-center justify-between', toast.type === 'error' ? 'bg-red-500/10 border-red-500/20 text-red-400' : 'bg-green-500/10 border-green-500/20 text-green-400')}>
+          <span className="text-sm">{toast.message}</span>
+          <button onClick={() => setToast(null)} className="opacity-60 hover:opacity-100">✕</button>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {[1, 2, 3].map((i) => <div key={i} className="h-32 bg-card border border-card-border rounded-lg animate-pulse" />)}
+        </div>
+      ) : classTypes.length === 0 ? (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <p className="text-muted text-sm">No class types yet. Create your first one to get started.</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {classTypes.map((ct) => (
+            <button
+              key={ct.id}
+              onClick={() => openEdit(ct)}
+              className={cn(
+                'text-left p-4 rounded-lg border border-card-border bg-card hover:bg-white/[0.04] transition-colors border-l-[3px]',
+                !ct.active && 'opacity-50'
+              )}
+              style={{ borderLeftColor: ct.color || '#c8a750' }}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    {ct.icon && <span className="text-base">{ct.icon}</span>}
+                    <h3 className="text-sm font-semibold text-foreground truncate">{ct.name}</h3>
+                  </div>
+                  {ct.description && (
+                    <p className="text-xs text-muted mt-1 line-clamp-2">{ct.description}</p>
+                  )}
+                </div>
+                <div className="flex flex-col items-end gap-1 shrink-0">
+                  {ct.is_private && (
+                    <Badge className="text-[10px] bg-amber-500/10 text-amber-400 border-amber-500/20">Private</Badge>
+                  )}
+                  {!ct.active && (
+                    <Badge variant="outline" className="text-[10px]">Inactive</Badge>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center gap-3 mt-3 text-xs text-muted">
+                <span>{ct.duration_mins} min</span>
+                <span className="w-3 h-3 rounded-full" style={{ backgroundColor: ct.color || '#c8a750' }} />
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Add Dialog */}
+      <Dialog open={addDialog} onOpenChange={(open) => !open && setAddDialog(false)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>New Class Type</DialogTitle>
+            <DialogDescription>Create a new type of class that can be scheduled.</DialogDescription>
+          </DialogHeader>
+          <ClassTypeForm form={form} setForm={setForm} />
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setAddDialog(false)}>Cancel</Button>
+            <Button onClick={handleCreate} disabled={submitting}>{submitting ? 'Creating...' : 'Create'}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Dialog */}
+      <Dialog open={!!editDialog} onOpenChange={(open) => !open && setEditDialog(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Class Type</DialogTitle>
+            <DialogDescription>Update {editDialog?.name}</DialogDescription>
+          </DialogHeader>
+          <ClassTypeForm form={form} setForm={setForm} />
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            {editDialog && (
+              <Button
+                variant="outline"
+                className={editDialog.active ? 'text-red-400 border-red-400/30 hover:bg-red-400/10' : 'text-green-400 border-green-400/30 hover:bg-green-400/10'}
+                onClick={() => { toggleActive(editDialog); setEditDialog(null) }}
+              >
+                {editDialog.active ? 'Deactivate' : 'Activate'}
+              </Button>
+            )}
+            <div className="flex gap-2 sm:ml-auto">
+              <Button variant="outline" onClick={() => setEditDialog(null)}>Cancel</Button>
+              <Button onClick={handleUpdate} disabled={submitting}>{submitting ? 'Saving...' : 'Save'}</Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
+}
+
+function ClassTypeForm({ form, setForm }) {
+  return (
+    <div className="space-y-4 py-2">
+      <div>
+        <Label htmlFor="ct-name">Name</Label>
+        <Input id="ct-name" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="e.g. Boxing Fundamentals" className="mt-1" />
+      </div>
+      <div>
+        <Label htmlFor="ct-desc">Description (optional)</Label>
+        <textarea
+          id="ct-desc"
+          value={form.description}
+          onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+          placeholder="Brief description of this class type"
+          rows={2}
+          className="mt-1 w-full rounded-md border border-card-border bg-card px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-accent resize-none"
+        />
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <Label htmlFor="ct-duration">Duration (mins)</Label>
+          <Input id="ct-duration" type="number" min={1} max={300} value={form.duration_mins} onChange={(e) => setForm((f) => ({ ...f, duration_mins: parseInt(e.target.value) || 60 }))} className="mt-1" />
+        </div>
+        <div>
+          <Label htmlFor="ct-icon">Icon (optional)</Label>
+          <Input id="ct-icon" value={form.icon} onChange={(e) => setForm((f) => ({ ...f, icon: e.target.value }))} placeholder="e.g. 🥊" className="mt-1" />
+        </div>
+      </div>
+      <div>
+        <Label>Color</Label>
+        <div className="flex flex-wrap gap-2 mt-1.5">
+          {COLOR_OPTIONS.map((c) => (
+            <button
+              key={c.value}
+              type="button"
+              onClick={() => setForm((f) => ({ ...f, color: c.value }))}
+              className={cn(
+                'w-8 h-8 rounded-full border-2 transition-all',
+                form.color === c.value ? 'border-foreground scale-110' : 'border-transparent hover:border-card-border'
+              )}
+              style={{ backgroundColor: c.value }}
+              title={c.label}
+            />
+          ))}
+        </div>
+      </div>
+      <label className="flex items-center gap-3 cursor-pointer pt-2 border-t border-card-border">
+        <input
+          type="checkbox"
+          checked={form.is_private}
+          onChange={(e) => setForm((f) => ({ ...f, is_private: e.target.checked }))}
+          className="w-4 h-4 rounded border-card-border bg-card accent-accent"
+        />
+        <div>
+          <span className="text-sm text-foreground">Private class type</span>
+          <p className="text-xs text-muted">Private classes won&apos;t appear on the public schedule. Only admin can add members.</p>
+        </div>
+      </label>
+    </div>
+  )
+}

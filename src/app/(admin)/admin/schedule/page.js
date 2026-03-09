@@ -390,17 +390,89 @@ export default function AdminSchedulePage() {
 
       {/* Edit Class Dialog */}
       <Dialog open={!!editDialog} onOpenChange={(open) => !open && setEditDialog(null)}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Class</DialogTitle>
-            <DialogDescription>{editDialog?.class_types?.name} — {editDialog?.booked_count || 0} booking{editDialog?.booked_count !== 1 ? 's' : ''}</DialogDescription>
+            <DialogDescription>{editDialog?.class_types?.name} — {editDialog?.booked_count || 0} booking{editDialog?.booked_count !== 1 ? 's' : ''}{(editDialog?.waitlist?.length || 0) > 0 ? ` · ${editDialog.waitlist.length} waitlisted` : ''}</DialogDescription>
           </DialogHeader>
-          <ClassForm form={form} setForm={setForm} classTypes={classTypes} instructors={instructors} showRecurring recurLabel="Make this recurring" />
-          {form.recurring && form.days.length > 0 && (
-            <p className="text-xs text-muted -mt-2">
-              Will create ~{form.days.length * (form.everyWeek ? 52 : form.weeks)} future classes starting after this date
-            </p>
-          )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            {/* Left: Edit form */}
+            <div>
+              <ClassForm form={form} setForm={setForm} classTypes={classTypes} instructors={instructors} showRecurring recurLabel="Make this recurring" />
+              {form.recurring && form.days.length > 0 && (
+                <p className="text-xs text-muted mt-2">
+                  Will create ~{form.days.length * (form.everyWeek ? 52 : form.weeks)} future classes starting after this date
+                </p>
+              )}
+            </div>
+
+            {/* Right: Attendees + Waitlist */}
+            <div className="space-y-4">
+              {/* Attendees */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-sm font-medium text-foreground">Attendees ({editDialog?.roster?.length || 0}/{editDialog?.capacity || 0})</p>
+                  <button
+                    onClick={() => { const cls = editDialog; setEditDialog(null); setRosterDialog(cls) }}
+                    className="text-xs text-accent hover:text-accent-dim transition-colors"
+                  >
+                    Manage →
+                  </button>
+                </div>
+                <div className="space-y-1 max-h-[180px] overflow-y-auto">
+                  {(editDialog?.roster || []).length > 0 ? (editDialog.roster).map((m, i) => (
+                    <div key={m.id || i} className="flex items-center gap-2 p-1.5 rounded border border-card-border">
+                      <div className="w-6 h-6 rounded-full bg-accent/10 flex items-center justify-center overflow-hidden shrink-0">
+                        {m.avatar_url ? (
+                          <img src={m.avatar_url} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          <span className="text-accent text-[9px] font-bold">{(m.name || '?')[0]?.toUpperCase()}</span>
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-medium text-foreground truncate">{m.name || 'No name'}</p>
+                        <p className="text-[10px] text-muted truncate">{m.email}</p>
+                      </div>
+                      <Badge variant={m.status === 'confirmed' ? 'success' : m.status === 'attended' ? 'default' : 'outline'} className="text-[9px] capitalize shrink-0">
+                        {m.status}
+                      </Badge>
+                    </div>
+                  )) : (
+                    <p className="text-xs text-muted text-center py-3 border border-dashed border-card-border rounded">No bookings yet</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Waitlist */}
+              <div>
+                <p className="text-sm font-medium text-foreground mb-2">Waitlist ({editDialog?.waitlist?.length || 0})</p>
+                <div className="space-y-1 max-h-[120px] overflow-y-auto">
+                  {(editDialog?.waitlist || []).length > 0 ? (editDialog.waitlist).map((m, i) => (
+                    <div key={m.id || i} className="flex items-center gap-2 p-1.5 rounded border border-card-border">
+                      <div className="w-5 h-5 rounded-full bg-card-border flex items-center justify-center shrink-0">
+                        <span className="text-[8px] text-muted font-bold">#{m.position || i + 1}</span>
+                      </div>
+                      <div className="w-6 h-6 rounded-full bg-accent/10 flex items-center justify-center overflow-hidden shrink-0">
+                        {m.avatar_url ? (
+                          <img src={m.avatar_url} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          <span className="text-accent text-[9px] font-bold">{(m.name || '?')[0]?.toUpperCase()}</span>
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-medium text-foreground truncate">{m.name || 'No name'}</p>
+                        <p className="text-[10px] text-muted truncate">{m.email}</p>
+                      </div>
+                    </div>
+                  )) : (
+                    <p className="text-xs text-muted text-center py-3 border border-dashed border-card-border rounded">No one on the waitlist</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
           <DialogFooter className="flex-col sm:flex-row gap-2">
             <Button variant="outline" className="text-red-400 border-red-400/30 hover:bg-red-400/10" onClick={() => { setEditDialog(null); setCancelDialog(editDialog) }}>Cancel Class</Button>
             <div className="flex gap-2 sm:ml-auto">
@@ -565,12 +637,16 @@ function ClassForm({ form, setForm, classTypes, instructors, showRecurring, recu
 
 function RosterDialog({ cls, onClose, onUpdate, setToast }) {
   const [roster, setRoster] = useState(cls.roster || [])
+  const [waitlist, setWaitlist] = useState(cls.waitlist || [])
   const [searchInput, setSearchInput] = useState('')
   const [searchResults, setSearchResults] = useState([])
   const [searching, setSearching] = useState(false)
   const [actionLoading, setActionLoading] = useState(null)
+  const [activeTab, setActiveTab] = useState('attendees')
 
   const rosterUserIds = new Set(roster.map((m) => m.id))
+  const waitlistUserIds = new Set(waitlist.map((m) => m.id))
+  const allUserIds = new Set([...rosterUserIds, ...waitlistUserIds])
 
   async function searchMembers() {
     if (!searchInput.trim()) return
@@ -599,7 +675,11 @@ function RosterDialog({ cls, onClose, onUpdate, setToast }) {
       const data = await res.json()
       if (!res.ok) { setToast({ message: data.error || 'Failed to add', type: 'error' }); return }
       const member = searchResults.find((m) => m.id === userId)
-      if (member) setRoster((r) => [...r, { id: member.id, name: member.name, email: member.email, avatar_url: member.avatar_url, status: 'confirmed' }])
+      if (member) {
+        setRoster((r) => [...r, { id: member.id, name: member.name, email: member.email, avatar_url: member.avatar_url, status: 'confirmed' }])
+        // Remove from waitlist if they were on it
+        setWaitlist((w) => w.filter((m) => m.id !== userId))
+      }
       setToast({ message: `${member?.name || 'Member'} added`, type: 'success' })
       onUpdate()
     } catch {
@@ -629,6 +709,31 @@ function RosterDialog({ cls, onClose, onUpdate, setToast }) {
     }
   }
 
+  async function removeFromWaitlist(userId) {
+    setActionLoading(`wl-${userId}`)
+    try {
+      const res = await fetch('/api/admin/schedule/roster', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ classId: cls.id, userId, fromWaitlist: true }),
+      })
+      const data = await res.json()
+      if (!res.ok) { setToast({ message: data.error || 'Failed to remove', type: 'error' }); return }
+      setWaitlist((w) => w.filter((m) => m.id !== userId))
+      setToast({ message: 'Removed from waitlist', type: 'success' })
+      onUpdate()
+    } catch {
+      setToast({ message: 'Something went wrong', type: 'error' })
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  async function promoteFromWaitlist(userId) {
+    // Add to roster directly (bypasses capacity — admin override)
+    await addMember(userId)
+  }
+
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-lg">
@@ -636,7 +741,7 @@ function RosterDialog({ cls, onClose, onUpdate, setToast }) {
           <DialogTitle>Manage Roster</DialogTitle>
           <DialogDescription>
             {cls.class_types?.name} — {new Date(cls.starts_at).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'Asia/Bangkok' })}
-            {' · '}{roster.length}/{cls.capacity} booked
+            {' · '}{roster.length}/{cls.capacity} booked{waitlist.length > 0 ? ` · ${waitlist.length} waitlisted` : ''}
           </DialogDescription>
         </DialogHeader>
 
@@ -655,7 +760,7 @@ function RosterDialog({ cls, onClose, onUpdate, setToast }) {
           </form>
           {searchResults.length > 0 && (
             <div className="border border-card-border rounded-lg max-h-[150px] overflow-y-auto">
-              {searchResults.filter((m) => !rosterUserIds.has(m.id)).map((m) => (
+              {searchResults.filter((m) => !allUserIds.has(m.id)).map((m) => (
                 <div key={m.id} className="flex items-center justify-between px-3 py-2 border-b border-card-border last:border-0">
                   <div className="flex items-center gap-2 min-w-0">
                     <div className="w-6 h-6 rounded-full bg-accent/10 flex items-center justify-center overflow-hidden shrink-0">
@@ -680,16 +785,31 @@ function RosterDialog({ cls, onClose, onUpdate, setToast }) {
                   </Button>
                 </div>
               ))}
-              {searchResults.every((m) => rosterUserIds.has(m.id)) && (
-                <p className="text-xs text-muted text-center py-2">All results already in roster</p>
+              {searchResults.every((m) => allUserIds.has(m.id)) && (
+                <p className="text-xs text-muted text-center py-2">All results already in roster or waitlist</p>
               )}
             </div>
           )}
         </div>
 
-        {/* Current roster */}
-        <div>
-          <Label className="mb-2 block">Attendees ({roster.length})</Label>
+        {/* Tab switcher */}
+        <div className="flex border-b border-card-border">
+          <button
+            onClick={() => setActiveTab('attendees')}
+            className={cn('flex-1 text-sm py-2 transition-colors border-b-2 -mb-px', activeTab === 'attendees' ? 'border-accent text-accent' : 'border-transparent text-muted hover:text-foreground')}
+          >
+            Attendees ({roster.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('waitlist')}
+            className={cn('flex-1 text-sm py-2 transition-colors border-b-2 -mb-px', activeTab === 'waitlist' ? 'border-accent text-accent' : 'border-transparent text-muted hover:text-foreground')}
+          >
+            Waitlist ({waitlist.length})
+          </button>
+        </div>
+
+        {/* Attendees tab */}
+        {activeTab === 'attendees' && (
           <div className="space-y-1 max-h-[250px] overflow-y-auto">
             {roster.length > 0 ? roster.map((m, i) => (
               <div key={m.id || i} className="flex items-center justify-between p-2 rounded-lg border border-card-border">
@@ -724,7 +844,53 @@ function RosterDialog({ cls, onClose, onUpdate, setToast }) {
               <p className="text-sm text-muted text-center py-4">No bookings yet</p>
             )}
           </div>
-        </div>
+        )}
+
+        {/* Waitlist tab */}
+        {activeTab === 'waitlist' && (
+          <div className="space-y-1 max-h-[250px] overflow-y-auto">
+            {waitlist.length > 0 ? waitlist.map((m, i) => (
+              <div key={m.id || i} className="flex items-center justify-between p-2 rounded-lg border border-card-border">
+                <div className="flex items-center gap-2">
+                  <div className="w-5 h-5 rounded-full bg-card-border flex items-center justify-center shrink-0">
+                    <span className="text-[9px] text-muted font-bold">#{m.position || i + 1}</span>
+                  </div>
+                  <div className="w-7 h-7 rounded-full bg-accent/10 flex items-center justify-center overflow-hidden shrink-0">
+                    {m.avatar_url ? (
+                      <img src={m.avatar_url} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-accent text-[10px] font-bold">{(m.name || '?')[0]?.toUpperCase()}</span>
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-sm text-foreground">{m.name || 'No name'}</p>
+                    <p className="text-[10px] text-muted">{m.email}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => promoteFromWaitlist(m.id)}
+                    disabled={actionLoading === m.id}
+                    className="text-green-400 hover:text-green-300 text-[10px] font-medium transition-colors disabled:opacity-50 px-1.5 py-0.5 border border-green-400/20 rounded"
+                    title="Move to attendees"
+                  >
+                    {actionLoading === m.id ? '...' : 'Promote'}
+                  </button>
+                  <button
+                    onClick={() => removeFromWaitlist(m.id)}
+                    disabled={actionLoading === `wl-${m.id}`}
+                    className="text-red-400 hover:text-red-300 text-xs transition-colors disabled:opacity-50"
+                    title="Remove from waitlist"
+                  >
+                    {actionLoading === `wl-${m.id}` ? '...' : '✕'}
+                  </button>
+                </div>
+              </div>
+            )) : (
+              <p className="text-sm text-muted text-center py-4">No one on the waitlist</p>
+            )}
+          </div>
+        )}
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Close</Button>

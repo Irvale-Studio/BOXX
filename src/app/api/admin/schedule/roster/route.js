@@ -12,6 +12,7 @@ const removeMemberSchema = z.object({
   classId: z.string().min(1),
   userId: z.string().min(1),
   refundCredit: z.boolean().optional(),
+  fromWaitlist: z.boolean().optional(),
 })
 
 /**
@@ -106,7 +107,31 @@ export async function DELETE(request) {
       return NextResponse.json({ error: 'Invalid input' }, { status: 400 })
     }
 
-    const { classId, userId, refundCredit } = parsed.data
+    const { classId, userId, refundCredit, fromWaitlist } = parsed.data
+
+    // Handle waitlist removal
+    if (fromWaitlist) {
+      const { error: wlError } = await supabaseAdmin
+        .from('waitlist')
+        .delete()
+        .eq('class_schedule_id', classId)
+        .eq('user_id', userId)
+
+      if (wlError) {
+        console.error('[admin/roster] Waitlist remove error:', wlError)
+        return NextResponse.json({ error: 'Failed to remove from waitlist' }, { status: 500 })
+      }
+
+      await supabaseAdmin.from('admin_audit_log').insert({
+        admin_id: session.user.id,
+        action: 'admin_remove_from_waitlist',
+        target_type: 'waitlist',
+        target_id: classId,
+        details: { classId, userId },
+      })
+
+      return NextResponse.json({ success: true })
+    }
 
     // Find the booking
     const { data: booking } = await supabaseAdmin

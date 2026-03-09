@@ -99,24 +99,56 @@ export async function GET() {
         .eq('status', 'confirmed'),
     ])
 
-    // Get booking counts for today's classes
+    // Get booking counts + roster + waitlist for today's classes
     let todayClasses = todayClassesRes.data || []
     if (todayClasses.length > 0) {
       const classIds = todayClasses.map((c) => c.id)
-      const { data: bookingCounts } = await supabaseAdmin
-        .from('bookings')
-        .select('class_schedule_id')
-        .in('class_schedule_id', classIds)
-        .eq('status', 'confirmed')
+      const [bookingsRes, waitlistRes] = await Promise.all([
+        supabaseAdmin
+          .from('bookings')
+          .select('class_schedule_id, status, users(id, name, avatar_url, email)')
+          .in('class_schedule_id', classIds)
+          .in('status', ['confirmed', 'attended', 'no_show']),
+        supabaseAdmin
+          .from('waitlist')
+          .select('class_schedule_id, position, users(id, name, avatar_url, email)')
+          .in('class_schedule_id', classIds)
+          .order('position', { ascending: true }),
+      ])
 
       const countMap = {}
-      ;(bookingCounts || []).forEach((b) => {
-        countMap[b.class_schedule_id] = (countMap[b.class_schedule_id] || 0) + 1
+      const rosterMap = {}
+      ;(bookingsRes.data || []).forEach((b) => {
+        if (b.status === 'confirmed' || b.status === 'attended') {
+          countMap[b.class_schedule_id] = (countMap[b.class_schedule_id] || 0) + 1
+        }
+        if (!rosterMap[b.class_schedule_id]) rosterMap[b.class_schedule_id] = []
+        rosterMap[b.class_schedule_id].push({
+          id: b.users?.id,
+          name: b.users?.name,
+          avatar_url: b.users?.avatar_url,
+          email: b.users?.email,
+          status: b.status,
+        })
+      })
+
+      const waitlistMap = {}
+      ;(waitlistRes.data || []).forEach((w) => {
+        if (!waitlistMap[w.class_schedule_id]) waitlistMap[w.class_schedule_id] = []
+        waitlistMap[w.class_schedule_id].push({
+          id: w.users?.id,
+          name: w.users?.name,
+          avatar_url: w.users?.avatar_url,
+          email: w.users?.email,
+          position: w.position,
+        })
       })
 
       todayClasses = todayClasses.map((c) => ({
         ...c,
         booked: countMap[c.id] || 0,
+        roster: rosterMap[c.id] || [],
+        waitlist: waitlistMap[c.id] || [],
       }))
     }
 
