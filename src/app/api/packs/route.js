@@ -39,9 +39,9 @@ export async function GET() {
     // Get full purchase history (all credits, including expired/used)
     const { data: purchaseHistory } = await supabaseAdmin
       .from('user_credits')
-      .select('id, credits_remaining, credits_total, expires_at, status, created_at, class_packs(name, price_thb, credits, is_membership)')
+      .select('id, credits_remaining, credits_total, expires_at, status, purchased_at, class_packs(name, price_thb, credits, is_membership)')
       .eq('user_id', session.user.id)
-      .order('created_at', { ascending: false })
+      .order('purchased_at', { ascending: false })
 
     return NextResponse.json({
       packs: packs || [],

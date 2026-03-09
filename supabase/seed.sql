@@ -50,8 +50,8 @@ DELETE FROM class_schedule WHERE id IN (
   'c0000006-0000-0000-0000-000000000002',
   'c0000007-0000-0000-0000-000000000001'
 );
-DELETE FROM user_credits WHERE stripe_payment_id = 'seed_payment_001';
-DELETE FROM users WHERE email IN ('sarah@example.com','tom@example.com','mia@example.com','jake@example.com','luna@example.com');
+DELETE FROM user_credits WHERE stripe_payment_id LIKE 'seed_%' OR stripe_payment_id LIKE 'direct_%' OR stripe_payment_id LIKE 'bert_seed_%';
+DELETE FROM users WHERE email IN ('sarah@example.com','tom@example.com','mia@example.com','jake@example.com','luna@example.com','bert@boxxthailand.com');
 DELETE FROM instructors WHERE id IN (
   'b1111111-1111-1111-1111-111111111111',
   'b2222222-2222-2222-2222-222222222222',
@@ -107,6 +107,11 @@ INSERT INTO users (id, email, name, bio, show_in_roster, role) VALUES
   ('d4444444-4444-4444-4444-444444444444', 'jake@example.com', 'Jake P.', 'Here for the BOXX&TRAIN sessions.', true, 'member'),
   ('d5555555-5555-5555-5555-555555555555', 'luna@example.com', 'Luna C.', '', false, 'member')
 ON CONFLICT (email) DO NOTHING;
+
+-- ─── BERT'S ACCOUNT (admin + heavy user) ────
+INSERT INTO users (id, email, name, bio, show_in_roster, role) VALUES
+  ('d0000000-0000-0000-0000-000000000001', 'bert@boxxthailand.com', 'Bert S.', 'Founder. Glasgow-raised, Chiang Mai-based. Building BOXX.', true, 'admin')
+ON CONFLICT (email) DO UPDATE SET role = 'admin', name = 'Bert S.', bio = 'Founder. Glasgow-raised, Chiang Mai-based. Building BOXX.';
 
 -- ─── SCHEDULE (next 7 days) ──────────
 
@@ -249,6 +254,66 @@ INSERT INTO bookings (user_id, class_schedule_id, status) VALUES
   ('d1111111-1111-1111-1111-111111111111', 'c0000004-0000-0000-0000-000000000002', 'confirmed'),
   ('d2222222-2222-2222-2222-222222222222', 'c0000004-0000-0000-0000-000000000002', 'confirmed');
 
+-- ─── BERT'S DUMMY DATA (admin account with heavy usage history) ────
+
+DO $$
+DECLARE
+  v_bert_id UUID := 'd0000000-0000-0000-0000-000000000001';
+  v_pack_10 UUID;
+  v_pack_5 UUID;
+  v_pack_1 UUID;
+  v_pack_unlimited UUID;
+BEGIN
+  SELECT id INTO v_pack_10 FROM class_packs WHERE credits = 10 AND NOT is_intro LIMIT 1;
+  SELECT id INTO v_pack_5 FROM class_packs WHERE credits = 5 AND NOT is_intro LIMIT 1;
+  SELECT id INTO v_pack_1 FROM class_packs WHERE credits = 1 AND NOT is_intro LIMIT 1;
+  SELECT id INTO v_pack_unlimited FROM class_packs WHERE credits IS NULL LIMIT 1;
+
+  -- ── CURRENT ACTIVE PACK: 10 credits, 7 remaining ──
+  INSERT INTO user_credits (user_id, class_pack_id, credits_total, credits_remaining, expires_at, stripe_payment_id, status, purchased_at)
+  VALUES (v_bert_id, v_pack_10, 10, 7, NOW() + INTERVAL '45 days', 'bert_seed_001', 'active', NOW() - INTERVAL '15 days');
+
+  -- ── PAST PACK 1: 10 credits, fully used, expired 2 months ago ──
+  INSERT INTO user_credits (user_id, class_pack_id, credits_total, credits_remaining, expires_at, stripe_payment_id, status, purchased_at)
+  VALUES (v_bert_id, v_pack_10, 10, 0, NOW() - INTERVAL '60 days', 'bert_seed_002', 'active', NOW() - INTERVAL '120 days');
+
+  -- ── PAST PACK 2: 5 credits, fully used, expired 4 months ago ──
+  INSERT INTO user_credits (user_id, class_pack_id, credits_total, credits_remaining, expires_at, stripe_payment_id, status, purchased_at)
+  VALUES (v_bert_id, v_pack_5, 5, 0, NOW() - INTERVAL '120 days', 'bert_seed_003', 'active', NOW() - INTERVAL '150 days');
+
+  -- ── PAST PACK 3: unlimited month, expired 5 months ago ──
+  INSERT INTO user_credits (user_id, class_pack_id, credits_total, credits_remaining, expires_at, stripe_payment_id, status, purchased_at)
+  VALUES (v_bert_id, v_pack_unlimited, NULL, NULL, NOW() - INTERVAL '150 days', 'bert_seed_004', 'active', NOW() - INTERVAL '180 days');
+
+  -- ── PAST PACK 4: 1 credit single, fully used, 6 months ago ──
+  INSERT INTO user_credits (user_id, class_pack_id, credits_total, credits_remaining, expires_at, stripe_payment_id, status, purchased_at)
+  VALUES (v_bert_id, v_pack_1, 1, 0, NOW() - INTERVAL '180 days', 'bert_seed_005', 'active', NOW() - INTERVAL '210 days');
+
+  -- ── PAST PACK 5: 10 credits, fully used, 8 months ago ──
+  INSERT INTO user_credits (user_id, class_pack_id, credits_total, credits_remaining, expires_at, stripe_payment_id, status, purchased_at)
+  VALUES (v_bert_id, v_pack_10, 10, 0, NOW() - INTERVAL '240 days', 'bert_seed_006', 'active', NOW() - INTERVAL '300 days');
+
+  -- Bert's upcoming bookings
+  INSERT INTO bookings (user_id, class_schedule_id, status) VALUES
+    (v_bert_id, 'c0000002-0000-0000-0000-000000000001', 'confirmed'),
+    (v_bert_id, 'c0000003-0000-0000-0000-000000000002', 'confirmed'),
+    (v_bert_id, 'c0000005-0000-0000-0000-000000000001', 'confirmed');
+
+  -- Bert attended today's class
+  INSERT INTO bookings (user_id, class_schedule_id, status, created_at) VALUES
+    (v_bert_id, 'c0000001-0000-0000-0000-000000000001', 'attended', NOW() - INTERVAL '2 hours');
+
+  -- Bert cancelled a class (Day 3 BOXX&TRAIN was admin-cancelled)
+  INSERT INTO bookings (user_id, class_schedule_id, status, cancelled_at, credit_returned) VALUES
+    (v_bert_id, 'c0000004-0000-0000-0000-000000000001', 'cancelled', NOW(), true);
+
+  -- Bert past attended classes
+  INSERT INTO bookings (user_id, class_schedule_id, status, created_at) VALUES
+    (v_bert_id, 'c0000001-0000-0000-0000-000000000002', 'attended', NOW() - INTERVAL '1 day');
+
+  RAISE NOTICE 'Seeded Bert account: %', v_bert_id;
+END $$;
+
 -- ─── YOUR ACCOUNT: CREDITS + BOOKINGS ────
 
 DO $$
@@ -256,9 +321,11 @@ DECLARE
   v_user_id UUID;
   v_pack_10 UUID;
   v_pack_5 UUID;
+  v_pack_1 UUID;
 BEGIN
   SELECT id INTO v_user_id FROM users
     WHERE email NOT LIKE '%@example.com'
+      AND email != 'bert@boxxthailand.com'
     ORDER BY created_at ASC LIMIT 1;
 
   IF v_user_id IS NULL THEN
@@ -266,16 +333,21 @@ BEGIN
     RETURN;
   END IF;
 
-  SELECT id INTO v_pack_10 FROM class_packs WHERE credits = 10 LIMIT 1;
-  SELECT id INTO v_pack_5 FROM class_packs WHERE credits = 5 LIMIT 1;
+  SELECT id INTO v_pack_10 FROM class_packs WHERE credits = 10 AND NOT is_intro LIMIT 1;
+  SELECT id INTO v_pack_5 FROM class_packs WHERE credits = 5 AND NOT is_intro LIMIT 1;
+  SELECT id INTO v_pack_1 FROM class_packs WHERE credits = 1 AND NOT is_intro LIMIT 1;
 
-  -- 10 credits, 9 remaining (1 used for attended class, 1 returned from cancelled class)
-  INSERT INTO user_credits (user_id, class_pack_id, credits_total, credits_remaining, expires_at, stripe_payment_id, status)
-  VALUES (v_user_id, v_pack_10, 10, 9, NOW() + INTERVAL '60 days', 'seed_payment_001', 'active');
+  -- Current active: 10 credits, 9 remaining
+  INSERT INTO user_credits (user_id, class_pack_id, credits_total, credits_remaining, expires_at, stripe_payment_id, status, purchased_at)
+  VALUES (v_user_id, v_pack_10, 10, 9, NOW() + INTERVAL '60 days', 'seed_payment_001', 'active', NOW() - INTERVAL '5 days');
 
-  -- 5 credits, 1 remaining — expiring in 3 days (triggers low + expiring soon)
-  INSERT INTO user_credits (user_id, class_pack_id, credits_total, credits_remaining, expires_at, stripe_payment_id, status)
-  VALUES (v_user_id, v_pack_5, 5, 1, NOW() + INTERVAL '3 days', 'seed_payment_002', 'active');
+  -- Old expired pack: 5 credits, fully used, 2 months ago
+  INSERT INTO user_credits (user_id, class_pack_id, credits_total, credits_remaining, expires_at, stripe_payment_id, status, purchased_at)
+  VALUES (v_user_id, v_pack_5, 5, 0, NOW() - INTERVAL '30 days', 'seed_payment_002', 'active', NOW() - INTERVAL '60 days');
+
+  -- Old expired pack: 1 credit single, used, 3 months ago
+  INSERT INTO user_credits (user_id, class_pack_id, credits_total, credits_remaining, expires_at, stripe_payment_id, status, purchased_at)
+  VALUES (v_user_id, v_pack_1, 1, 0, NOW() - INTERVAL '60 days', 'seed_payment_003', 'active', NOW() - INTERVAL '90 days');
 
   -- Upcoming: tomorrow's BOXXINTER
   INSERT INTO bookings (user_id, class_schedule_id, status) VALUES

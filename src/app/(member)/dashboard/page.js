@@ -35,13 +35,16 @@ function DashboardSkeleton() {
 function DashboardContent() {
   const { data: session } = useSession()
   const searchParams = useSearchParams()
+  const router = useRouter()
   const sharedClassId = searchParams.get('class')
   const tabParam = searchParams.get('tab')
+  const justPurchased = searchParams.get('purchased') === 'true'
   const [activeTab, setActiveTab] = useState(tabParam === 'bookings' ? 'bookings' : 'classes')
   const [scheduleView, setScheduleView] = useState('calendar') // persists across tab switches
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [creditAnimation, setCreditAnimation] = useState(false)
 
   const fetchDashboard = async () => {
     try {
@@ -60,13 +63,23 @@ function DashboardContent() {
     fetchDashboard()
   }, [])
 
+  // Animate credits when returning from a purchase
+  useEffect(() => {
+    if (justPurchased) {
+      setCreditAnimation(true)
+      router.replace('/dashboard', { scroll: false })
+      const t = setTimeout(() => setCreditAnimation(false), 4000)
+      return () => clearTimeout(t)
+    }
+  }, [justPurchased, router])
+
   if (loading) return <DashboardSkeleton />
   if (error) return <p className="text-red-400">{error}</p>
   if (!data) return null
 
   return (
     <div className="space-y-6">
-      <ProfileSection user={data.user} credits={data.credits} onUpdate={fetchDashboard} />
+      <ProfileSection user={data.user} credits={data.credits} onUpdate={fetchDashboard} creditAnimation={creditAnimation} />
 
       {/* Tab switcher */}
       <div className="flex bg-card border border-card-border rounded p-0.5">
@@ -112,7 +125,7 @@ function DashboardContent() {
 /* ─────────────────────────────────────────────────────────
    PROFILE SECTION
    ───────────────────────────────────────────────────────── */
-function ProfileSection({ user, credits, onUpdate }) {
+function ProfileSection({ user, credits, onUpdate, creditAnimation }) {
   const [editing, setEditing] = useState(false)
   const [form, setForm] = useState({
     name: user?.name || '',
@@ -239,34 +252,50 @@ function ProfileSection({ user, credits, onUpdate }) {
 
         {/* Credits summary */}
         {(() => {
-          const totalCredits = credits.reduce((sum, c) => {
+          // Filter out packs that are fully used (0 credits remaining for non-unlimited)
+          const activePacks = credits.filter((c) =>
+            c.credits_remaining === null || c.credits_remaining > 0
+          )
+          const totalCredits = activePacks.reduce((sum, c) => {
             if (c.credits_remaining === null) return Infinity
             return sum + (c.credits_remaining || 0)
           }, 0)
-          const hasExpiring = credits.some((c) => {
+          const hasExpiring = activePacks.some((c) => {
             const daysLeft = Math.ceil((new Date(c.expires_at) - Date.now()) / (1000 * 60 * 60 * 24))
             return daysLeft <= 5
           })
           const isLow = totalCredits !== Infinity && totalCredits <= 2 && totalCredits > 0
 
-          return credits.length > 0 ? (
+          return activePacks.length > 0 ? (
             <div className="mt-5">
               {/* Compact total display */}
               <button
                 onClick={() => setShowCredits(!showCredits)}
-                className="w-full flex items-center justify-between p-3 rounded-lg border border-card-border bg-background hover:border-accent/20 transition-colors"
+                className={cn(
+                  'w-full flex items-center justify-between p-3 rounded-lg border transition-colors',
+                  creditAnimation
+                    ? 'border-green-500/40 bg-green-500/5'
+                    : 'border-card-border bg-background hover:border-accent/20'
+                )}
               >
                 <div className="flex items-center gap-3">
                   <div className="flex items-baseline gap-1.5">
-                    <span className={cn('text-2xl font-bold', isLow || hasExpiring ? 'text-red-400' : 'text-accent')}>
+                    <motion.span
+                      key={creditAnimation ? 'animate' : 'static'}
+                      initial={creditAnimation ? { scale: 1.5, color: '#22c55e' } : false}
+                      animate={{ scale: 1, color: isLow || hasExpiring ? '#f87171' : '#c8a750' }}
+                      transition={{ duration: 0.8, ease: 'easeOut' }}
+                      className="text-2xl font-bold"
+                    >
                       {totalCredits === Infinity ? '∞' : totalCredits}
-                    </span>
+                    </motion.span>
                     <span className="text-xs text-muted">
                       {totalCredits === Infinity ? 'unlimited' : `credit${totalCredits !== 1 ? 's' : ''}`}
                     </span>
                   </div>
-                  {hasExpiring && <Badge variant="destructive" className="text-[10px]">Expiring soon</Badge>}
-                  {isLow && !hasExpiring && <Badge variant="outline" className="text-[10px] text-red-400 border-red-400/30">Running low</Badge>}
+                  {creditAnimation && <Badge className="text-[10px] bg-green-500/15 text-green-400 border-green-500/30">New credits added!</Badge>}
+                  {!creditAnimation && hasExpiring && <Badge variant="destructive" className="text-[10px]">Expiring soon</Badge>}
+                  {!creditAnimation && isLow && !hasExpiring && <Badge variant="outline" className="text-[10px] text-red-400 border-red-400/30">Running low</Badge>}
                 </div>
                 <svg className={cn('w-4 h-4 text-muted transition-transform', showCredits && 'rotate-180')} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
@@ -283,7 +312,7 @@ function ProfileSection({ user, credits, onUpdate }) {
                     className="overflow-hidden"
                   >
                     <div className="grid gap-3 mt-3 sm:grid-cols-2 lg:grid-cols-3">
-                      {credits.map((c) => {
+                      {activePacks.map((c) => {
                         const daysLeft = Math.ceil((new Date(c.expires_at) - Date.now()) / (1000 * 60 * 60 * 24))
                         const isUnlimited = c.credits_remaining === null
                         const usedCredits = isUnlimited ? null : (c.credits_total - c.credits_remaining)

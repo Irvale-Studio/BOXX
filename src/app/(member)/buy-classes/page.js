@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense } from 'react'
 import { useSession } from 'next-auth/react'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -19,12 +19,14 @@ export default function BuyClassesPage() {
 function BuyClassesContent() {
   const { data: session } = useSession()
   const searchParams = useSearchParams()
+  const router = useRouter()
   const [packs, setPacks] = useState([])
   const [activeCredits, setActiveCredits] = useState([])
   const [purchaseHistory, setPurchaseHistory] = useState([])
   const [loading, setLoading] = useState(true)
   const [purchasing, setPurchasing] = useState(null)
   const [success, setSuccess] = useState(false)
+  const [toast, setToast] = useState(null)
 
   // Check for success return from Stripe
   useEffect(() => {
@@ -53,10 +55,17 @@ function BuyClassesContent() {
     fetchData()
   }, [success])
 
+  // Auto-dismiss toast
+  useEffect(() => {
+    if (!toast) return
+    const t = setTimeout(() => setToast(null), 4000)
+    return () => clearTimeout(t)
+  }, [toast])
+
   async function handleBuy(packId) {
     setPurchasing(packId)
     try {
-      const res = await fetch('/api/stripe/checkout', {
+      const res = await fetch('/api/packs/purchase', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ packId }),
@@ -65,15 +74,15 @@ function BuyClassesContent() {
       const data = await res.json()
 
       if (!res.ok) {
-        alert(data.error || 'Something went wrong')
+        setToast({ message: data.error || 'Something went wrong', type: 'error' })
         return
       }
 
-      // Redirect to Stripe Checkout
-      window.location.href = data.url
+      // Redirect to dashboard with animation trigger
+      router.push('/dashboard?purchased=true')
     } catch (err) {
-      console.error('Checkout error:', err)
-      alert('Something went wrong. Please try again.')
+      console.error('Purchase error:', err)
+      setToast({ message: 'Something went wrong. Please try again.', type: 'error' })
     } finally {
       setPurchasing(null)
     }
@@ -89,6 +98,23 @@ function BuyClassesContent() {
     <div>
       <h1 className="text-2xl font-bold text-foreground mb-2">Buy Packs</h1>
       <p className="text-muted mb-8">Choose a class pack to get started.</p>
+
+      {/* Toast */}
+      {toast && (
+        <div className={cn(
+          'mb-6 px-4 py-3 rounded-lg border flex items-center justify-between',
+          toast.type === 'error'
+            ? 'bg-red-500/10 border-red-500/20 text-red-400'
+            : 'bg-green-500/10 border-green-500/20 text-green-400'
+        )}>
+          <span className="text-sm">{toast.message}</span>
+          <button onClick={() => setToast(null)} className="opacity-60 hover:opacity-100">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      )}
 
       {/* Success message */}
       {success && (
@@ -171,7 +197,7 @@ function BuyClassesContent() {
                     disabled={purchasing === pack.id || (isIntro && !canBuyIntro)}
                   >
                     {purchasing === pack.id
-                      ? 'Redirecting...'
+                      ? 'Processing...'
                       : isMembership
                         ? 'Subscribe'
                         : 'Buy Now'}
@@ -191,8 +217,9 @@ function BuyClassesContent() {
             {purchaseHistory.map((purchase, idx) => {
               const isExpired = new Date(purchase.expires_at) < new Date()
               const isActive = purchase.status === 'active' && !isExpired
+              const isFullyUsed = !isActive && purchase.credits_remaining === 0
               const isUnlimited = purchase.credits_total === null
-              const purchaseDate = new Date(purchase.created_at).toLocaleDateString('en-US', {
+              const purchaseDate = new Date(purchase.purchased_at || purchase.created_at).toLocaleDateString('en-US', {
                 month: 'short',
                 day: 'numeric',
                 year: 'numeric',
@@ -226,9 +253,13 @@ function BuyClassesContent() {
                         <span className="shrink-0 text-[10px] font-medium text-muted bg-card px-1.5 py-0.5 rounded">
                           Expired
                         </span>
+                      ) : isFullyUsed ? (
+                        <span className="shrink-0 text-[10px] font-medium text-muted bg-card px-1.5 py-0.5 rounded">
+                          Used
+                        </span>
                       ) : (
                         <span className="shrink-0 text-[10px] font-medium text-red-400 bg-red-400/10 px-1.5 py-0.5 rounded">
-                          Used
+                          Inactive
                         </span>
                       )}
                     </div>
