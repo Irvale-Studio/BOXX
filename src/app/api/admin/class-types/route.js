@@ -127,6 +127,23 @@ export async function PUT(request) {
 
     const { id, ...updates } = parsed.data
 
+    // K2: Prevent deactivating if future active classes exist
+    if (updates.active === false) {
+      const { count } = await supabaseAdmin
+        .from('class_schedule')
+        .select('id', { count: 'exact', head: true })
+        .eq('class_type_id', id)
+        .eq('status', 'active')
+        .gt('starts_at', new Date().toISOString())
+
+      if (count > 0) {
+        return NextResponse.json(
+          { error: `Cannot deactivate: ${count} upcoming class${count !== 1 ? 'es' : ''} use this type. Cancel or reassign them first.` },
+          { status: 409 }
+        )
+      }
+    }
+
     const { data: ct, error } = await supabaseAdmin
       .from('class_types')
       .update(updates)

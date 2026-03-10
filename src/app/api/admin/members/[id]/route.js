@@ -79,7 +79,7 @@ const editMemberSchema = z.object({
   name: z.string().min(1).max(100).optional(),
   email: z.string().email().optional(),
   phone: z.string().max(20).nullable().optional(),
-  role: z.enum(['member', 'admin', 'employee']).optional(),
+  role: z.enum(['member', 'admin', 'employee', 'frozen']).optional(),
 })
 
 /**
@@ -142,7 +142,9 @@ export async function PUT(request, { params }) {
 }
 
 /**
- * DELETE /api/admin/members/:id — Deactivate member (anonymize)
+ * DELETE /api/admin/members/:id — Freeze member
+ * Preserves all data but blocks login. Cancels future bookings and removes from waitlists.
+ * Reversible by admin via PUT (set role back to 'member').
  */
 export async function DELETE(request, { params }) {
   try {
@@ -154,61 +156,95 @@ export async function DELETE(request, { params }) {
       return NextResponse.json({ error: 'Database unavailable' }, { status: 500 })
     }
 
-    // Employees cannot deactivate members
+    // Employees cannot freeze members
     if (session.user.role === 'employee') {
-      return NextResponse.json({ error: 'Employees cannot deactivate members' }, { status: 403 })
+      return NextResponse.json({ error: 'Employees cannot freeze members' }, { status: 403 })
     }
 
     const { id } = await params
 
-    // Don't let admin delete themselves
     if (id === session.user.id) {
-      return NextResponse.json({ error: 'Cannot deactivate your own account' }, { status: 400 })
+      return NextResponse.json({ error: 'Cannot freeze your own account' }, { status: 400 })
     }
 
-    // Cancel future bookings
-    await supabaseAdmin
+    // Check current status
+    const { data: user } = await supabaseAdmin
+      .from('users')
+      .select('role')
+      .eq('id', id)
+      .single()
+
+    if (!user) {
+      return NextResponse.json({ error: 'Member not found' }, { status: 404 })
+    }
+
+    if (user.role === 'frozen') {
+      return NextResponse.json({ error: 'Member is already frozen' }, { status: 400 })
+    }
+
+    // Cancel future confirmed bookings (return credits)
+    const { data: futureBookings } = await supabaseAdmin
       .from('bookings')
-      .update({ status: 'cancelled', credit_returned: true })
+      .select('id, class_schedule_id, user_credit_id')
       .eq('user_id', id)
       .eq('status', 'confirmed')
+
+    const futureIds = []
+    if (futureBookings) {
+      for (const b of futureBookings) {
+        // Check if class is in the future
+        const { data: schedule } = await supabaseAdmin
+          .from('class_schedule')
+          .select('starts_at')
+          .eq('id', b.class_schedule_id)
+          .single()
+
+        if (schedule && new Date(schedule.starts_at) > new Date()) {
+          futureIds.push(b.id)
+          // Return credit
+          if (b.user_credit_id) {
+            await supabaseAdmin.rpc('increment_credits', { credit_id: b.user_credit_id, amount: 1 }).catch(() => {
+              // Fallback: direct update
+              supabaseAdmin
+                .from('user_credits')
+                .update({ credits_remaining: supabaseAdmin.raw('credits_remaining + 1') })
+                .eq('id', b.user_credit_id)
+            })
+          }
+        }
+      }
+
+      if (futureIds.length > 0) {
+        await supabaseAdmin
+          .from('bookings')
+          .update({ status: 'cancelled', credit_returned: true })
+          .in('id', futureIds)
+      }
+    }
 
     // Remove from waitlists
     await supabaseAdmin.from('waitlist').delete().eq('user_id', id)
 
-    // Void credits
-    await supabaseAdmin
-      .from('user_credits')
-      .update({ credits_remaining: 0 })
-      .eq('user_id', id)
-
-    // Anonymize
+    // Freeze: set role to 'frozen' — preserves all data
     const { error } = await supabaseAdmin
       .from('users')
-      .update({
-        email: `deactivated-${id}@removed.local`,
-        name: 'Deactivated User',
-        phone: null,
-        bio: null,
-        avatar_url: null,
-        google_id: null,
-        password_hash: null,
-      })
+      .update({ role: 'frozen' })
       .eq('id', id)
 
     if (error) {
-      console.error('[admin/members/id] Delete error:', error)
-      return NextResponse.json({ error: 'Failed to deactivate member' }, { status: 500 })
+      console.error('[admin/members/id] Freeze error:', error)
+      return NextResponse.json({ error: 'Failed to freeze member' }, { status: 500 })
     }
 
     await supabaseAdmin.from('admin_audit_log').insert({
       admin_id: session.user.id,
-      action: 'deactivate_member',
+      action: 'freeze_member',
       target_type: 'user',
       target_id: id,
+      details: { cancelled_bookings: futureIds.length },
     })
 
-    return NextResponse.json({ success: true })
+    return NextResponse.json({ success: true, cancelled_bookings: futureIds.length })
   } catch (error) {
     console.error('[admin/members/id] Error:', error)
     return NextResponse.json({ error: 'Something went wrong.' }, { status: 500 })

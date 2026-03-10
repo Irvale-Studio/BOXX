@@ -36,6 +36,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const valid = await bcrypt.compare(credentials.password, user.password_hash)
         if (!valid) return null
 
+        // Block frozen accounts
+        if (user.role === 'frozen') return null
+
         return {
           id: user.id,
           email: user.email,
@@ -67,6 +70,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           .single()
 
         if (existing) {
+          if (existing.role === 'frozen') return false
           user.id = existing.id
           user.role = existing.role
           user.image = existing.avatar_url

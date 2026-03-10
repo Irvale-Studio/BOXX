@@ -16,6 +16,7 @@ const allSidebarLinks = [
   { name: 'Class Types', href: '/admin/class-types', icon: '🏷️' },
   { name: 'Instructors', href: '/admin/instructors', icon: '🥊' },
   { name: 'Emails', href: '/admin/emails', icon: '✉️' },
+  { name: 'Design', href: '/admin/design', icon: '🎨', adminOnly: true },
   { name: 'Settings', href: '/admin/settings', icon: '⚙️', adminOnly: true },
 ]
 

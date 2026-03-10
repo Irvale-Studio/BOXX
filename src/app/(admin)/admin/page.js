@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
 
@@ -10,12 +9,30 @@ function toDateStr(d) {
   return d.toLocaleDateString('en-CA') // YYYY-MM-DD
 }
 
+function TrendIndicator({ current, previous, label }) {
+  if (previous === 0 && current === 0) return null
+  const diff = current - previous
+  const pct = previous > 0 ? Math.round((diff / previous) * 100) : current > 0 ? 100 : 0
+  const isUp = diff > 0
+  const isFlat = diff === 0
+
+  return (
+    <span className={cn(
+      'text-[10px] font-medium',
+      isFlat ? 'text-muted' : isUp ? 'text-green-400' : 'text-red-400'
+    )}>
+      {isFlat ? '—' : isUp ? `+${pct}%` : `${pct}%`}
+      {label && <span className="text-muted ml-0.5">vs last wk</span>}
+    </span>
+  )
+}
+
 export default function AdminDashboard() {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [expandedClass, setExpandedClass] = useState(null)
   const [dayOffset, setDayOffset] = useState(0)
-  const [dayClasses, setDayClasses] = useState(null) // null = use data.todayClasses, array = fetched
+  const [dayClasses, setDayClasses] = useState(null)
   const [dayLoading, setDayLoading] = useState(false)
 
   const selectedDate = new Date()
@@ -39,10 +56,9 @@ export default function AdminDashboard() {
     fetchDashboard()
   }, [])
 
-  // Fetch classes for non-today days
   useEffect(() => {
     if (dayOffset === 0) {
-      setDayClasses(null) // use initial dashboard data
+      setDayClasses(null)
       return
     }
     async function fetchDay() {
@@ -82,28 +98,32 @@ export default function AdminDashboard() {
   }
 
   const stats = data?.stats || {}
+  const trends = data?.trends || {}
   const recentSignups = data?.recentSignups || []
+  const recentCancellations = data?.recentCancellations || []
+  const attentionClasses = data?.attentionClasses || []
   const lowCreditMembers = data?.lowCreditMembers || []
 
   const statCards = [
+    {
+      title: 'Revenue (Month)',
+      value: `${(stats.revenueThisMonth || 0).toLocaleString()}`,
+      prefix: '฿',
+      icon: '💰',
+    },
     {
       title: 'Total Members',
       value: stats.totalMembers,
       icon: '👥',
       href: '/admin/members',
+      trend: trends.signups,
     },
     {
-      title: 'Active Credits',
-      value: stats.activeCredits,
-      icon: '🎫',
-      sub: `${stats.activeCreditsRecords} active pack${stats.activeCreditsRecords !== 1 ? 's' : ''}`,
-    },
-    {
-      title: "Today's Bookings",
-      value: stats.todayBookings,
+      title: 'Bookings (7d)',
+      value: trends.bookings?.thisWeek || stats.todayBookings,
       icon: '📋',
-      sub: `${stats.totalBookings} all time`,
       href: '/admin/bookings',
+      trend: trends.bookings,
     },
     {
       title: 'Classes Today',
@@ -128,7 +148,15 @@ export default function AdminDashboard() {
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="text-xs text-muted font-medium uppercase tracking-wide">{stat.title}</p>
-                    <p className="text-2xl font-bold text-foreground mt-1">{stat.value}</p>
+                    <p className="text-2xl font-bold text-foreground mt-1">
+                      {stat.prefix && <span className="text-lg text-muted font-normal">{stat.prefix}</span>}
+                      {stat.value}
+                    </p>
+                    {stat.trend && (
+                      <div className="mt-1">
+                        <TrendIndicator current={stat.trend.thisWeek} previous={stat.trend.lastWeek} label />
+                      </div>
+                    )}
                     {stat.sub && <p className="text-xs text-muted mt-1">{stat.sub}</p>}
                   </div>
                   <span className="text-2xl">{stat.icon}</span>
@@ -145,7 +173,7 @@ export default function AdminDashboard() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Day Classes — expandable with attendance marking */}
+        {/* Day Classes */}
         <Card>
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between mb-2">
@@ -154,7 +182,6 @@ export default function AdminDashboard() {
                 View Schedule →
               </Link>
             </div>
-            {/* Day navigation */}
             <div className="flex items-center justify-between">
               <button
                 onClick={() => { setDayOffset((o) => o - 1); setExpandedClass(null) }}
@@ -202,7 +229,6 @@ export default function AdminDashboard() {
 
                   return (
                     <div key={cls.id} className="rounded-lg border border-card-border overflow-hidden">
-                      {/* Clickable header */}
                       <button
                         onClick={() => setExpandedClass(isExpanded ? null : cls.id)}
                         className={cn(
@@ -251,14 +277,11 @@ export default function AdminDashboard() {
                         )}
                       </button>
 
-                      {/* Expanded content */}
                       {isExpanded && !isCancelled && (
                         <div className="px-3 pb-3 border-t border-card-border bg-white/[0.01]">
                           {cls.notes && (
                             <p className="text-xs text-muted mt-2 italic">{cls.notes}</p>
                           )}
-
-                          {/* Attendees */}
                           <div className="mt-3">
                             <p className="text-xs font-medium text-foreground mb-1.5">Attendees ({roster.length})</p>
                             {roster.length > 0 ? (
@@ -280,8 +303,6 @@ export default function AdminDashboard() {
                               <p className="text-[11px] text-muted">No bookings yet</p>
                             )}
                           </div>
-
-                          {/* Waitlist */}
                           {waitlist.length > 0 && (
                             <div className="mt-3">
                               <p className="text-xs font-medium text-foreground mb-1.5">Waitlist ({waitlist.length})</p>
@@ -302,13 +323,69 @@ export default function AdminDashboard() {
                               </div>
                             </div>
                           )}
-
-                          {/* Quick link */}
                           <Link href="/admin/schedule" className="inline-block mt-3 text-[11px] text-accent hover:text-accent-dim transition-colors">
                             Edit in Schedule →
                           </Link>
                         </div>
                       )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Classes Needing Attention */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base">Needs Attention</CardTitle>
+              <Link href="/admin/schedule" className="text-xs text-accent hover:text-accent-dim transition-colors">
+                Schedule →
+              </Link>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {attentionClasses.length === 0 ? (
+              <p className="text-sm text-muted py-4 text-center">All upcoming classes look good.</p>
+            ) : (
+              <div className="space-y-2">
+                {attentionClasses.map((cls) => {
+                  const isFull = cls.booked >= cls.capacity
+                  const isEmpty = cls.booked === 0
+                  const isLow = cls.fill_pct <= 25 && !isEmpty
+                  const date = new Date(cls.starts_at)
+                  const dayStr = date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'Asia/Bangkok' })
+                  const timeStr = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Asia/Bangkok' })
+
+                  return (
+                    <div
+                      key={cls.id}
+                      className="flex items-center gap-3 px-3 py-2 rounded-lg border border-card-border"
+                      style={{ borderLeftWidth: 3, borderLeftColor: cls.color || '#c8a750' }}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">{cls.class_name}</p>
+                        <p className="text-xs text-muted">{dayStr} · {timeStr} · {cls.instructor}</p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className={cn(
+                          'text-xs font-semibold',
+                          isFull ? 'text-red-400' : 'text-amber-400'
+                        )}>
+                          {cls.booked}/{cls.capacity}
+                        </span>
+                        {isFull && (
+                          <span className="text-[10px] font-medium text-red-400 bg-red-400/10 px-1.5 py-0.5 rounded">FULL</span>
+                        )}
+                        {isEmpty && (
+                          <span className="text-[10px] font-medium text-amber-400 bg-amber-400/10 px-1.5 py-0.5 rounded">EMPTY</span>
+                        )}
+                        {isLow && (
+                          <span className="text-[10px] font-medium text-amber-400 bg-amber-400/10 px-1.5 py-0.5 rounded">LOW</span>
+                        )}
+                      </div>
                     </div>
                   )
                 })}
@@ -338,10 +415,8 @@ export default function AdminDashboard() {
                     day: 'numeric',
                     timeZone: 'Asia/Bangkok',
                   })
-
                   return (
                     <div key={user.id} className="flex items-center gap-3 px-3 py-2 rounded-lg border border-card-border">
-                      {/* Avatar */}
                       <div className="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center shrink-0 overflow-hidden">
                         {user.avatar_url ? (
                           <img src={user.avatar_url} alt="" className="w-full h-full object-cover" />
@@ -351,15 +426,50 @@ export default function AdminDashboard() {
                           </span>
                         )}
                       </div>
-
-                      {/* Info */}
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-foreground truncate">{user.name || 'No name'}</p>
                         <p className="text-xs text-muted truncate">{user.email}</p>
                       </div>
-
-                      {/* Date */}
                       <span className="text-xs text-muted shrink-0">{joinDate}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Recent Cancellations */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base">Recent Cancellations</CardTitle>
+              <Link href="/admin/bookings" className="text-xs text-accent hover:text-accent-dim transition-colors">
+                Activity →
+              </Link>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {recentCancellations.length === 0 ? (
+              <p className="text-sm text-muted py-4 text-center">No cancellations in the last 7 days.</p>
+            ) : (
+              <div className="space-y-2">
+                {recentCancellations.map((booking) => {
+                  const cancelDate = booking.cancelled_at
+                    ? new Date(booking.cancelled_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'Asia/Bangkok' })
+                    : '—'
+                  const className = booking.class_schedule?.class_types?.name || 'Class'
+                  const memberName = booking.users?.name || booking.users?.email || 'Unknown'
+
+                  return (
+                    <div key={booking.id} className="flex items-center gap-3 px-3 py-2 rounded-lg border border-card-border">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">{memberName}</p>
+                        <p className="text-xs text-muted truncate">{className} · {cancelDate}</p>
+                      </div>
+                      {booking.late_cancel && (
+                        <span className="text-[10px] font-medium text-red-400 bg-red-400/10 px-1.5 py-0.5 rounded shrink-0">Late</span>
+                      )}
                     </div>
                   )
                 })}
@@ -408,7 +518,7 @@ export default function AdminDashboard() {
           </Card>
         )}
 
-        {/* Quick Links */}
+        {/* Quick Actions */}
         <Card className={cn(lowCreditMembers.length > 0 ? '' : 'lg:col-span-2')}>
           <CardHeader>
             <CardTitle className="text-base">Quick Actions</CardTitle>
@@ -420,8 +530,9 @@ export default function AdminDashboard() {
                 { label: 'Manage Members', href: '/admin/members', icon: '👥' },
                 { label: 'Class Types', href: '/admin/class-types', icon: '🏷️' },
                 { label: 'Edit Packs', href: '/admin/packs', icon: '📦' },
-                { label: 'View Bookings', href: '/admin/bookings', icon: '📋' },
+                { label: 'View Activity', href: '/admin/bookings', icon: '📋' },
                 { label: 'Manage Instructors', href: '/admin/instructors', icon: '🥊' },
+                { label: 'Send Email', href: '/admin/emails', icon: '📧' },
                 { label: 'Studio Settings', href: '/admin/settings', icon: '⚙️' },
               ].map((action) => (
                 <Link

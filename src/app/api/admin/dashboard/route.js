@@ -32,7 +32,20 @@ export async function GET(request) {
     const sevenDaysAgo = new Date(now)
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
 
+    const fourteenDaysAgo = new Date(now)
+    fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14)
+
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+
+    // Last week boundaries for week-over-week
+    const lastWeekStart = new Date(now)
+    lastWeekStart.setDate(lastWeekStart.getDate() - 14)
+    const lastWeekEnd = new Date(now)
+    lastWeekEnd.setDate(lastWeekEnd.getDate() - 7)
+
+    // Upcoming 7 days for "needs attention" classes
+    const nextWeek = new Date(now)
+    nextWeek.setDate(nextWeek.getDate() + 7)
 
     // Run all queries in parallel
     const [
@@ -44,6 +57,12 @@ export async function GET(request) {
       recentSignupsRes,
       lowCreditRes,
       totalBookingsRes,
+      recentCancelsRes,
+      thisWeekBookingsRes,
+      lastWeekBookingsRes,
+      thisWeekSignupsRes,
+      lastWeekSignupsRes,
+      upcomingClassesRes,
     ] = await Promise.all([
       // Total members
       supabaseAdmin
@@ -104,6 +123,58 @@ export async function GET(request) {
         .from('bookings')
         .select('id', { count: 'exact', head: true })
         .eq('status', 'confirmed'),
+
+      // Recent cancellations (last 7 days)
+      supabaseAdmin
+        .from('bookings')
+        .select(`
+          id, status, cancelled_at, late_cancel,
+          users(name, email),
+          class_schedule(starts_at, class_types(name))
+        `)
+        .eq('status', 'cancelled')
+        .gte('cancelled_at', sevenDaysAgo.toISOString())
+        .order('cancelled_at', { ascending: false })
+        .limit(10),
+
+      // This week bookings (for week-over-week)
+      supabaseAdmin
+        .from('bookings')
+        .select('id', { count: 'exact', head: true })
+        .eq('status', 'confirmed')
+        .gte('created_at', sevenDaysAgo.toISOString()),
+
+      // Last week bookings (for week-over-week)
+      supabaseAdmin
+        .from('bookings')
+        .select('id', { count: 'exact', head: true })
+        .eq('status', 'confirmed')
+        .gte('created_at', fourteenDaysAgo.toISOString())
+        .lt('created_at', sevenDaysAgo.toISOString()),
+
+      // This week signups
+      supabaseAdmin
+        .from('users')
+        .select('id', { count: 'exact', head: true })
+        .eq('role', 'member')
+        .gte('created_at', sevenDaysAgo.toISOString()),
+
+      // Last week signups
+      supabaseAdmin
+        .from('users')
+        .select('id', { count: 'exact', head: true })
+        .eq('role', 'member')
+        .gte('created_at', fourteenDaysAgo.toISOString())
+        .lt('created_at', sevenDaysAgo.toISOString()),
+
+      // Upcoming classes (next 7 days) for "needs attention"
+      supabaseAdmin
+        .from('class_schedule')
+        .select('id, starts_at, ends_at, capacity, status, class_types(name, color), instructors(name)')
+        .eq('status', 'active')
+        .gte('starts_at', now.toISOString())
+        .lte('starts_at', nextWeek.toISOString())
+        .order('starts_at', { ascending: true }),
     ])
 
     // Get booking counts + roster + waitlist for today's classes
@@ -169,6 +240,44 @@ export async function GET(request) {
       return sum + (uc.credits_remaining || 0)
     }, 0)
 
+    // Week-over-week trends
+    const thisWeekBookings = thisWeekBookingsRes.count || 0
+    const lastWeekBookings = lastWeekBookingsRes.count || 0
+    const thisWeekSignups = thisWeekSignupsRes.count || 0
+    const lastWeekSignups = lastWeekSignupsRes.count || 0
+
+    // Upcoming classes needing attention (get booking counts)
+    let attentionClasses = []
+    const upcomingClasses = upcomingClassesRes.data || []
+    if (upcomingClasses.length > 0) {
+      const upcomingIds = upcomingClasses.map((c) => c.id)
+      const { data: upcomingBookings } = await supabaseAdmin
+        .from('bookings')
+        .select('class_schedule_id')
+        .in('class_schedule_id', upcomingIds)
+        .eq('status', 'confirmed')
+
+      const upcomingCounts = {}
+      ;(upcomingBookings || []).forEach((b) => {
+        upcomingCounts[b.class_schedule_id] = (upcomingCounts[b.class_schedule_id] || 0) + 1
+      })
+
+      attentionClasses = upcomingClasses
+        .map((c) => ({
+          id: c.id,
+          starts_at: c.starts_at,
+          class_name: c.class_types?.name || 'Class',
+          color: c.class_types?.color,
+          instructor: c.instructors?.name || 'TBA',
+          capacity: c.capacity,
+          booked: upcomingCounts[c.id] || 0,
+          fill_pct: c.capacity > 0 ? Math.round(((upcomingCounts[c.id] || 0) / c.capacity) * 100) : 0,
+        }))
+        .filter((c) => c.fill_pct >= 90 || c.fill_pct <= 25)
+        .sort((a, b) => b.fill_pct - a.fill_pct)
+        .slice(0, 8)
+    }
+
     return NextResponse.json({
       stats: {
         totalMembers: membersRes.count || 0,
@@ -178,8 +287,14 @@ export async function GET(request) {
         totalBookings: totalBookingsRes.count || 0,
         revenueThisMonth: revenue,
       },
+      trends: {
+        bookings: { thisWeek: thisWeekBookings, lastWeek: lastWeekBookings },
+        signups: { thisWeek: thisWeekSignups, lastWeek: lastWeekSignups },
+      },
       todayClasses,
       recentSignups: recentSignupsRes.data || [],
+      recentCancellations: recentCancelsRes.data || [],
+      attentionClasses,
       lowCreditMembers: lowCreditRes.data || [],
     })
   } catch (error) {

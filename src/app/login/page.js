@@ -25,9 +25,11 @@ function LoginForm() {
   const [error, setError] = useState(
     errorParam === 'OAuthAccountNotLinked'
       ? 'This email is already registered with a different sign-in method.'
-      : errorParam
-        ? 'Something went wrong. Please try again.'
-        : ''
+      : errorParam === 'frozen'
+        ? 'Your account has been frozen. Please contact the studio for assistance.'
+        : errorParam
+          ? 'Something went wrong. Please try again.'
+          : ''
   )
 
   const handleEmailLogin = async (e) => {
@@ -82,7 +84,7 @@ function LoginForm() {
 
           {/* Google OAuth */}
           <button
-            onClick={() => signIn('google', { callbackUrl })}
+            onClick={() => signIn('google', { callbackUrl, redirect: true })}
             className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded bg-white text-[#0a0a0a] font-medium hover:bg-gray-100 transition-colors"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24">

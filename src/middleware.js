@@ -15,6 +15,11 @@ export default auth((req) => {
     return NextResponse.redirect(loginUrl)
   }
 
+  // Block frozen users from accessing member routes
+  if (isProtected && session?.user?.role === 'frozen') {
+    return NextResponse.redirect(new URL('/login?error=frozen', req.url))
+  }
+
   // Check admin routes — allow admin and employee roles
   if (pathname.startsWith('/admin')) {
     if (!session) {
@@ -29,7 +34,7 @@ export default auth((req) => {
 
     // Employee restrictions — block admin-only pages
     if (role === 'employee') {
-      const adminOnlyPaths = ['/admin/settings', '/admin/packs']
+      const adminOnlyPaths = ['/admin/settings', '/admin/packs', '/admin/design']
       if (adminOnlyPaths.some((p) => pathname.startsWith(p))) {
         return NextResponse.redirect(new URL('/admin', req.url))
       }

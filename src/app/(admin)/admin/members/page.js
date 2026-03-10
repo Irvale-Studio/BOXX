@@ -138,10 +138,10 @@ export default function AdminMembersPage() {
       const res = await fetch(`/api/admin/members/${selectedMember.id}`, { method: 'DELETE' })
       const data = await res.json()
       if (!res.ok) {
-        setToast({ message: data.error || 'Failed to deactivate', type: 'error' })
+        setToast({ message: data.error || 'Failed to freeze member', type: 'error' })
         return
       }
-      setToast({ message: 'Member deactivated', type: 'success' })
+      setToast({ message: `Member frozen. ${data.cancelled_bookings || 0} booking(s) cancelled.`, type: 'success' })
       setDeleteDialog(false)
       setSelectedMember(null)
       setDetail(null)
@@ -276,14 +276,40 @@ export default function AdminMembersPage() {
                     <Button size="sm" variant="outline" onClick={() => { setGrantDialog(true); setGrantPackId(packs[0]?.id || ''); setGrantNotes('') }}>
                       Grant Credits
                     </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="text-red-400 border-red-400/30 hover:bg-red-400/10"
-                      onClick={() => setDeleteDialog(true)}
-                    >
-                      Deactivate
-                    </Button>
+                    {detail.member.role === 'frozen' ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-green-400 border-green-400/30 hover:bg-green-400/10"
+                        onClick={async () => {
+                          try {
+                            const res = await fetch(`/api/admin/members/${selectedMember.id}`, {
+                              method: 'PUT',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ role: 'member' }),
+                            })
+                            if (res.ok) {
+                              setToast({ message: 'Member unfrozen', type: 'success' })
+                              openDetail(selectedMember)
+                              fetchMembers()
+                            }
+                          } catch {
+                            setToast({ message: 'Failed to unfreeze', type: 'error' })
+                          }
+                        }}
+                      >
+                        Unfreeze
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-red-400 border-red-400/30 hover:bg-red-400/10"
+                        onClick={() => setDeleteDialog(true)}
+                      >
+                        Freeze
+                      </Button>
+                    )}
                   </div>
                 </div>
 
@@ -455,15 +481,15 @@ export default function AdminMembersPage() {
         <Dialog open={deleteDialog} onOpenChange={(open) => !open && setDeleteDialog(false)}>
           <DialogContent className="sm:max-w-md" onOpenAutoFocus={(e) => e.preventDefault()}>
             <DialogHeader>
-              <DialogTitle>Deactivate Member</DialogTitle>
+              <DialogTitle>Freeze Member</DialogTitle>
               <DialogDescription>
-                This will cancel all bookings, void credits, remove from waitlists, and anonymize the account. This cannot be undone.
+                This will cancel future bookings (credits returned), remove from waitlists, and block login. Data is preserved and the member can be unfrozen later.
               </DialogDescription>
             </DialogHeader>
             <DialogFooter className="gap-2 sm:gap-0">
-              <Button variant="outline" onClick={() => setDeleteDialog(false)}>Keep Member</Button>
+              <Button variant="outline" onClick={() => setDeleteDialog(false)}>Cancel</Button>
               <Button className="bg-red-600 hover:bg-red-700 text-white" onClick={handleDelete} disabled={deleteSubmitting}>
-                {deleteSubmitting ? 'Deactivating...' : 'Deactivate'}
+                {deleteSubmitting ? 'Freezing...' : 'Freeze Member'}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -632,6 +658,12 @@ export default function AdminMembersPage() {
                       <p className="text-sm font-medium text-foreground truncate">{member.name || 'No name'}</p>
                       {member.role === 'admin' && (
                         <span className="text-[10px] font-medium text-accent bg-accent/10 px-1.5 py-0.5 rounded shrink-0">Admin</span>
+                      )}
+                      {member.role === 'employee' && (
+                        <span className="text-[10px] font-medium text-sky-400 bg-sky-400/10 px-1.5 py-0.5 rounded shrink-0">Staff</span>
+                      )}
+                      {member.role === 'frozen' && (
+                        <span className="text-[10px] font-medium text-blue-400 bg-blue-400/10 px-1.5 py-0.5 rounded shrink-0">Frozen</span>
                       )}
                     </div>
                     <p className="text-xs text-muted truncate sm:hidden">{member.email}</p>

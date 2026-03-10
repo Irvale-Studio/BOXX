@@ -124,6 +124,24 @@ export async function PUT(request) {
 
     const { id, ...updates } = parsed.data
 
+    // K4: Prevent deactivating if members have active credits from this pack
+    if (updates.active === false) {
+      const { count } = await supabaseAdmin
+        .from('user_credits')
+        .select('id', { count: 'exact', head: true })
+        .eq('class_pack_id', id)
+        .eq('status', 'active')
+        .gt('expires_at', new Date().toISOString())
+        .gt('credits_remaining', 0)
+
+      if (count > 0) {
+        return NextResponse.json(
+          { error: `Cannot deactivate: ${count} member${count !== 1 ? 's' : ''} still ${count !== 1 ? 'have' : 'has'} active credits from this pack.` },
+          { status: 409 }
+        )
+      }
+    }
+
     const { data: pack, error } = await supabaseAdmin
       .from('class_packs')
       .update(updates)
