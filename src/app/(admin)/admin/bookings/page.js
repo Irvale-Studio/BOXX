@@ -285,13 +285,24 @@ export default function AdminEventsPage() {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-start justify-between gap-2">
                               <div className="min-w-0">
-                                <p className="text-sm font-medium text-foreground">{event.label}</p>
-                                <p className="text-xs text-muted mt-0.5 truncate">{event.detail}</p>
+                                {event.type === 'admin' && event.detail ? (
+                                  <>
+                                    <p className="text-sm font-medium text-foreground">{event.detail}</p>
+                                    <p className="text-xs text-muted mt-0.5">{event.label}</p>
+                                  </>
+                                ) : (
+                                  <>
+                                    <p className="text-sm font-medium text-foreground">{event.label}</p>
+                                    {event.detail && (
+                                      <p className="text-xs text-muted mt-0.5">{event.detail}</p>
+                                    )}
+                                  </>
+                                )}
                               </div>
                               <span className="text-xs text-muted whitespace-nowrap shrink-0">{time}</span>
                             </div>
 
-                            {/* Member info inline */}
+                            {/* User info inline */}
                             {event.user && (
                               <div className="flex items-center gap-2 mt-2">
                                 <div className="w-5 h-5 rounded-full bg-accent/10 flex items-center justify-center shrink-0 overflow-hidden">
@@ -304,7 +315,7 @@ export default function AdminEventsPage() {
                                   )}
                                 </div>
                                 <span className="text-xs text-muted truncate">
-                                  {event.user.name || 'Unknown'} &middot; {event.user.email}
+                                  {event.type === 'admin' ? 'by ' : ''}{event.user.name || 'Unknown'} &middot; {event.user.email}
                                 </span>
                               </div>
                             )}
@@ -329,7 +340,7 @@ export default function AdminEventsPage() {
                                   <p className="text-foreground mt-0.5">{formatTime(event.meta.classTime)}</p>
                                 </div>
                               )}
-                              {event.meta?.lateCancellation && (
+                              {event.meta?.lateCancel && (
                                 <div className="p-2 rounded bg-background/30">
                                   <span className="text-muted">Late Cancel</span>
                                   <p className="text-red-400 mt-0.5">Yes — no credit refund</p>
@@ -345,15 +356,50 @@ export default function AdminEventsPage() {
                               )}
                               {event.user && (
                                 <div className="p-2 rounded bg-background/30 sm:col-span-2">
-                                  <span className="text-muted">Member</span>
+                                  <span className="text-muted">{event.type === 'admin' ? 'Action by' : 'Member'}</span>
                                   <p className="text-foreground mt-0.5">{event.user.name || 'Unknown'} ({event.user.email})</p>
                                 </div>
                               )}
-                              {event.meta?.adminAction && (
-                                <div className="p-2 rounded bg-background/30 sm:col-span-2">
-                                  <span className="text-muted">Admin Action</span>
-                                  <p className="text-foreground mt-0.5">{event.meta.adminAction}</p>
-                                </div>
+                              {/* Admin event meta details */}
+                              {event.type === 'admin' && event.meta && (
+                                <>
+                                  {event.meta.memberName && (
+                                    <div className="p-2 rounded bg-background/30">
+                                      <span className="text-muted">Member</span>
+                                      <p className="text-foreground mt-0.5">{event.meta.memberName}{event.meta.memberEmail ? ` (${event.meta.memberEmail})` : ''}</p>
+                                    </div>
+                                  )}
+                                  {event.meta.className && (
+                                    <div className="p-2 rounded bg-background/30">
+                                      <span className="text-muted">Class</span>
+                                      <p className="text-foreground mt-0.5">{event.meta.className}{event.meta.classDate ? ` — ${formatTime(event.meta.classDate)}` : ''}</p>
+                                    </div>
+                                  )}
+                                  {event.meta.credits && (
+                                    <div className="p-2 rounded bg-background/30">
+                                      <span className="text-muted">Credits</span>
+                                      <p className="text-foreground mt-0.5">{event.meta.credits} ({event.meta.packName || 'pack'})</p>
+                                    </div>
+                                  )}
+                                  {event.meta.creditsRefunded > 0 && (
+                                    <div className="p-2 rounded bg-background/30">
+                                      <span className="text-muted">Credits Refunded</span>
+                                      <p className="text-green-400 mt-0.5">{event.meta.creditsRefunded}</p>
+                                    </div>
+                                  )}
+                                  {event.meta.classesCancelled > 0 && (
+                                    <div className="p-2 rounded bg-background/30">
+                                      <span className="text-muted">Classes Cancelled</span>
+                                      <p className="text-red-400 mt-0.5">{event.meta.classesCancelled}</p>
+                                    </div>
+                                  )}
+                                  {event.meta.to && (
+                                    <div className="p-2 rounded bg-background/30 sm:col-span-2">
+                                      <span className="text-muted">Sent To</span>
+                                      <p className="text-foreground mt-0.5">{event.meta.to}{event.meta.subject ? ` — "${event.meta.subject}"` : ''}</p>
+                                    </div>
+                                  )}
+                                </>
                               )}
                             </div>
                           </div>

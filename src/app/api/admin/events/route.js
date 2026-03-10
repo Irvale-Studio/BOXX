@@ -63,11 +63,12 @@ export async function GET(request) {
 
       const { data } = await q
       ;(data || []).forEach((b) => {
+        const className = b.class_schedule?.class_types?.name || 'Unknown class'
         events.push({
           id: `booking-${b.id}`,
           type: 'booking',
-          label: 'Booked a class',
-          detail: b.class_schedule?.class_types?.name || 'Unknown class',
+          label: `Booked ${className}`,
+          detail: b.class_schedule?.starts_at ? new Date(b.class_schedule.starts_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Asia/Bangkok' }) : '',
           color: b.class_schedule?.class_types?.color || '#c8a750',
           user: b.users,
           timestamp: b.created_at,
@@ -99,11 +100,12 @@ export async function GET(request) {
 
       const { data } = await q
       ;(data || []).forEach((b) => {
+        const cancelClassName = b.class_schedule?.class_types?.name || 'Unknown class'
         events.push({
           id: `cancel-${b.id}`,
           type: 'cancellation',
-          label: b.late_cancel ? 'Late cancelled' : 'Cancelled booking',
-          detail: b.class_schedule?.class_types?.name || 'Unknown class',
+          label: b.late_cancel ? `Late cancelled ${cancelClassName}` : `Cancelled ${cancelClassName}`,
+          detail: b.class_schedule?.starts_at ? new Date(b.class_schedule.starts_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Asia/Bangkok' }) : '',
           color: b.class_schedule?.class_types?.color || '#c8a750',
           user: b.users,
           timestamp: b.cancelled_at || b.created_at,
