@@ -106,12 +106,39 @@ export async function POST(request) {
       }
     }
 
+    // Look up member + class info for audit details (reuse rosterClass if available)
+    let auditClassName = rosterClass?.class_types?.name || 'Unknown class'
+    let auditClassDate = rosterClass?.starts_at || null
+    let auditMemberName = null
+    let auditMemberEmail = null
+    if (rosterClass?.is_private && addedUser) {
+      auditMemberName = addedUser.name
+      auditMemberEmail = addedUser.email
+    } else {
+      const { data: auditUser } = await supabaseAdmin
+        .from('users')
+        .select('name, email')
+        .eq('id', userId)
+        .single()
+      auditMemberName = auditUser?.name
+      auditMemberEmail = auditUser?.email
+      if (!rosterClass) {
+        const { data: auditClass } = await supabaseAdmin
+          .from('class_schedule')
+          .select('starts_at, class_types(name)')
+          .eq('id', classId)
+          .single()
+        auditClassName = auditClass?.class_types?.name || 'Unknown class'
+        auditClassDate = auditClass?.starts_at || null
+      }
+    }
+
     await supabaseAdmin.from('admin_audit_log').insert({
       admin_id: session.user.id,
       action: 'admin_add_to_class',
       target_type: 'booking',
       target_id: booking.id,
-      details: { classId, userId },
+      details: { classId, userId, memberName: auditMemberName, memberEmail: auditMemberEmail, className: auditClassName, classDate: auditClassDate },
     })
 
     return NextResponse.json({ success: true, bookingId: booking.id })
@@ -155,12 +182,18 @@ export async function DELETE(request) {
         return NextResponse.json({ error: 'Failed to remove from waitlist' }, { status: 500 })
       }
 
+      // Look up member + class info for audit details
+      const [{ data: wlUser }, { data: wlClass }] = await Promise.all([
+        supabaseAdmin.from('users').select('name, email').eq('id', userId).single(),
+        supabaseAdmin.from('class_schedule').select('starts_at, class_types(name)').eq('id', classId).single(),
+      ])
+
       await supabaseAdmin.from('admin_audit_log').insert({
         admin_id: session.user.id,
         action: 'admin_remove_from_waitlist',
         target_type: 'waitlist',
         target_id: classId,
-        details: { classId, userId },
+        details: { classId, userId, memberName: wlUser?.name, memberEmail: wlUser?.email, className: wlClass?.class_types?.name, classDate: wlClass?.starts_at },
       })
 
       return NextResponse.json({ success: true })
@@ -205,26 +238,21 @@ export async function DELETE(request) {
       }
     }
 
+    // Look up member + class info for audit log and email
+    const [{ data: removeClass }, { data: removedUser }] = await Promise.all([
+      supabaseAdmin.from('class_schedule').select('starts_at, class_types(name)').eq('id', classId).single(),
+      supabaseAdmin.from('users').select('email, name').eq('id', userId).single(),
+    ])
+
     await supabaseAdmin.from('admin_audit_log').insert({
       admin_id: session.user.id,
       action: 'admin_remove_from_class',
       target_type: 'booking',
       target_id: booking.id,
-      details: { classId, userId, refundCredit },
+      details: { classId, userId, refundCredit, memberName: removedUser?.name, memberEmail: removedUser?.email, className: removeClass?.class_types?.name, classDate: removeClass?.starts_at },
     })
 
     // Send removal notification email (non-blocking)
-    const { data: removeClass } = await supabaseAdmin
-      .from('class_schedule')
-      .select('starts_at, class_types(name)')
-      .eq('id', classId)
-      .single()
-
-    const { data: removedUser } = await supabaseAdmin
-      .from('users')
-      .select('email, name')
-      .eq('id', userId)
-      .single()
 
     if (removedUser?.email && removeClass) {
       const startDate = new Date(removeClass.starts_at)

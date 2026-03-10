@@ -163,12 +163,18 @@ export async function PUT(request) {
       }
     }
 
+    // Look up member + class info for audit details
+    const [{ data: cancelUser }, { data: cancelClass }] = await Promise.all([
+      supabaseAdmin.from('users').select('name, email').eq('id', booking.user_id).single(),
+      supabaseAdmin.from('class_schedule').select('starts_at, class_types(name)').eq('id', booking.class_schedule_id).single(),
+    ])
+
     await supabaseAdmin.from('admin_audit_log').insert({
       admin_id: session.user.id,
       action: 'booking_cancel',
       target_type: 'booking',
       target_id: bookingId,
-      details: { userId: booking.user_id, refundCredit },
+      details: { memberName: cancelUser?.name, memberEmail: cancelUser?.email, className: cancelClass?.class_types?.name, classDate: cancelClass?.starts_at, refundCredit },
     })
 
     // Promote first eligible waitlisted user into the freed spot

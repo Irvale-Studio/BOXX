@@ -126,12 +126,19 @@ export async function PUT(request, { params }) {
       return NextResponse.json({ error: 'Failed to update member' }, { status: 500 })
     }
 
+    // Get updated member info for audit details
+    const { data: updatedMember } = await supabaseAdmin
+      .from('users')
+      .select('name, email')
+      .eq('id', id)
+      .single()
+
     await supabaseAdmin.from('admin_audit_log').insert({
       admin_id: session.user.id,
       action: 'edit_member',
       target_type: 'user',
       target_id: id,
-      details: updates,
+      details: { memberName: updatedMember?.name, memberEmail: updatedMember?.email, changes: updates },
     })
 
     return NextResponse.json({ success: true })
@@ -236,12 +243,19 @@ export async function DELETE(request, { params }) {
       return NextResponse.json({ error: 'Failed to freeze member' }, { status: 500 })
     }
 
+    // Get member info for audit details
+    const { data: frozenMember } = await supabaseAdmin
+      .from('users')
+      .select('name, email')
+      .eq('id', id)
+      .single()
+
     await supabaseAdmin.from('admin_audit_log').insert({
       admin_id: session.user.id,
       action: 'freeze_member',
       target_type: 'user',
       target_id: id,
-      details: { cancelled_bookings: futureIds.length },
+      details: { memberName: frozenMember?.name, memberEmail: frozenMember?.email, cancelled_bookings: futureIds.length },
     })
 
     return NextResponse.json({ success: true, cancelled_bookings: futureIds.length })

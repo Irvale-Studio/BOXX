@@ -81,7 +81,7 @@ export async function POST(request) {
       action: 'notify_class_change',
       target_type: 'class_schedule',
       target_id: classId,
-      details: { memberCount: members.length, emails: members.map((m) => m.email), changes },
+      details: { className: cls.class_types?.name, startsAt: cls.starts_at, memberCount: members.length, changes },
     })
 
     return NextResponse.json({

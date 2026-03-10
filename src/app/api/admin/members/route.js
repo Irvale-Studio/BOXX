@@ -177,13 +177,20 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Failed to grant credits' }, { status: 500 })
     }
 
+    // Get member info for audit details
+    const { data: grantUser } = await supabaseAdmin
+      .from('users')
+      .select('name, email')
+      .eq('id', userId)
+      .single()
+
     // Audit log
     await supabaseAdmin.from('admin_audit_log').insert({
       admin_id: session.user.id,
       action: 'grant_credits',
       target_type: 'user_credits',
       target_id: credit.id,
-      details: { userId, packId, packName: pack.name, notes },
+      details: { userId, memberName: grantUser?.name, memberEmail: grantUser?.email, packName: pack.name, credits: pack.credits, notes },
     })
 
     return NextResponse.json({ success: true, credit })

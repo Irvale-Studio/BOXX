@@ -161,7 +161,7 @@ export async function PUT(request) {
       action: 'update_class_type',
       target_type: 'class_types',
       target_id: id,
-      details: updates,
+      details: { classTypeName: ct.name, changes: updates },
     })
 
     return NextResponse.json({ classType: ct })

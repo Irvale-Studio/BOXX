@@ -118,14 +118,20 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Failed to create recurring classes' }, { status: 500 })
     }
 
+    // Look up class type name for audit details
+    const { data: recurClassType } = await supabaseAdmin
+      .from('class_types')
+      .select('name')
+      .eq('id', classTypeId)
+      .single()
+
     await supabaseAdmin.from('admin_audit_log').insert({
       admin_id: session.user.id,
       action: 'create_recurring_classes',
       target_type: 'class_schedule',
       details: {
         recurringId,
-        classTypeId,
-        instructorId,
+        className: recurClassType?.name,
         days,
         weeks,
         startTime,

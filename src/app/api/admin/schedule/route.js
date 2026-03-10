@@ -182,7 +182,7 @@ export async function POST(request) {
       action: 'create_class',
       target_type: 'class_schedule',
       target_id: cls.id,
-      details: { classTypeId, instructorId, startsAt },
+      details: { className: cls.class_types?.name, instructorName: cls.instructors?.name, startsAt },
     })
 
     return NextResponse.json({ class: cls })
@@ -372,7 +372,7 @@ export async function PUT(request) {
       action: updateAll ? 'update_recurring_classes' : 'update_class',
       target_type: 'class_schedule',
       target_id: id,
-      details: { ...updates, siblingsUpdated },
+      details: { className: cls.class_types?.name, startsAt: cls.starts_at, ...updates, siblingsUpdated },
     })
 
     return NextResponse.json({ class: cls, siblingsUpdated })

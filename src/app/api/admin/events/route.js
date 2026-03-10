@@ -147,7 +147,7 @@ export async function GET(request) {
     if (type === 'all' || type === 'admin') {
       let q = supabaseAdmin
         .from('admin_audit_log')
-        .select('id, action, target_type, target_id, details, created_at')
+        .select('id, admin_id, action, target_type, target_id, details, created_at, users:admin_id(name, email, avatar_url)')
 
       if (dateFrom) q = q.gte('created_at', new Date(dateFrom).toISOString())
       if (dateTo) {
@@ -158,23 +158,87 @@ export async function GET(request) {
 
       const { data } = await q
       ;(data || []).forEach((log) => {
+        const d = log.details || {}
         const actionLabels = {
-          'booking_cancel': 'Admin cancelled booking',
-          'create_class': 'Admin created class',
-          'update_class': 'Admin updated class',
-          'delete_class': 'Admin deleted class',
-          'create_recurring_classes': 'Admin created recurring classes',
-          'update_member': 'Admin updated member',
-          'roster_remove': 'Admin removed from roster',
-          'waitlist_promote': 'Admin promoted from waitlist',
-          'waitlist_remove': 'Admin removed from waitlist',
+          'booking_cancel': 'Cancelled booking',
+          'create_class': 'Created class',
+          'update_class': 'Updated class',
+          'update_recurring_classes': 'Updated recurring classes',
+          'cancel_class': 'Cancelled class',
+          'cancel_recurring_classes': 'Cancelled recurring classes',
+          'create_recurring_classes': 'Created recurring classes',
+          'admin_add_to_class': 'Added member to class',
+          'admin_remove_from_class': 'Removed member from class',
+          'admin_remove_from_waitlist': 'Removed from waitlist',
+          'edit_member': 'Edited member',
+          'freeze_member': 'Froze member',
+          'grant_credits': 'Granted credits',
+          'create_class_type': 'Created class type',
+          'update_class_type': 'Updated class type',
+          'notify_class_change': 'Notified class change',
+          'send_direct_email': 'Sent email',
+        }
+
+        // Build a human-readable detail string from the details JSONB
+        let detail = ''
+        switch (log.action) {
+          case 'admin_add_to_class':
+            detail = `Added ${d.memberName || 'member'} to ${d.className || 'class'}`
+            break
+          case 'admin_remove_from_class':
+            detail = `Removed ${d.memberName || 'member'} from ${d.className || 'class'}`
+            break
+          case 'admin_remove_from_waitlist':
+            detail = `Removed ${d.memberName || 'member'} from ${d.className || 'class'} waitlist`
+            break
+          case 'booking_cancel':
+            detail = `Cancelled ${d.memberName || 'member'}'s booking for ${d.className || 'class'}`
+            break
+          case 'create_class':
+            detail = `${d.className || 'Class'} — ${d.instructorName || ''}`
+            break
+          case 'update_class':
+          case 'update_recurring_classes':
+            detail = `${d.className || 'Class'}${d.siblingsUpdated ? ` (+${d.siblingsUpdated} siblings)` : ''}`
+            break
+          case 'cancel_class':
+          case 'cancel_recurring_classes':
+            detail = `${d.className || 'Class'} — ${d.classesCancelled || 1} cancelled, ${d.creditsRefunded || 0} credits refunded`
+            break
+          case 'create_recurring_classes':
+            detail = `${d.className || 'Class'} — ${d.count || 0} classes created`
+            break
+          case 'edit_member':
+            detail = `${d.memberName || 'Member'} (${d.memberEmail || ''})`
+            break
+          case 'freeze_member':
+            detail = `Froze ${d.memberName || 'member'} (${d.memberEmail || ''})`
+            break
+          case 'grant_credits':
+            detail = `Granted ${d.credits || '?'} credits (${d.packName || 'pack'}) to ${d.memberName || 'member'}`
+            break
+          case 'create_class_type':
+            detail = d.name || 'New class type'
+            break
+          case 'update_class_type':
+            detail = d.classTypeName || 'Class type'
+            break
+          case 'notify_class_change':
+            detail = `${d.className || 'Class'} — ${d.memberCount || 0} members notified`
+            break
+          case 'send_direct_email':
+            detail = `To ${d.to || '?'} — "${d.subject || ''}"`
+            break
+          default:
+            detail = `${log.target_type || ''}${log.target_id ? ` #${log.target_id.slice(0, 8)}` : ''}`
         }
 
         events.push({
           id: `admin-${log.id}`,
           type: 'admin',
           label: actionLabels[log.action] || log.action.replace(/_/g, ' '),
-          detail: `${log.target_type || ''}${log.target_id ? ` #${log.target_id.slice(0, 8)}` : ''}`,
+          detail,
+          user: log.users ? { id: log.admin_id, name: log.users.name, email: log.users.email, avatar_url: log.users.avatar_url } : null,
           timestamp: log.created_at,
           meta: log.details,
         })
