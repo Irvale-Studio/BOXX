@@ -736,28 +736,32 @@ const classImageMap = {
 }
 
 function getClassImage(cls) {
-  if (cls.is_private) return '/images/studio/pt-session.webp'
-  const icon = cls.class_types?.icon?.toLowerCase() || ''
-  if (classImageMap[icon]) return classImageMap[icon]
-  const name = (cls.class_types?.name || '').toLowerCase()
-  if (name.includes('beginner')) return classImageMap.beginner
-  if (name.includes('inter')) return classImageMap.intermediate
-  if (name.includes('train')) return classImageMap.train
-  if (name.includes('junior')) return classImageMap.juniors
+  try {
+    if (cls?.is_private || cls?.class_types?.is_private) return '/images/studio/pt-session.webp'
+    const icon = cls?.class_types?.icon?.toLowerCase() || ''
+    if (classImageMap[icon]) return classImageMap[icon]
+    const name = (cls?.class_types?.name || '').toLowerCase()
+    if (name.includes('beginner')) return classImageMap.beginner
+    if (name.includes('inter')) return classImageMap.intermediate
+    if (name.includes('train')) return classImageMap.train
+    if (name.includes('junior')) return classImageMap.juniors
+  } catch {}
   return classImageMap.beginner
 }
 
 function getClassColor(cls) {
-  // Always use admin-set class type color first
-  if (cls.class_types?.color) return cls.class_types.color
-  // Fallbacks based on icon/name
-  const icon = cls.class_types?.icon?.toLowerCase() || ''
-  const name = (cls.class_types?.name || '').toLowerCase()
-  if (cls.is_private) return '#f59e0b'
-  if (icon === 'beginner' || name.includes('beginner')) return '#8b5cf6'
-  if (icon === 'intermediate' || name.includes('inter')) return '#e74c3c'
-  if (icon === 'train' || name.includes('train')) return '#3498db'
-  if (icon === 'juniors' || name.includes('junior')) return '#2ecc71'
+  try {
+    // Always use admin-set class type color first
+    if (cls?.class_types?.color) return cls.class_types.color
+    // Fallbacks based on icon/name
+    const icon = cls?.class_types?.icon?.toLowerCase() || ''
+    const name = (cls?.class_types?.name || '').toLowerCase()
+    if (cls?.is_private || cls?.class_types?.is_private) return '#f59e0b'
+    if (icon === 'beginner' || name.includes('beginner')) return '#8b5cf6'
+    if (icon === 'intermediate' || name.includes('inter')) return '#e74c3c'
+    if (icon === 'train' || name.includes('train')) return '#3498db'
+    if (icon === 'juniors' || name.includes('junior')) return '#2ecc71'
+  } catch {}
   return '#c8a750'
 }
 
@@ -1081,19 +1085,16 @@ function ScheduleSection({ credits, onUpdate, sharedClassId, view, onViewChange,
 
   // Shared class card renderer (used by both views)
   function renderClassCard(cls, compact = false) {
+    if (!cls) return null
     const isExpanded = expandedId === cls.id
-    const startTime = new Date(cls.starts_at).toLocaleTimeString('en-US', {
+    const timeFmt = { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Bangkok' }
+    const startTime = cls.starts_at ? new Date(cls.starts_at).toLocaleTimeString('en-US', timeFmt) : '--:--'
+    const endTime = cls.ends_at ? new Date(cls.ends_at).toLocaleTimeString('en-US', {
       hour: '2-digit',
       minute: '2-digit',
       hour12: false,
       timeZone: 'Asia/Bangkok',
-    })
-    const endTime = new Date(cls.ends_at).toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false,
-      timeZone: 'Asia/Bangkok',
-    })
+    }) : '--:--'
     const classImage = getClassImage(cls)
     const classColor = getClassColor(cls)
 
@@ -1622,8 +1623,8 @@ function ScheduleSection({ credits, onUpdate, sharedClassId, view, onViewChange,
                 {(() => {
                   const cls = schedule.find((c) => c.id === expandedId)
                   if (!cls) return null
-                  const startTime = new Date(cls.starts_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Bangkok' })
-                  const endTime = new Date(cls.ends_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Bangkok' })
+                  const startTime = cls.starts_at ? new Date(cls.starts_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Bangkok' }) : '--:--'
+                  const endTime = cls.ends_at ? new Date(cls.ends_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Bangkok' }) : '--:--'
                   const classImage = getClassImage(cls)
                   const classColor = getClassColor(cls)
                   return (
@@ -1782,18 +1783,9 @@ function BookingsSection({ upcoming, past, waitlist = [], onUpdate, isGoogleUser
 
     const cardId = isWaitlist ? `w-${b.id}` : b.id
     const isExpanded = expandedId === cardId
-    const startTime = new Date(cls.starts_at).toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false,
-      timeZone: 'Asia/Bangkok',
-    })
-    const endTime = new Date(cls.ends_at).toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false,
-      timeZone: 'Asia/Bangkok',
-    })
+    const timeFmt = { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Bangkok' }
+    const startTime = cls.starts_at ? new Date(cls.starts_at).toLocaleTimeString('en-US', timeFmt) : '--:--'
+    const endTime = cls.ends_at ? new Date(cls.ends_at).toLocaleTimeString('en-US', timeFmt) : '--:--'
     const classImage = getClassImage(cls)
     const classColor = getClassColor(cls)
     const hoursUntil = isUpcoming ? (new Date(cls.starts_at) - Date.now()) / (1000 * 60 * 60) : 0
