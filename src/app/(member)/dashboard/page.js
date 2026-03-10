@@ -1270,7 +1270,7 @@ function ScheduleSection({ credits, onUpdate, sharedClassId, view, onViewChange,
                 className="overflow-hidden"
                 onClick={(e) => e.stopPropagation()}
               >
-                {renderExpandedContent(cls, startTime, endTime)}
+                {renderExpandedContent(cls, startTime, endTime, googleCalUrl)}
               </motion.div>
             )}
           </AnimatePresence>
@@ -1279,7 +1279,7 @@ function ScheduleSection({ credits, onUpdate, sharedClassId, view, onViewChange,
     )
   }
 
-  function renderExpandedContent(cls, startTime, endTime) {
+  function renderExpandedContent(cls, startTime, endTime, googleCalUrl = null) {
     return (
       <div className="mt-4 pt-4 border-t border-card-border space-y-4">
         <div className="max-w-[50%] space-y-4">
@@ -1635,6 +1635,16 @@ function ScheduleSection({ credits, onUpdate, sharedClassId, view, onViewChange,
                   const endTime = cls.ends_at ? new Date(cls.ends_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Bangkok' }) : '--:--'
                   const classImage = getClassImage(cls)
                   const classColor = getClassColor(cls)
+                  let calUrl = null
+                  if (isGoogleUser && cls.is_booked) {
+                    try {
+                      const calStart = new Date(cls.starts_at)
+                      const calEnd = cls.ends_at ? new Date(cls.ends_at) : new Date(calStart.getTime() + 60 * 60 * 1000)
+                      const fmtCal = (d) => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')
+                      const calTitle = `${cls.class_types?.name || 'BOXX Class'}${cls.instructors?.name ? ` with ${cls.instructors.name}` : ''}`
+                      calUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(calTitle)}&dates=${fmtCal(calStart)}/${fmtCal(calEnd)}&details=${encodeURIComponent('BOXX Boxing Studio — Chiang Mai')}&location=${encodeURIComponent('89/2 Bumruang Road, Wat Ket, Chiang Mai 50000')}`
+                    } catch {}
+                  }
                   return (
                     <Card
                       className="md:mt-3 ring-1 ring-accent/30 overflow-hidden relative rounded-t-2xl md:rounded-lg"
@@ -1689,7 +1699,7 @@ function ScheduleSection({ credits, onUpdate, sharedClassId, view, onViewChange,
                         </div>
 
                         {/* Expanded details */}
-                        {renderExpandedContent(cls, startTime, endTime)}
+                        {renderExpandedContent(cls, startTime, endTime, calUrl)}
                       </CardContent>
                     </Card>
                   )
