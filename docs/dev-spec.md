@@ -376,9 +376,6 @@ All email templates live in `src/lib/email.js` (Resend, branded dark HTML).
 - **Hosting:** Vercel (planned)
 
 
-
-
-
 ---
 
 ## BUILD BATCH 1 — Autonomous Build (no Stripe/Resend keys needed)
@@ -490,3 +487,18 @@ All email templates live in `src/lib/email.js` (Resend, branded dark HTML).
 - [x] **Member engagement widget** — full-width, two tabs:
   - **At Risk:** members with active credits but no bookings in 14+ days, "Never booked" badge, one-click "Remind" email button
   - **Top Members:** leaderboard of most active members by bookings in last 30 days (gold/silver/bronze styling)
+
+### Homepage
+- [x] **Hero button consistency** — equal-width buttons (sm:w-[260px] + whitespace-nowrap), transparent hover fill on secondary buttons
+- [x] **Nav legibility gradient** — dark gradient at top of hero for visible nav links against background image
+- [x] **WhatsApp floating widget** — desktop-only, bottom-right, dark card style with gold WhatsApp icon, breathing pulse ring, tooltip card on hover ("Message us on WhatsApp")
+
+### Member Dashboard
+- [x] **Profile widget redesign** — merged ProfileSection + GamificationWidget into one cohesive card: larger avatar (72px), inline stats (classes/streak/badges as subtitle), collapsible badges, credits in distinct bottom band
+- [x] **Avatar upload fix (mobile)** — accept any image/* MIME type (was failing on mobile Chrome HEIC/HEIF), increased max to 10MB
+- [x] **Avatar instant update** — local state for immediate preview after upload, switched from Next.js Image to plain img to avoid aggressive caching
+- [x] **Hide bio/email from profile view** — kept in edit form only
+- [x] **Buy Packs CTA** — only shown when user has no active credits, inside credit widget
+
+### Seed Data
+- [x] **Rich seed SQL** — varied data for Jacob, Bert, Test User across 6 weeks: streaks, badges, waitlists, cancellations, multiple active packs with different expiry/usage states
