@@ -134,7 +134,7 @@ export default function Navbar() {
             <Link
               href="/book"
               target="_blank"
-              className="ml-2 px-8 py-3.5 text-xs tracking-[0.2em] uppercase bg-cta text-[#0a0a0a] font-semibold hover:bg-cta-hover transition-colors duration-300"
+              className="ml-2 min-w-[150px] px-8 py-3.5 text-xs tracking-[0.2em] uppercase bg-cta text-[#0a0a0a] font-semibold hover:bg-cta-hover transition-colors duration-300 text-center"
             >
               Book a Class
             </Link>
@@ -142,7 +142,7 @@ export default function Navbar() {
             <Link
               href={session ? '/dashboard' : '/login'}
               target="_blank"
-              className="ml-2 px-6 py-3.5 text-xs tracking-[0.2em] uppercase border border-white/20 hover:border-white/40 text-white/70 hover:text-white transition-all duration-300"
+              className="ml-2 min-w-[150px] px-6 py-3.5 text-xs tracking-[0.2em] uppercase border border-white/20 hover:bg-white/10 hover:border-white/40 text-white/70 hover:text-white transition-all duration-300 text-center"
             >
               {session ? 'My Account' : 'Log In'}
             </Link>
@@ -225,7 +225,7 @@ export default function Navbar() {
                   href="/book"
                   target="_blank"
                   onClick={() => setMobileOpen(false)}
-                  className="px-10 py-4 text-sm tracking-[0.2em] uppercase bg-cta text-[#0a0a0a] font-semibold"
+                  className="min-w-[220px] px-10 py-4 text-sm tracking-[0.2em] uppercase bg-cta text-[#0a0a0a] font-semibold text-center"
                 >
                   Book a Class
                 </Link>
@@ -233,7 +233,7 @@ export default function Navbar() {
                   href={session ? '/dashboard' : '/login'}
                   target="_blank"
                   onClick={() => setMobileOpen(false)}
-                  className="px-10 py-4 text-sm tracking-[0.2em] uppercase border border-white/20 text-white/70"
+                  className="min-w-[220px] px-10 py-4 text-sm tracking-[0.2em] uppercase border border-white/20 text-white/70 hover:bg-white/10 hover:border-white/40 hover:text-white transition-all duration-300 text-center"
                 >
                   {session ? 'My Account' : 'Log In'}
                 </Link>
