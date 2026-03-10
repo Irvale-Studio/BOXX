@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils'
 
 const TABS = [
   { id: 'overview', label: 'Email Events', icon: '📧' },
+  { id: 'log', label: 'Send Log', icon: '📋' },
   { id: 'compose', label: 'Compose', icon: '✉️' },
 ]
 
@@ -60,6 +61,7 @@ export default function EmailsPage() {
       </div>
 
       {activeTab === 'overview' && <EmailOverviewTab />}
+      {activeTab === 'log' && <EmailLogTab />}
       {activeTab === 'compose' && <ComposeTab />}
     </div>
   )
@@ -375,6 +377,171 @@ function EditEmailDialog({ slug, event, customSubject, customBody, saving, onSav
         </div>
       </DialogContent>
     </Dialog>
+  )
+}
+
+// ─── Email Log Tab ───────────────────────────────────────────────────────────
+
+const STATUS_STYLES = {
+  sent: 'bg-green-400/10 text-green-400 border-green-400/20',
+  failed: 'bg-red-400/10 text-red-400 border-red-400/20',
+  skipped: 'bg-zinc-400/10 text-zinc-400 border-zinc-400/20',
+}
+
+function EmailLogTab() {
+  const [logs, setLogs] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [page, setPage] = useState(1)
+  const [pages, setPages] = useState(1)
+  const [total, setTotal] = useState(0)
+  const [statusFilter, setStatusFilter] = useState('')
+  const [typeFilter, setTypeFilter] = useState('')
+
+  const fetchLogs = useCallback(async () => {
+    setLoading(true)
+    try {
+      const params = new URLSearchParams({ page: String(page), limit: '30' })
+      if (statusFilter) params.set('status', statusFilter)
+      if (typeFilter) params.set('type', typeFilter)
+      const res = await fetch(`/api/admin/emails/log?${params}`)
+      if (res.ok) {
+        const data = await res.json()
+        setLogs(data.logs || [])
+        setPages(data.pages || 1)
+        setTotal(data.total || 0)
+      }
+    } catch (err) {
+      console.error('Failed to load email log:', err)
+    } finally {
+      setLoading(false)
+    }
+  }, [page, statusFilter, typeFilter])
+
+  useEffect(() => { fetchLogs() }, [fetchLogs])
+
+  const formatDate = (iso) => {
+    const d = new Date(iso)
+    return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+  }
+
+  const formatType = (slug) => {
+    return slug.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+  }
+
+  const failedCount = logs.filter((l) => l.status === 'failed').length
+
+  return (
+    <div className="space-y-4">
+      {/* Filters */}
+      <div className="flex flex-wrap items-center gap-2">
+        <select
+          value={statusFilter}
+          onChange={(e) => { setStatusFilter(e.target.value); setPage(1) }}
+          className="rounded-lg bg-card border border-card-border px-3 py-1.5 text-sm text-foreground"
+        >
+          <option value="">All statuses</option>
+          <option value="sent">Sent</option>
+          <option value="failed">Failed</option>
+          <option value="skipped">Skipped</option>
+        </select>
+
+        <select
+          value={typeFilter}
+          onChange={(e) => { setTypeFilter(e.target.value); setPage(1) }}
+          className="rounded-lg bg-card border border-card-border px-3 py-1.5 text-sm text-foreground"
+        >
+          <option value="">All types</option>
+          {EMAIL_EVENTS.map((e) => (
+            <option key={e.slug} value={e.slug}>{e.name}</option>
+          ))}
+          <option value="admin_direct">Admin Direct</option>
+        </select>
+
+        <span className="text-xs text-muted ml-auto">
+          {total} email{total !== 1 ? 's' : ''} total
+        </span>
+      </div>
+
+      {/* Log table */}
+      <Card>
+        <CardContent className="py-0 px-0">
+          {loading ? (
+            <div className="py-12 text-center text-muted text-sm">Loading...</div>
+          ) : logs.length === 0 ? (
+            <div className="py-12 text-center text-muted text-sm">
+              No emails logged yet. Emails will appear here once sent.
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-card-border text-left">
+                    <th className="px-4 py-2.5 text-xs text-muted font-medium">Time</th>
+                    <th className="px-4 py-2.5 text-xs text-muted font-medium">Type</th>
+                    <th className="px-4 py-2.5 text-xs text-muted font-medium hidden sm:table-cell">Recipient</th>
+                    <th className="px-4 py-2.5 text-xs text-muted font-medium hidden md:table-cell">Subject</th>
+                    <th className="px-4 py-2.5 text-xs text-muted font-medium">Status</th>
+                    <th className="px-4 py-2.5 text-xs text-muted font-medium hidden lg:table-cell">Error</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {logs.map((log) => (
+                    <tr key={log.id} className="border-b border-card-border/50 last:border-0">
+                      <td className="px-4 py-2.5 text-muted text-xs whitespace-nowrap">
+                        {formatDate(log.created_at)}
+                      </td>
+                      <td className="px-4 py-2.5">
+                        <p className="text-foreground text-xs font-medium">{formatType(log.email_type)}</p>
+                        <p className="text-muted text-xs sm:hidden">{log.recipient}</p>
+                      </td>
+                      <td className="px-4 py-2.5 text-xs text-muted hidden sm:table-cell truncate max-w-[180px]">
+                        {log.recipient}
+                      </td>
+                      <td className="px-4 py-2.5 text-xs text-muted hidden md:table-cell truncate max-w-[220px]">
+                        {log.subject || '—'}
+                      </td>
+                      <td className="px-4 py-2.5">
+                        <span className={cn('text-[10px] font-medium px-1.5 py-0.5 rounded border', STATUS_STYLES[log.status] || STATUS_STYLES.skipped)}>
+                          {log.status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2.5 text-xs text-red-400/80 hidden lg:table-cell truncate max-w-[200px]" title={log.error || ''}>
+                        {log.error || '—'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Pagination */}
+      {pages > 1 && (
+        <div className="flex items-center justify-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={page <= 1}
+            onClick={() => setPage((p) => p - 1)}
+          >
+            Previous
+          </Button>
+          <span className="text-xs text-muted">
+            Page {page} of {pages}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={page >= pages}
+            onClick={() => setPage((p) => p + 1)}
+          >
+            Next
+          </Button>
+        </div>
+      )}
+    </div>
   )
 }
 

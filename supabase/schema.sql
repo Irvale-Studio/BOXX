@@ -252,6 +252,23 @@ CREATE POLICY "credits_own_read" ON user_credits FOR SELECT USING (auth.uid() = 
 CREATE POLICY "waitlist_own" ON waitlist FOR ALL USING (auth.uid() = user_id);
 
 -- ─────────────────────────────────────
+-- EMAIL LOG
+-- ─────────────────────────────────────
+CREATE TABLE email_log (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email_type  TEXT NOT NULL,
+  recipient   TEXT NOT NULL,
+  subject     TEXT,
+  status      TEXT NOT NULL DEFAULT 'sent',
+  error       TEXT,
+  resend_id   TEXT,
+  created_at  TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX idx_email_log_created_at ON email_log(created_at DESC);
+CREATE INDEX idx_email_log_email_type ON email_log(email_type);
+
+-- ─────────────────────────────────────
 -- INDEXES
 -- ─────────────────────────────────────
 CREATE INDEX idx_users_email ON users(email);
