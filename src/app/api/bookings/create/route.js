@@ -1,6 +1,6 @@
 import { auth } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase/admin'
-import { sendBookingConfirmation } from '@/lib/email'
+import { sendBookingConfirmation, sendCreditsLowWarning } from '@/lib/email'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 
@@ -156,6 +156,22 @@ export async function POST(request) {
           timeZone: 'Asia/Bangkok',
         }),
       }).catch((err) => console.error('[bookings/create] Email failed:', err))
+
+      // Check if credits are now low (1 remaining) and warn
+      if (credit.credits_remaining !== null && credit.credits_remaining - 1 === 1) {
+        const { data: packInfo } = await supabaseAdmin
+          .from('class_packs')
+          .select('name')
+          .eq('id', credit.class_pack_id)
+          .single()
+
+        sendCreditsLowWarning({
+          to: emailUser.email,
+          name: emailUser.name,
+          creditsRemaining: 1,
+          packName: packInfo?.name,
+        }).catch((err) => console.error('[bookings/create] Low credit email failed:', err))
+      }
     }
 
     return NextResponse.json({

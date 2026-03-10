@@ -1,6 +1,7 @@
 import { auth } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { promoteFromWaitlist } from '@/lib/waitlist'
+import { sendCancellationConfirmation } from '@/lib/email'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 
@@ -85,6 +86,29 @@ export async function POST(request) {
           .update({ credits_remaining: credit.credits_remaining + 1 })
           .eq('id', booking.credit_id)
       }
+    }
+
+    // Send cancellation confirmation email (non-blocking)
+    const { data: cancelUser } = await supabaseAdmin
+      .from('users')
+      .select('email, name')
+      .eq('id', userId)
+      .single()
+
+    if (cancelUser?.email) {
+      const startDate = new Date(booking.class_schedule.starts_at)
+      sendCancellationConfirmation({
+        to: cancelUser.email,
+        name: cancelUser.name,
+        className: booking.class_schedule.class_types?.name || 'BOXX Class',
+        date: startDate.toLocaleDateString('en-US', {
+          weekday: 'long', month: 'long', day: 'numeric', timeZone: 'Asia/Bangkok',
+        }),
+        time: startDate.toLocaleTimeString('en-US', {
+          hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Bangkok',
+        }),
+        creditRefunded: !isLateCancellation,
+      }).catch((err) => console.error('[bookings/cancel] Email failed:', err))
     }
 
     // Promote first eligible waitlisted user into the spot

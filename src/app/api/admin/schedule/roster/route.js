@@ -1,6 +1,7 @@
 import { auth } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { promoteFromWaitlist } from '@/lib/waitlist'
+import { sendRemovedFromClass, sendPrivateClassInvitation } from '@/lib/email'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 
@@ -73,6 +74,37 @@ export async function POST(request) {
       .delete()
       .eq('class_schedule_id', classId)
       .eq('user_id', userId)
+
+    // Send private class invitation email if class is private (non-blocking)
+    const { data: rosterClass } = await supabaseAdmin
+      .from('class_schedule')
+      .select('starts_at, is_private, class_types(name), instructors(name)')
+      .eq('id', classId)
+      .single()
+
+    if (rosterClass?.is_private) {
+      const { data: addedUser } = await supabaseAdmin
+        .from('users')
+        .select('email, name')
+        .eq('id', userId)
+        .single()
+
+      if (addedUser?.email) {
+        const startDate = new Date(rosterClass.starts_at)
+        sendPrivateClassInvitation({
+          to: addedUser.email,
+          name: addedUser.name,
+          className: rosterClass.class_types?.name || 'Private Session',
+          instructor: rosterClass.instructors?.name,
+          date: startDate.toLocaleDateString('en-US', {
+            weekday: 'long', month: 'long', day: 'numeric', timeZone: 'Asia/Bangkok',
+          }),
+          time: startDate.toLocaleTimeString('en-US', {
+            hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Bangkok',
+          }),
+        }).catch((err) => console.error('[admin/roster] Invitation email failed:', err))
+      }
+    }
 
     await supabaseAdmin.from('admin_audit_log').insert({
       admin_id: session.user.id,
@@ -180,6 +212,35 @@ export async function DELETE(request) {
       target_id: booking.id,
       details: { classId, userId, refundCredit },
     })
+
+    // Send removal notification email (non-blocking)
+    const { data: removeClass } = await supabaseAdmin
+      .from('class_schedule')
+      .select('starts_at, class_types(name)')
+      .eq('id', classId)
+      .single()
+
+    const { data: removedUser } = await supabaseAdmin
+      .from('users')
+      .select('email, name')
+      .eq('id', userId)
+      .single()
+
+    if (removedUser?.email && removeClass) {
+      const startDate = new Date(removeClass.starts_at)
+      sendRemovedFromClass({
+        to: removedUser.email,
+        name: removedUser.name,
+        className: removeClass.class_types?.name || 'BOXX Class',
+        date: startDate.toLocaleDateString('en-US', {
+          weekday: 'long', month: 'long', day: 'numeric', timeZone: 'Asia/Bangkok',
+        }),
+        time: startDate.toLocaleTimeString('en-US', {
+          hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Bangkok',
+        }),
+        creditRefunded: refundCredit !== false,
+      }).catch((err) => console.error('[admin/roster] Removal email failed:', err))
+    }
 
     // Promote first eligible waitlisted user into the freed spot
     promoteFromWaitlist(classId).catch((err) =>

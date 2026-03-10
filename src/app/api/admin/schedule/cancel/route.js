@@ -1,5 +1,6 @@
 import { auth } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase/admin'
+import { sendClassCancelledByAdmin } from '@/lib/email'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 
@@ -77,6 +78,13 @@ export async function POST(request) {
       }
 
       // 2. Get all confirmed bookings for this class
+      // Get class details for email
+      const { data: classDetail } = await supabaseAdmin
+        .from('class_schedule')
+        .select('starts_at, class_types(name)')
+        .eq('id', cId)
+        .single()
+
       const { data: bookings } = await supabaseAdmin
         .from('bookings')
         .select('id, user_id, credit_id')
@@ -111,6 +119,28 @@ export async function POST(request) {
 
             totalCreditsRefunded++
           }
+          // Send notification email to cancelled member
+          const { data: memberUser } = await supabaseAdmin
+            .from('users')
+            .select('email, name')
+            .eq('id', booking.user_id)
+            .single()
+
+          if (memberUser?.email && classDetail) {
+            const startDate = new Date(classDetail.starts_at)
+            sendClassCancelledByAdmin({
+              to: memberUser.email,
+              name: memberUser.name,
+              className: classDetail.class_types?.name || 'BOXX Class',
+              date: startDate.toLocaleDateString('en-US', {
+                weekday: 'long', month: 'long', day: 'numeric', timeZone: 'Asia/Bangkok',
+              }),
+              time: startDate.toLocaleTimeString('en-US', {
+                hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Bangkok',
+              }),
+            }).catch((err) => console.error('[admin/schedule/cancel] Email failed:', err))
+          }
+
           totalBookingsCancelled++
         }
 

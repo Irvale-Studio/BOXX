@@ -1,15 +1,16 @@
 import { auth } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase/admin'
+import { sendClassChanged } from '@/lib/email'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 
 const notifySchema = z.object({
   classId: z.string().min(1),
+  changes: z.array(z.string()).optional(),
 })
 
 /**
  * POST /api/admin/schedule/notify — Notify booked members about class changes
- * Stub: will send emails once Resend is configured
  */
 export async function POST(request) {
   try {
@@ -27,7 +28,7 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Invalid input' }, { status: 400 })
     }
 
-    const { classId } = parsed.data
+    const { classId, changes } = parsed.data
 
     // Get class details
     const { data: cls } = await supabaseAdmin
@@ -53,21 +54,39 @@ export async function POST(request) {
       return NextResponse.json({ sent: 0, message: 'No members to notify' })
     }
 
-    // TODO: Send emails via Resend once configured
-    // For now, just log and audit
-    console.log(`[notify] Would email ${members.length} members about class ${cls.class_types?.name} changes`)
+    // Send emails to all booked members
+    const startDate = new Date(cls.starts_at)
+    const dateStr = startDate.toLocaleDateString('en-US', {
+      weekday: 'long', month: 'long', day: 'numeric', timeZone: 'Asia/Bangkok',
+    })
+    const timeStr = startDate.toLocaleTimeString('en-US', {
+      hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Bangkok',
+    })
+
+    const emailPromises = members.map((member) =>
+      sendClassChanged({
+        to: member.email,
+        name: member.name,
+        className: cls.class_types?.name || 'BOXX Class',
+        changes: changes || ['Class details have been updated'],
+        date: dateStr,
+        time: timeStr,
+      }).catch((err) => console.error(`[notify] Email failed for ${member.email}:`, err))
+    )
+
+    await Promise.allSettled(emailPromises)
 
     await supabaseAdmin.from('admin_audit_log').insert({
       admin_id: session.user.id,
       action: 'notify_class_change',
       target_type: 'class_schedule',
       target_id: classId,
-      details: { memberCount: members.length, emails: members.map((m) => m.email) },
+      details: { memberCount: members.length, emails: members.map((m) => m.email), changes },
     })
 
     return NextResponse.json({
       sent: members.length,
-      message: `Notification queued for ${members.length} member${members.length !== 1 ? 's' : ''}`,
+      message: `Notification sent to ${members.length} member${members.length !== 1 ? 's' : ''}`,
     })
   } catch (error) {
     console.error('[admin/schedule/notify] Error:', error)

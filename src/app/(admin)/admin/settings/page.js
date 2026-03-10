@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
+import { Switch } from '@/components/ui/switch'
 import { cn } from '@/lib/utils'
 
 export default function SettingsPage() {
@@ -56,23 +57,374 @@ function SettingsContent() {
 
       {/* Tab content */}
       {activeTab === 'payments' && <PaymentsTab connected={connected} error={error} />}
-      {activeTab === 'studio' && <PlaceholderTab title="Studio Info" description="Studio name, address, contact details — coming soon." />}
-      {activeTab === 'booking' && <PlaceholderTab title="Booking Rules" description="Cancellation window, capacity, advance booking — coming soon." />}
-      {activeTab === 'reminders' && <PlaceholderTab title="Reminders" description="24h and 2h reminder toggles — coming soon." />}
+      {activeTab === 'studio' && <StudioInfoTab />}
+      {activeTab === 'booking' && <BookingRulesTab />}
+      {activeTab === 'reminders' && <RemindersTab />}
     </div>
   )
 }
 
-function PlaceholderTab({ title, description }) {
+// ─── Studio Info Tab (B1) ────────────────────────────────────────────────────
+
+function StudioInfoTab() {
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [message, setMessage] = useState(null)
+  const [form, setForm] = useState({
+    studio_name: '',
+    studio_address: '',
+    studio_phone: '',
+    studio_email: '',
+    studio_website: '',
+  })
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const res = await fetch('/api/admin/settings')
+        if (res.ok) {
+          const { settings } = await res.json()
+          setForm({
+            studio_name: settings.studio_name || 'BOXX Boxing Studio',
+            studio_address: settings.studio_address || '89/2 Bumruang Road, Wat Ket, Chiang Mai 50000',
+            studio_phone: settings.studio_phone || '+66 93 497 2306',
+            studio_email: settings.studio_email || 'hello@boxxthailand.com',
+            studio_website: settings.studio_website || 'https://boxxthailand.com',
+          })
+        }
+      } catch (err) {
+        console.error('Failed to load settings:', err)
+      } finally {
+        setLoading(false)
+      }
+    }
+    load()
+  }, [])
+
+  async function handleSave(e) {
+    e.preventDefault()
+    setSaving(true)
+    setMessage(null)
+    try {
+      const res = await fetch('/api/admin/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      })
+      if (res.ok) {
+        setMessage({ type: 'success', text: 'Studio info saved.' })
+      } else {
+        setMessage({ type: 'error', text: 'Failed to save.' })
+      }
+    } catch {
+      setMessage({ type: 'error', text: 'Failed to save.' })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <Card>
+        <CardContent className="py-8">
+          <div className="animate-pulse space-y-4">
+            <div className="h-6 bg-card-border rounded w-48" />
+            <div className="h-10 bg-card-border rounded w-full" />
+            <div className="h-10 bg-card-border rounded w-full" />
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">{title}</CardTitle>
-        <CardDescription>{description}</CardDescription>
+        <CardTitle className="text-base">Studio Information</CardTitle>
+        <CardDescription>Public contact details for your studio</CardDescription>
       </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSave} className="space-y-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="studio_name">Studio Name</Label>
+            <Input id="studio_name" value={form.studio_name} onChange={(e) => setForm({ ...form, studio_name: e.target.value })} />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="studio_address">Address</Label>
+            <Input id="studio_address" value={form.studio_address} onChange={(e) => setForm({ ...form, studio_address: e.target.value })} />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="studio_phone">Phone</Label>
+              <Input id="studio_phone" value={form.studio_phone} onChange={(e) => setForm({ ...form, studio_phone: e.target.value })} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="studio_email">Email</Label>
+              <Input id="studio_email" type="email" value={form.studio_email} onChange={(e) => setForm({ ...form, studio_email: e.target.value })} />
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="studio_website">Website</Label>
+            <Input id="studio_website" value={form.studio_website} onChange={(e) => setForm({ ...form, studio_website: e.target.value })} />
+          </div>
+
+          {message && (
+            <p className={cn('text-sm', message.type === 'success' ? 'text-green-400' : 'text-red-400')}>
+              {message.text}
+            </p>
+          )}
+
+          <Button type="submit" disabled={saving}>
+            {saving ? 'Saving...' : 'Save Studio Info'}
+          </Button>
+        </form>
+      </CardContent>
     </Card>
   )
 }
+
+// ─── Booking Rules Tab (B2) ──────────────────────────────────────────────────
+
+function BookingRulesTab() {
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [message, setMessage] = useState(null)
+  const [form, setForm] = useState({
+    default_capacity: '6',
+    cancellation_window_hours: '24',
+    max_advance_booking_days: '28',
+  })
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const res = await fetch('/api/admin/settings')
+        if (res.ok) {
+          const { settings } = await res.json()
+          setForm({
+            default_capacity: settings.default_capacity || '6',
+            cancellation_window_hours: settings.cancellation_window_hours || '24',
+            max_advance_booking_days: settings.max_advance_booking_days || '28',
+          })
+        }
+      } catch (err) {
+        console.error('Failed to load settings:', err)
+      } finally {
+        setLoading(false)
+      }
+    }
+    load()
+  }, [])
+
+  async function handleSave(e) {
+    e.preventDefault()
+    setSaving(true)
+    setMessage(null)
+    try {
+      const res = await fetch('/api/admin/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      })
+      if (res.ok) {
+        setMessage({ type: 'success', text: 'Booking rules saved.' })
+      } else {
+        setMessage({ type: 'error', text: 'Failed to save.' })
+      }
+    } catch {
+      setMessage({ type: 'error', text: 'Failed to save.' })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <Card>
+        <CardContent className="py-8">
+          <div className="animate-pulse space-y-4">
+            <div className="h-6 bg-card-border rounded w-48" />
+            <div className="h-10 bg-card-border rounded w-full" />
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Booking Rules</CardTitle>
+        <CardDescription>Configure default booking behavior and policies</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSave} className="space-y-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="default_capacity">Default Class Capacity</Label>
+            <Input
+              id="default_capacity"
+              type="number"
+              min="1"
+              max="50"
+              value={form.default_capacity}
+              onChange={(e) => setForm({ ...form, default_capacity: e.target.value })}
+            />
+            <p className="text-xs text-muted">Maximum number of members per class (default for new classes)</p>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="cancellation_window_hours">Cancellation Window (hours)</Label>
+            <Input
+              id="cancellation_window_hours"
+              type="number"
+              min="0"
+              max="168"
+              value={form.cancellation_window_hours}
+              onChange={(e) => setForm({ ...form, cancellation_window_hours: e.target.value })}
+            />
+            <p className="text-xs text-muted">Members must cancel at least this many hours before class to receive a credit refund</p>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="max_advance_booking_days">Max Advance Booking (days)</Label>
+            <Input
+              id="max_advance_booking_days"
+              type="number"
+              min="1"
+              max="90"
+              value={form.max_advance_booking_days}
+              onChange={(e) => setForm({ ...form, max_advance_booking_days: e.target.value })}
+            />
+            <p className="text-xs text-muted">How far in advance members can book classes</p>
+          </div>
+
+          {message && (
+            <p className={cn('text-sm', message.type === 'success' ? 'text-green-400' : 'text-red-400')}>
+              {message.text}
+            </p>
+          )}
+
+          <Button type="submit" disabled={saving}>
+            {saving ? 'Saving...' : 'Save Booking Rules'}
+          </Button>
+        </form>
+      </CardContent>
+    </Card>
+  )
+}
+
+// ─── Reminders Tab (B3) ──────────────────────────────────────────────────────
+
+function RemindersTab() {
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [message, setMessage] = useState(null)
+  const [reminder1h, setReminder1h] = useState(true)
+  const [reminder24h, setReminder24h] = useState(false)
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const res = await fetch('/api/admin/settings')
+        if (res.ok) {
+          const { settings } = await res.json()
+          setReminder1h(settings.reminder_1h !== 'false')
+          setReminder24h(settings.reminder_24h === 'true')
+        }
+      } catch (err) {
+        console.error('Failed to load settings:', err)
+      } finally {
+        setLoading(false)
+      }
+    }
+    load()
+  }, [])
+
+  async function handleSave() {
+    setSaving(true)
+    setMessage(null)
+    try {
+      const res = await fetch('/api/admin/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          reminder_1h: reminder1h.toString(),
+          reminder_24h: reminder24h.toString(),
+        }),
+      })
+      if (res.ok) {
+        setMessage({ type: 'success', text: 'Reminder settings saved.' })
+      } else {
+        setMessage({ type: 'error', text: 'Failed to save.' })
+      }
+    } catch {
+      setMessage({ type: 'error', text: 'Failed to save.' })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <Card>
+        <CardContent className="py-8">
+          <div className="animate-pulse space-y-4">
+            <div className="h-6 bg-card-border rounded w-48" />
+            <div className="h-10 bg-card-border rounded w-full" />
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Class Reminders</CardTitle>
+        <CardDescription>Configure automated email reminders sent before classes</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <div className="flex items-center justify-between p-4 rounded-lg bg-background/50 border border-card-border/50">
+          <div>
+            <p className="text-sm font-medium text-foreground">1-Hour Reminder</p>
+            <p className="text-xs text-muted mt-0.5">Send reminder email 1 hour before class starts</p>
+          </div>
+          <Switch
+            checked={reminder1h}
+            onCheckedChange={setReminder1h}
+          />
+        </div>
+
+        <div className="flex items-center justify-between p-4 rounded-lg bg-background/50 border border-card-border/50">
+          <div>
+            <p className="text-sm font-medium text-foreground">24-Hour Reminder</p>
+            <p className="text-xs text-muted mt-0.5">Send reminder email 24 hours before class starts</p>
+          </div>
+          <Switch
+            checked={reminder24h}
+            onCheckedChange={setReminder24h}
+          />
+        </div>
+
+        <div className="p-3 bg-amber-600/10 border border-amber-600/20 rounded-lg">
+          <p className="text-xs text-amber-400/80">Reminders require the RESEND_API_KEY environment variable to be configured. The 1-hour reminder runs via a cron job every 15 minutes.</p>
+        </div>
+
+        {message && (
+          <p className={cn('text-sm', message.type === 'success' ? 'text-green-400' : 'text-red-400')}>
+            {message.text}
+          </p>
+        )}
+
+        <Button onClick={handleSave} disabled={saving}>
+          {saving ? 'Saving...' : 'Save Reminder Settings'}
+        </Button>
+      </CardContent>
+    </Card>
+  )
+}
+
+// ─── Payments Tab (existing) ─────────────────────────────────────────────────
 
 function PaymentsTab({ connected, error }) {
   const [stripeStatus, setStripeStatus] = useState(null)

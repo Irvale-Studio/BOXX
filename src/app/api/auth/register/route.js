@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { rateLimit } from '@/lib/rate-limit'
+import { sendWelcomeEmail } from '@/lib/email'
 import bcrypt from 'bcryptjs'
 import { z } from 'zod'
 
@@ -69,6 +70,11 @@ export async function POST(request) {
         { status: 500 }
       )
     }
+
+    // Send welcome email (non-blocking)
+    sendWelcomeEmail({ to: emailLower, name }).catch((err) =>
+      console.error('[auth/register] Welcome email failed:', err)
+    )
 
     return NextResponse.json({ success: true })
   } catch (error) {

@@ -1,5 +1,6 @@
 import { getStripe } from '@/lib/stripe'
 import { supabaseAdmin } from '@/lib/supabase/admin'
+import { sendPackPurchaseConfirmation } from '@/lib/email'
 import { NextResponse } from 'next/server'
 
 /**
@@ -119,6 +120,26 @@ async function handleCheckoutCompleted(session) {
   }
 
   console.log(`[stripe/webhook] Credits allocated: user=${userId}, pack=${pack.name}`)
+
+  // Send pack purchase confirmation email (non-blocking)
+  const { data: purchaseUser } = await supabaseAdmin
+    .from('users')
+    .select('email, name')
+    .eq('id', userId)
+    .single()
+
+  if (purchaseUser?.email) {
+    sendPackPurchaseConfirmation({
+      to: purchaseUser.email,
+      name: purchaseUser.name,
+      packName: pack.name,
+      credits: pack.credits || 'Unlimited',
+      validityDays: pack.validity_days,
+      expiresAt: expiresAt.toLocaleDateString('en-US', {
+        weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
+      }),
+    }).catch((err) => console.error('[stripe/webhook] Purchase email failed:', err))
+  }
 }
 
 /**
