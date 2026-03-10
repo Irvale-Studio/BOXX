@@ -1081,7 +1081,7 @@ function ScheduleSection({ credits, onUpdate, sharedClassId, view, onViewChange,
 
     // Build Google Calendar URL safely
     let googleCalUrl = null
-    if (isGoogleUser && cls.is_booked) {
+    if (cls.is_booked) {
       try {
         const calStart = new Date(cls.starts_at)
         const calEnd = cls.ends_at ? new Date(cls.ends_at) : new Date(calStart.getTime() + 60 * 60 * 1000)
@@ -1613,7 +1613,7 @@ function ScheduleSection({ credits, onUpdate, sharedClassId, view, onViewChange,
                   const classImage = getClassImage(cls)
                   const classColor = getClassColor(cls)
                   let calUrl = null
-                  if (isGoogleUser && cls.is_booked) {
+                  if (cls.is_booked) {
                     try {
                       const calStart = new Date(cls.starts_at)
                       const calEnd = cls.ends_at ? new Date(cls.ends_at) : new Date(calStart.getTime() + 60 * 60 * 1000)
@@ -1792,7 +1792,7 @@ function BookingsSection({ upcoming, past, waitlist = [], onUpdate, isGoogleUser
 
     // Build Google Calendar URL safely
     let googleCalUrl = null
-    if (isGoogleUser) {
+    {
       try {
         const calStart = new Date(cls.starts_at)
         const calEnd = cls.ends_at ? new Date(cls.ends_at) : new Date(calStart.getTime() + 60 * 60 * 1000)
