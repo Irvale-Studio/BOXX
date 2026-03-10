@@ -1097,6 +1097,18 @@ function ScheduleSection({ credits, onUpdate, sharedClassId, view, onViewChange,
     const classImage = getClassImage(cls)
     const classColor = getClassColor(cls)
 
+    // Build Google Calendar URL safely
+    let googleCalUrl = null
+    if (isGoogleUser && cls.is_booked) {
+      try {
+        const calStart = new Date(cls.starts_at)
+        const calEnd = cls.ends_at ? new Date(cls.ends_at) : new Date(calStart.getTime() + 60 * 60 * 1000)
+        const fmtCal = (d) => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')
+        const calTitle = `${cls.class_types?.name || 'BOXX Class'}${cls.instructors?.name ? ` with ${cls.instructors.name}` : ''}`
+        googleCalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(calTitle)}&dates=${fmtCal(calStart)}/${fmtCal(calEnd)}&details=${encodeURIComponent('BOXX Boxing Studio — Chiang Mai')}&location=${encodeURIComponent('89/2 Bumruang Road, Wat Ket, Chiang Mai 50000')}`
+      } catch {}
+    }
+
     const isCancelled = cls.status === 'cancelled'
 
     if (compact) {
@@ -1333,15 +1345,9 @@ function ScheduleSection({ credits, onUpdate, sharedClassId, view, onViewChange,
               <span className="text-[10px] text-muted">
                 {(new Date(cls.starts_at) - Date.now()) / 36e5 <= 24 ? 'Credit will not be returned' : 'Free cancellation'}
               </span>
-              {isGoogleUser && (
+              {googleCalUrl && (
                 <a
-                  href={(() => {
-                    const start = new Date(cls.starts_at)
-                    const end = new Date(cls.ends_at || new Date(start.getTime() + 60 * 60 * 1000))
-                    const fmt = (d) => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')
-                    const title = `${cls.class_types?.name || 'BOXX Class'}${cls.instructors?.name ? ` with ${cls.instructors.name}` : ''}`
-                    return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&dates=${fmt(start)}/${fmt(end)}&details=${encodeURIComponent('BOXX Boxing Studio — Chiang Mai')}&location=${encodeURIComponent('89/2 Bumruang Road, Wat Ket, Chiang Mai 50000')}`
-                  })()}
+                  href={googleCalUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={(e) => e.stopPropagation()}
@@ -1797,6 +1803,18 @@ function BookingsSection({ upcoming, past, waitlist = [], onUpdate, isGoogleUser
     const isCancelled = !isWaitlist && (b.status === 'cancelled' || isClassCancelled)
     const isConfirmed = !isWaitlist && b.status === 'confirmed' && !isClassCancelled
 
+    // Build Google Calendar URL safely
+    let googleCalUrl = null
+    if (isGoogleUser) {
+      try {
+        const calStart = new Date(cls.starts_at)
+        const calEnd = cls.ends_at ? new Date(cls.ends_at) : new Date(calStart.getTime() + 60 * 60 * 1000)
+        const fmtCal = (d) => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')
+        const calTitle = `${cls.class_types?.name || 'BOXX Class'}${cls.instructors?.name ? ` with ${cls.instructors.name}` : ''}`
+        googleCalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(calTitle)}&dates=${fmtCal(calStart)}/${fmtCal(calEnd)}&details=${encodeURIComponent('BOXX Boxing Studio — Chiang Mai')}&location=${encodeURIComponent('89/2 Bumruang Road, Wat Ket, Chiang Mai 50000')}`
+      } catch {}
+    }
+
     // Status pill config
     const statusPill = isWaitlist
       ? { label: `Waitlist #${b.position}`, className: 'bg-amber-400/10 text-amber-400 border-amber-400/20' }
@@ -1915,15 +1933,9 @@ function BookingsSection({ upcoming, past, waitlist = [], onUpdate, isGoogleUser
                         <span className="text-[10px] text-muted">
                           {isLate ? 'Credit will not be returned' : 'Free cancellation'}
                         </span>
-                        {isGoogleUser && (
+                        {googleCalUrl && (
                           <a
-                            href={(() => {
-                              const start = new Date(cls.starts_at)
-                              const end = new Date(cls.ends_at || new Date(start.getTime() + 60 * 60 * 1000))
-                              const fmt = (d) => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')
-                              const title = `${cls.class_types?.name || 'BOXX Class'}${cls.instructors?.name ? ` with ${cls.instructors.name}` : ''}`
-                              return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&dates=${fmt(start)}/${fmt(end)}&details=${encodeURIComponent('BOXX Boxing Studio — Chiang Mai')}&location=${encodeURIComponent('89/2 Bumruang Road, Wat Ket, Chiang Mai 50000')}`
-                            })()}
+                            href={googleCalUrl}
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={(e) => e.stopPropagation()}
