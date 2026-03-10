@@ -2,8 +2,8 @@ import { auth } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
 
-const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
-const MAX_SIZE = 5 * 1024 * 1024 // 5MB
+const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif', 'image/jpg']
+const MAX_SIZE = 10 * 1024 * 1024 // 10MB (mobile photos can be large)
 
 /**
  * POST /api/profile/avatar — Upload avatar image
@@ -22,8 +22,10 @@ export async function POST(request) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 })
     }
 
-    if (!ALLOWED_TYPES.includes(file.type)) {
-      return NextResponse.json({ error: 'Invalid file type. Use JPEG, PNG, or WebP.' }, { status: 400 })
+    // Some mobile browsers send empty or generic MIME types — allow if it starts with image/
+    const fileType = file.type || ''
+    if (fileType && !fileType.startsWith('image/')) {
+      return NextResponse.json({ error: 'Invalid file type. Please upload an image.' }, { status: 400 })
     }
 
     if (file.size > MAX_SIZE) {

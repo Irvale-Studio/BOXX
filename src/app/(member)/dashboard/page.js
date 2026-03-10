@@ -291,7 +291,7 @@ function ProfileSection({ user, credits, onUpdate, creditAnimation }) {
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/jpeg,image/png,image/webp"
+              accept="image/*"
               className="hidden"
               onChange={handleAvatarUpload}
             />
