@@ -13,10 +13,11 @@ import FAQ from '@/components/FAQ';
 import Contact from '@/components/Contact';
 import Footer from '@/components/Footer';
 import LoadingScreen from '@/components/LoadingScreen';
+import { SettingsProvider } from '@/lib/settings-context';
 
 export default function Home() {
   return (
-    <>
+    <SettingsProvider>
       <LoadingScreen />
       <Navbar />
       <Hero />
@@ -32,6 +33,6 @@ export default function Home() {
       <FAQ />
       <Contact />
       <Footer />
-    </>
+    </SettingsProvider>
   );
 }

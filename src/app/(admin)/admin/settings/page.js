@@ -21,6 +21,7 @@ export default function SettingsPage() {
 const TABS = [
   { id: 'payments', label: 'Payments', icon: '💳' },
   { id: 'studio', label: 'Studio', icon: '🏢' },
+  { id: 'social', label: 'Social Links', icon: '🔗' },
   { id: 'booking', label: 'Booking', icon: '📋' },
   { id: 'reminders', label: 'Reminders', icon: '🔔' },
 ]
@@ -58,6 +59,7 @@ function SettingsContent() {
       {/* Tab content */}
       {activeTab === 'payments' && <PaymentsTab connected={connected} error={error} />}
       {activeTab === 'studio' && <StudioInfoTab />}
+      {activeTab === 'social' && <SocialLinksTab />}
       {activeTab === 'booking' && <BookingRulesTab />}
       {activeTab === 'reminders' && <RemindersTab />}
     </div>
@@ -176,6 +178,122 @@ function StudioInfoTab() {
 
           <Button type="submit" disabled={saving}>
             {saving ? 'Saving...' : 'Save Studio Info'}
+          </Button>
+        </form>
+      </CardContent>
+    </Card>
+  )
+}
+
+// ─── Social Links Tab ────────────────────────────────────────────────────────
+
+function SocialLinksTab() {
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [message, setMessage] = useState(null)
+  const [form, setForm] = useState({
+    social_instagram: '',
+    social_tiktok: '',
+    social_facebook: '',
+    social_line: '',
+    social_youtube: '',
+  })
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const res = await fetch('/api/admin/settings')
+        if (res.ok) {
+          const { settings } = await res.json()
+          setForm({
+            social_instagram: settings.social_instagram || 'https://instagram.com/boxxthailand',
+            social_tiktok: settings.social_tiktok || 'https://tiktok.com/@boxxthailand',
+            social_facebook: settings.social_facebook || '',
+            social_line: settings.social_line || '@boxxthailand',
+            social_youtube: settings.social_youtube || '',
+          })
+        }
+      } catch (err) {
+        console.error('Failed to load settings:', err)
+      } finally {
+        setLoading(false)
+      }
+    }
+    load()
+  }, [])
+
+  async function handleSave(e) {
+    e.preventDefault()
+    setSaving(true)
+    setMessage(null)
+    try {
+      const res = await fetch('/api/admin/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      })
+      if (res.ok) {
+        setMessage({ type: 'success', text: 'Social links saved. Changes are live on the website.' })
+      } else {
+        setMessage({ type: 'error', text: 'Failed to save.' })
+      }
+    } catch {
+      setMessage({ type: 'error', text: 'Failed to save.' })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <Card>
+        <CardContent className="py-8">
+          <div className="animate-pulse space-y-4">
+            <div className="h-6 bg-card-border rounded w-48" />
+            <div className="h-10 bg-card-border rounded w-full" />
+            <div className="h-10 bg-card-border rounded w-full" />
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  const fields = [
+    { key: 'social_instagram', label: 'Instagram URL', placeholder: 'https://instagram.com/boxxthailand' },
+    { key: 'social_tiktok', label: 'TikTok URL', placeholder: 'https://tiktok.com/@boxxthailand' },
+    { key: 'social_facebook', label: 'Facebook URL', placeholder: 'https://facebook.com/boxxthailand' },
+    { key: 'social_line', label: 'LINE ID', placeholder: '@boxxthailand' },
+    { key: 'social_youtube', label: 'YouTube URL', placeholder: 'https://youtube.com/@boxxthailand' },
+  ]
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Social Media Links</CardTitle>
+        <CardDescription>These appear in the footer, contact section, and email templates. Changes go live immediately.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSave} className="space-y-4">
+          {fields.map((field) => (
+            <div key={field.key} className="space-y-1.5">
+              <Label htmlFor={field.key}>{field.label}</Label>
+              <Input
+                id={field.key}
+                value={form[field.key]}
+                onChange={(e) => setForm({ ...form, [field.key]: e.target.value })}
+                placeholder={field.placeholder}
+              />
+            </div>
+          ))}
+
+          {message && (
+            <p className={cn('text-sm', message.type === 'success' ? 'text-green-400' : 'text-red-400')}>
+              {message.text}
+            </p>
+          )}
+
+          <Button type="submit" disabled={saving}>
+            {saving ? 'Saving...' : 'Save Social Links'}
           </Button>
         </form>
       </CardContent>

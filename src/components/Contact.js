@@ -2,16 +2,22 @@
 
 import { useRef, useState } from 'react';
 import { motion, useInView } from 'framer-motion';
-
-const socialLinks = [
-  { name: 'Instagram', href: 'https://instagram.com/boxxthailand' },
-  { name: 'TikTok', href: 'https://tiktok.com/@boxxthailand' },
-  { name: 'Facebook', href: 'https://web.facebook.com/profile.php?id=61584385442693' },
-  { name: 'WhatsApp', href: 'https://wa.me/66934972306' },
-  { name: 'LINE', href: '#' },
-];
+import { useSettings } from '@/lib/settings-context';
 
 export default function Contact() {
+  const settings = useSettings();
+
+  const address = settings.studio_address || '89/2 Bumruang Road, Wat Ket, Chiang Mai 50000';
+  const email = settings.studio_email || 'hello@boxxthailand.com';
+  const phone = settings.studio_phone || '+66 93 497 2306';
+
+  const socialLinks = [
+    settings.social_instagram && { name: 'Instagram', href: settings.social_instagram },
+    settings.social_tiktok && { name: 'TikTok', href: settings.social_tiktok },
+    settings.social_facebook && { name: 'Facebook', href: settings.social_facebook },
+    { name: 'WhatsApp', href: `https://wa.me/${phone.replace(/[^0-9]/g, '')}` },
+    settings.social_line && { name: 'LINE', href: settings.social_line.startsWith('http') ? settings.social_line : `https://line.me/ti/p/${settings.social_line}` },
+  ].filter(Boolean);
   const headingRef = useRef(null);
   const headingInView = useInView(headingRef, { once: true, margin: '-100px' });
   const [formState, setFormState] = useState({
@@ -86,9 +92,7 @@ export default function Contact() {
                     Location
                   </p>
                   <p className="text-white/60 text-lg leading-relaxed">
-                    89/2 Bumruang Road, Wat Ket
-                    <br />
-                    Chiang Mai 50000, Thailand
+                    {address}
                   </p>
                 </div>
 
@@ -98,10 +102,10 @@ export default function Contact() {
                       Email
                     </p>
                     <a
-                      href="mailto:hello@boxxthailand.com"
+                      href={`mailto:${email}`}
                       className="text-white/60 text-lg hover:text-accent transition-colors"
                     >
-                      hello@boxxthailand.com
+                      {email}
                     </a>
                   </div>
 
@@ -110,10 +114,10 @@ export default function Contact() {
                       Phone
                     </p>
                     <a
-                      href="tel:+66934972306"
+                      href={`tel:${phone.replace(/[^0-9+]/g, '')}`}
                       className="text-white/60 text-lg hover:text-accent transition-colors"
                     >
-                      +66 93 497 2306
+                      {phone}
                     </a>
                   </div>
                 </div>

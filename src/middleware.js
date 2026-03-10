@@ -34,7 +34,7 @@ export default auth((req) => {
 
     // Employee restrictions — block admin-only pages
     if (role === 'employee') {
-      const adminOnlyPaths = ['/admin/settings', '/admin/packs', '/admin/design']
+      const adminOnlyPaths = ['/admin/settings', '/admin/packs']
       if (adminOnlyPaths.some((p) => pathname.startsWith(p))) {
         return NextResponse.redirect(new URL('/admin', req.url))
       }
