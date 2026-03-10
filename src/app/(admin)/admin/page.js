@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useSession } from 'next-auth/react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
@@ -28,6 +29,8 @@ function TrendIndicator({ current, previous, label }) {
 }
 
 export default function AdminDashboard() {
+  const { data: session } = useSession()
+  const isAdmin = session?.user?.role === 'admin'
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [expandedClass, setExpandedClass] = useState(null)
@@ -105,12 +108,12 @@ export default function AdminDashboard() {
   const lowCreditMembers = data?.lowCreditMembers || []
 
   const statCards = [
-    {
+    ...(isAdmin ? [{
       title: 'Revenue (Month)',
       value: `${(stats.revenueThisMonth || 0).toLocaleString()}`,
       prefix: '฿',
       icon: '💰',
-    },
+    }] : []),
     {
       title: 'Total Members',
       value: stats.totalMembers,
