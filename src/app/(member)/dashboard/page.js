@@ -82,7 +82,6 @@ function DashboardContent() {
   return (
     <div className="space-y-6">
       <ProfileSection user={data.user} credits={data.credits} onUpdate={fetchDashboard} creditAnimation={creditAnimation} />
-      <GamificationWidget />
 
       {/* Tab switcher */}
       <div className="flex bg-card border border-card-border rounded p-0.5">
@@ -147,9 +146,18 @@ function ProfileSection({ user, credits, onUpdate, creditAnimation }) {
   const [passwordMsg, setPasswordMsg] = useState(null)
   const [deleteConfirm, setDeleteConfirm] = useState('')
   const [deleting, setDeleting] = useState(false)
+  const [showBadges, setShowBadges] = useState(false)
+  const [gamification, setGamification] = useState(null)
   const fileInputRef = useRef(null)
 
   const isGoogleUser = !!user?.google_id
+
+  useEffect(() => {
+    fetch('/api/gamification')
+      .then((r) => r.ok ? r.json() : null)
+      .then((d) => d && setGamification(d))
+      .catch(() => {})
+  }, [])
 
   async function handleChangePassword() {
     setPasswordMsg(null)
@@ -296,7 +304,7 @@ function ProfileSection({ user, credits, onUpdate, creditAnimation }) {
 
           {/* Info */}
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-3 mb-1">
+            <div className="flex items-center gap-3">
               <h2 className="text-lg font-bold text-foreground truncate">{user?.name || 'Member'}</h2>
               <button
                 onClick={() => setEditing(!editing)}
@@ -308,15 +316,85 @@ function ProfileSection({ user, credits, onUpdate, creditAnimation }) {
                 </svg>
               </button>
             </div>
-            <p className="text-sm text-muted">{user?.email}</p>
-            {user?.bio && <p className="text-xs text-muted/70 mt-1">{user.bio}</p>}
           </div>
-
-          {/* Buy Packs CTA */}
-          <Button size="sm" asChild className="shrink-0">
-            <Link href="/buy-classes">Buy Packs</Link>
-          </Button>
         </div>
+
+        {/* Gamification stats row */}
+        {gamification && (
+          <div className="mt-4 pt-4 border-t border-card-border">
+            <div className="flex items-center gap-4 sm:gap-6">
+              <div className="text-center flex-1">
+                <p className="text-xl font-bold text-foreground">{gamification.stats.totalClasses}</p>
+                <p className="text-[10px] text-muted mt-0.5">Total Classes</p>
+              </div>
+              <div className="w-px h-7 bg-card-border" />
+              <div className="text-center flex-1">
+                <p className="text-xl font-bold text-foreground flex items-center justify-center gap-1">
+                  {gamification.stats.currentStreak}
+                  {gamification.stats.currentStreak >= 3 && <span className="text-sm">🔥</span>}
+                </p>
+                <p className="text-[10px] text-muted mt-0.5">Week Streak</p>
+              </div>
+              <div className="w-px h-7 bg-card-border" />
+              <div className="text-center flex-1">
+                <p className="text-xl font-bold text-accent">{gamification.earnedBadges.length}</p>
+                <p className="text-[10px] text-muted mt-0.5">Badges</p>
+              </div>
+            </div>
+
+            {/* Badges toggle */}
+            {gamification.allBadges.length > 0 && (
+              <>
+                <button
+                  onClick={() => setShowBadges(!showBadges)}
+                  className="mt-3 w-full flex items-center justify-between text-xs text-muted hover:text-foreground transition-colors pt-3 border-t border-card-border"
+                >
+                  <span>
+                    {gamification.earnedBadges.length > 0
+                      ? `${gamification.earnedBadges.map(b => b.icon).join(' ')} ${gamification.earnedBadges.length} of ${gamification.allBadges.length} badges earned`
+                      : 'No badges earned yet — keep going!'
+                    }
+                  </span>
+                  <svg className={cn('w-3.5 h-3.5 transition-transform', showBadges && 'rotate-180')} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+
+                <AnimatePresence>
+                  {showBadges && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-3">
+                        {gamification.allBadges.map((badge) => {
+                          const isEarned = gamification.earnedBadges.some((b) => b.id === badge.id)
+                          return (
+                            <div
+                              key={badge.id}
+                              className={cn(
+                                'rounded-lg p-3 text-center border transition-colors',
+                                isEarned
+                                  ? 'bg-accent/5 border-accent/20'
+                                  : 'bg-background/50 border-card-border/50 opacity-40'
+                              )}
+                            >
+                              <span className="text-2xl">{badge.icon}</span>
+                              <p className="text-xs font-medium text-foreground mt-1">{badge.name}</p>
+                              <p className="text-[10px] text-muted mt-0.5">{badge.description}</p>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </>
+            )}
+          </div>
+        )}
 
         {/* Credits summary */}
         {(() => {
@@ -462,8 +540,11 @@ function ProfileSection({ user, credits, onUpdate, creditAnimation }) {
               </AnimatePresence>
             </div>
           ) : (
-            <div className="mt-5 p-4 rounded-lg border border-card-border bg-background text-center">
-              <p className="text-sm text-muted">No active packs. Purchase a class pack to start booking.</p>
+            <div className="mt-5 p-4 rounded-lg border border-accent/20 bg-accent/5 text-center space-y-3">
+              <p className="text-sm text-muted">No active credits</p>
+              <Button size="sm" asChild>
+                <Link href="/buy-classes">Buy a Pack</Link>
+              </Button>
             </div>
           )
         })()}
@@ -629,103 +710,7 @@ function ProfileSection({ user, credits, onUpdate, creditAnimation }) {
   )
 }
 
-/* ─────────────────────────────────────────────────────────
-   GAMIFICATION WIDGET — streaks, total classes, badges
-   ───────────────────────────────────────────────────────── */
-function GamificationWidget() {
-  const [data, setData] = useState(null)
-  const [showBadges, setShowBadges] = useState(false)
-
-  useEffect(() => {
-    fetch('/api/gamification')
-      .then((r) => r.ok ? r.json() : null)
-      .then((d) => d && setData(d))
-      .catch(() => {})
-  }, [])
-
-  if (!data) return null
-
-  const { stats, earnedBadges, allBadges } = data
-
-  return (
-    <Card>
-      <CardContent className="p-4">
-        {/* Stats row */}
-        <div className="flex items-center gap-4 sm:gap-6">
-          <div className="text-center flex-1">
-            <p className="text-2xl font-bold text-foreground">{stats.totalClasses}</p>
-            <p className="text-[10px] text-muted mt-0.5">Total Classes</p>
-          </div>
-          <div className="w-px h-8 bg-card-border" />
-          <div className="text-center flex-1">
-            <p className="text-2xl font-bold text-foreground flex items-center justify-center gap-1">
-              {stats.currentStreak}
-              {stats.currentStreak >= 3 && <span className="text-sm">🔥</span>}
-            </p>
-            <p className="text-[10px] text-muted mt-0.5">Week Streak</p>
-          </div>
-          <div className="w-px h-8 bg-card-border" />
-          <div className="text-center flex-1">
-            <p className="text-2xl font-bold text-accent">{earnedBadges.length}</p>
-            <p className="text-[10px] text-muted mt-0.5">Badges</p>
-          </div>
-        </div>
-
-        {/* Badges toggle */}
-        {allBadges.length > 0 && (
-          <>
-            <button
-              onClick={() => setShowBadges(!showBadges)}
-              className="mt-3 w-full flex items-center justify-between text-xs text-muted hover:text-foreground transition-colors pt-3 border-t border-card-border"
-            >
-              <span>
-                {earnedBadges.length > 0
-                  ? `${earnedBadges.map(b => b.icon).join(' ')} ${earnedBadges.length} of ${allBadges.length} badges earned`
-                  : 'No badges earned yet — keep going!'
-                }
-              </span>
-              <svg className={cn('w-3.5 h-3.5 transition-transform', showBadges && 'rotate-180')} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-
-            <AnimatePresence>
-              {showBadges && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: 'auto', opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  className="overflow-hidden"
-                >
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-3">
-                    {allBadges.map((badge) => {
-                      const isEarned = earnedBadges.some((b) => b.id === badge.id)
-                      return (
-                        <div
-                          key={badge.id}
-                          className={cn(
-                            'rounded-lg p-3 text-center border transition-colors',
-                            isEarned
-                              ? 'bg-accent/5 border-accent/20'
-                              : 'bg-background/50 border-card-border/50 opacity-40'
-                          )}
-                        >
-                          <span className="text-2xl">{badge.icon}</span>
-                          <p className="text-xs font-medium text-foreground mt-1">{badge.name}</p>
-                          <p className="text-[10px] text-muted mt-0.5">{badge.description}</p>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </>
-        )}
-      </CardContent>
-    </Card>
-  )
-}
+/* GamificationWidget merged into ProfileSection above */
 
 /* ─────────────────────────────────────────────────────────
    SHARED HELPERS — class images + colors
