@@ -1326,42 +1326,46 @@ function ScheduleSection({ credits, onUpdate, sharedClassId, view, onViewChange,
           )}
         </div>
 
-        <div className="flex items-center justify-between pt-2">
-          <button
-            onClick={() => handleShare(cls.id)}
-            className={cn(
-              'flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold transition-all',
-              shared === cls.id
-                ? 'bg-green-500/15 text-green-400 scale-105'
-                : 'bg-accent/10 text-accent hover:bg-accent/20 hover:scale-105 active:scale-95'
+        <div className="space-y-3 pt-2">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => handleShare(cls.id)}
+              className={cn(
+                'flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold transition-all',
+                shared === cls.id
+                  ? 'bg-green-500/15 text-green-400 scale-105'
+                  : 'bg-accent/10 text-accent hover:bg-accent/20 hover:scale-105 active:scale-95'
+              )}
+              title="Share this class"
+            >
+              {shared === cls.id ? (
+                <><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>Link copied!</>
+              ) : (
+                <><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15.59 14.37a6 6 0 01-5.84 7.38v-4.8m5.84-2.58a14.98 14.98 0 006.16-12.12A14.98 14.98 0 009.63 8.37m5.96 6a14.926 14.926 0 01-5.84 2.58m0 0a6 6 0 01-7.38-5.84h4.8" /></svg>Share</>
+              )}
+            </button>
+            {googleCalUrl && (
+              <a
+                href={googleCalUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold bg-teal-400/10 text-teal-400 hover:bg-teal-400/20 hover:scale-105 active:scale-95 transition-all"
+                title="Add to Google Calendar"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 11v4m-2-2h4" />
+                </svg>
+                Add
+              </a>
             )}
-            title="Share this class"
-          >
-            {shared === cls.id ? (
-              <><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>Link copied!</>
-            ) : (
-              <><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15.59 14.37a6 6 0 01-5.84 7.38v-4.8m5.84-2.58a14.98 14.98 0 006.16-12.12A14.98 14.98 0 009.63 8.37m5.96 6a14.926 14.926 0 01-5.84 2.58m0 0a6 6 0 01-7.38-5.84h4.8" /></svg>Share</>
-            )}
-          </button>
+          </div>
           {cls.is_booked ? (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center justify-between">
               <span className="text-[10px] text-muted">
                 {(new Date(cls.starts_at) - Date.now()) / 36e5 <= 24 ? 'Credit will not be returned' : 'Free cancellation'}
               </span>
-              {googleCalUrl && (
-                <a
-                  href={googleCalUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={(e) => e.stopPropagation()}
-                  className="p-1.5 text-muted hover:text-accent transition-colors"
-                  title="Add to Google Calendar"
-                >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                </a>
-              )}
               <Button
                 size="sm"
                 variant="outline"
@@ -1905,42 +1909,46 @@ function BookingsSection({ upcoming, past, waitlist = [], onUpdate, isGoogleUser
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between pt-2">
-                    <button
-                      onClick={() => handleShare(cls.id)}
-                      className={cn(
-                        'flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold transition-all',
-                        shared === cls.id
-                          ? 'bg-green-500/15 text-green-400 scale-105'
-                          : 'bg-accent/10 text-accent hover:bg-accent/20 hover:scale-105 active:scale-95'
+                  <div className="space-y-3 pt-2">
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleShare(cls.id)}
+                        className={cn(
+                          'flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold transition-all',
+                          shared === cls.id
+                            ? 'bg-green-500/15 text-green-400 scale-105'
+                            : 'bg-accent/10 text-accent hover:bg-accent/20 hover:scale-105 active:scale-95'
+                        )}
+                        title="Share this class"
+                      >
+                        {shared === cls.id ? (
+                          <><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>Link copied!</>
+                        ) : (
+                          <><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15.59 14.37a6 6 0 01-5.84 7.38v-4.8m5.84-2.58a14.98 14.98 0 006.16-12.12A14.98 14.98 0 009.63 8.37m5.96 6a14.926 14.926 0 01-5.84 2.58m0 0a6 6 0 01-7.38-5.84h4.8" /></svg>Share</>
+                        )}
+                      </button>
+                      {googleCalUrl && (
+                        <a
+                          href={googleCalUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold bg-teal-400/10 text-teal-400 hover:bg-teal-400/20 hover:scale-105 active:scale-95 transition-all"
+                          title="Add to Google Calendar"
+                        >
+                          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 11v4m-2-2h4" />
+                          </svg>
+                          Add
+                        </a>
                       )}
-                      title="Share this class"
-                    >
-                      {shared === cls.id ? (
-                        <><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>Link copied!</>
-                      ) : (
-                        <><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15.59 14.37a6 6 0 01-5.84 7.38v-4.8m5.84-2.58a14.98 14.98 0 006.16-12.12A14.98 14.98 0 009.63 8.37m5.96 6a14.926 14.926 0 01-5.84 2.58m0 0a6 6 0 01-7.38-5.84h4.8" /></svg>Share</>
-                      )}
-                    </button>
+                    </div>
                     {isUpcoming && isConfirmed && (
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center justify-between">
                         <span className="text-[10px] text-muted">
                           {isLate ? 'Credit will not be returned' : 'Free cancellation'}
                         </span>
-                        {googleCalUrl && (
-                          <a
-                            href={googleCalUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            onClick={(e) => e.stopPropagation()}
-                            className="p-1.5 text-muted hover:text-accent transition-colors"
-                            title="Add to Google Calendar"
-                          >
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                            </svg>
-                          </a>
-                        )}
                         <Button
                           size="sm"
                           variant="outline"
