@@ -13,6 +13,7 @@ import FAQ from '@/components/FAQ';
 import Contact from '@/components/Contact';
 import Footer from '@/components/Footer';
 import LoadingScreen from '@/components/LoadingScreen';
+import WhatsAppWidget from '@/components/WhatsAppWidget';
 import { SettingsProvider } from '@/lib/settings-context';
 
 export default function Home() {
@@ -33,6 +34,7 @@ export default function Home() {
       <FAQ />
       <Contact />
       <Footer />
+      <WhatsAppWidget />
     </SettingsProvider>
   );
 }

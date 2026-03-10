@@ -46,6 +46,9 @@ export default function Hero() {
         className="absolute inset-0 bg-black"
       />
 
+      {/* Top gradient for nav legibility */}
+      <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-black/60 to-transparent z-[1]" />
+
       {/* Bottom gradient for seamless transition */}
       <div className="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-[#0a0a0a] to-transparent z-[1]" />
 
