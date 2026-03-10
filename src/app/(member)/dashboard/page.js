@@ -110,7 +110,7 @@ function DashboardContent() {
       </div>
 
       {activeTab === 'classes' && (
-        <ScheduleSection credits={data.credits} onUpdate={fetchDashboard} sharedClassId={sharedClassId} view={scheduleView} onViewChange={setScheduleView} />
+        <ScheduleSection credits={data.credits} onUpdate={fetchDashboard} sharedClassId={sharedClassId} view={scheduleView} onViewChange={setScheduleView} isGoogleUser={isGoogleUser} />
       )}
       {activeTab === 'bookings' && (
         <BookingsSection
@@ -118,6 +118,7 @@ function DashboardContent() {
           past={data.pastBookings}
           waitlist={data.waitlist || []}
           onUpdate={fetchDashboard}
+          isGoogleUser={isGoogleUser}
         />
       )}
     </div>
@@ -770,7 +771,7 @@ function getWeekStart(offset = 0) {
   return d
 }
 
-function ScheduleSection({ credits, onUpdate, sharedClassId, view, onViewChange }) {
+function ScheduleSection({ credits, onUpdate, sharedClassId, view, onViewChange, isGoogleUser }) {
   const router = useRouter()
   const setView = onViewChange
   const [weekOffset, setWeekOffset] = useState(0) // 0 = this week, 1 = next, etc.
@@ -1720,7 +1721,7 @@ function ScheduleSection({ credits, onUpdate, sharedClassId, view, onViewChange 
 /* ─────────────────────────────────────────────────────────
    BOOKINGS SECTION
    ───────────────────────────────────────────────────────── */
-function BookingsSection({ upcoming, past, waitlist = [], onUpdate }) {
+function BookingsSection({ upcoming, past, waitlist = [], onUpdate, isGoogleUser }) {
   const [showPast, setShowPast] = useState(false)
   const [cancelling, setCancelling] = useState(null)
   const [expandedId, setExpandedId] = useState(null)
