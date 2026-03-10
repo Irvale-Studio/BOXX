@@ -9,7 +9,7 @@ import { z } from 'zod'
 export async function GET(request, { params }) {
   try {
     const session = await auth()
-    if (!session || session.user.role !== 'admin' && session.user.role !== 'employee') {
+    if (!session || (session.user.role !== 'owner' && session.user.role !== 'admin' && session.user.role !== 'employee')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
     if (!supabaseAdmin) {
@@ -79,7 +79,7 @@ const editMemberSchema = z.object({
   name: z.string().min(1).max(100).optional(),
   email: z.string().email().optional(),
   phone: z.string().max(20).nullable().optional(),
-  role: z.enum(['member', 'admin', 'employee', 'frozen']).optional(),
+  role: z.enum(['member', 'admin', 'employee', 'frozen', 'owner']).optional(),
 })
 
 /**
@@ -88,7 +88,7 @@ const editMemberSchema = z.object({
 export async function PUT(request, { params }) {
   try {
     const session = await auth()
-    if (!session || session.user.role !== 'admin' && session.user.role !== 'employee') {
+    if (!session || (session.user.role !== 'owner' && session.user.role !== 'admin' && session.user.role !== 'employee')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
     if (!supabaseAdmin) {
@@ -105,6 +105,35 @@ export async function PUT(request, { params }) {
     // Employees cannot change roles
     if (session.user.role === 'employee' && parsed.data.role !== undefined) {
       return NextResponse.json({ error: 'Employees cannot change member roles' }, { status: 403 })
+    }
+
+    // Block employees from editing admin/owner accounts (prevents email-based account takeover)
+    const { data: targetUser } = await supabaseAdmin
+      .from('users')
+      .select('role')
+      .eq('id', id)
+      .single()
+
+    if (!targetUser) {
+      return NextResponse.json({ error: 'Member not found' }, { status: 404 })
+    }
+
+    if (session.user.role === 'employee' && (targetUser.role === 'admin' || targetUser.role === 'owner')) {
+      return NextResponse.json({ error: 'Cannot edit admin accounts' }, { status: 403 })
+    }
+
+    // Admins cannot edit other admins or the owner
+    if (session.user.role === 'admin' && (targetUser.role === 'admin' || targetUser.role === 'owner')) {
+      if (id !== session.user.id) {
+        return NextResponse.json({ error: 'Admins cannot edit other admin accounts' }, { status: 403 })
+      }
+    }
+
+    // Only owner can assign admin/owner roles
+    if (parsed.data.role === 'admin' || parsed.data.role === 'owner') {
+      if (session.user.role !== 'owner') {
+        return NextResponse.json({ error: 'Only the owner can assign admin roles' }, { status: 403 })
+      }
     }
 
     const updates = {}
@@ -156,7 +185,7 @@ export async function PUT(request, { params }) {
 export async function DELETE(request, { params }) {
   try {
     const session = await auth()
-    if (!session || session.user.role !== 'admin' && session.user.role !== 'employee') {
+    if (!session || (session.user.role !== 'owner' && session.user.role !== 'admin' && session.user.role !== 'employee')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
     if (!supabaseAdmin) {

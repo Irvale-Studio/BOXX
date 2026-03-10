@@ -11,7 +11,7 @@ import { z } from 'zod'
 export async function GET(request) {
   try {
     const session = await auth()
-    if (!session || session.user.role !== 'admin' && session.user.role !== 'employee') {
+    if (!session || (session.user.role !== 'owner' && session.user.role !== 'admin' && session.user.role !== 'employee')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -36,7 +36,7 @@ export async function GET(request) {
       const { data: matchedUsers } = await supabaseAdmin
         .from('users')
         .select('id')
-        .or(`name.ilike.%${search}%,email.ilike.%${search}%`)
+        .or(`name.ilike.%${search.replace(/[%_,().\\]/g, '\\$&')}%,email.ilike.%${search.replace(/[%_,().\\]/g, '\\$&')}%`)
       searchUserIds = (matchedUsers || []).map((u) => u.id)
       if (searchUserIds.length === 0) {
         return NextResponse.json({ bookings: [], total: 0, page, limit })
@@ -102,7 +102,7 @@ export async function GET(request) {
 }
 
 const updateBookingSchema = z.object({
-  bookingId: z.string().min(1),
+  bookingId: z.string().uuid(),
   action: z.enum(['cancel']),
   refundCredit: z.boolean().optional(),
 })
@@ -113,7 +113,7 @@ const updateBookingSchema = z.object({
 export async function PUT(request) {
   try {
     const session = await auth()
-    if (!session || session.user.role !== 'admin' && session.user.role !== 'employee') {
+    if (!session || (session.user.role !== 'owner' && session.user.role !== 'admin' && session.user.role !== 'employee')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
     if (!supabaseAdmin) {

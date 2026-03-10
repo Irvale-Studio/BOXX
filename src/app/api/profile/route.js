@@ -90,6 +90,7 @@ export async function DELETE(request) {
       .eq('user_id', userId)
 
     // Anonymize user record (keep for booking history integrity)
+    // Set role to 'frozen' so the JWT session is blocked by the auth callback
     const { error } = await supabaseAdmin
       .from('users')
       .update({
@@ -100,6 +101,7 @@ export async function DELETE(request) {
         avatar_url: null,
         google_id: null,
         password_hash: null,
+        role: 'frozen',
       })
       .eq('id', userId)
 

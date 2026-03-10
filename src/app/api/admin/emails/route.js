@@ -16,7 +16,7 @@ const composeSchema = z.object({
 export async function POST(request) {
   try {
     const session = await auth()
-    if (!session || session.user.role !== 'admin' && session.user.role !== 'employee') {
+    if (!session || (session.user.role !== 'owner' && session.user.role !== 'admin' && session.user.role !== 'employee')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -27,6 +27,19 @@ export async function POST(request) {
     }
 
     const { to, subject, body: emailBody } = parsed.data
+
+    // Restrict to registered member emails only
+    if (supabaseAdmin) {
+      const { data: targetUser } = await supabaseAdmin
+        .from('users')
+        .select('id')
+        .eq('email', to)
+        .single()
+
+      if (!targetUser) {
+        return NextResponse.json({ error: 'Recipient must be a registered member' }, { status: 400 })
+      }
+    }
 
     await sendAdminDirectEmail({ to, subject, body: emailBody })
 

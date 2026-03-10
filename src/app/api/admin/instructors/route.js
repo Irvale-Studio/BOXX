@@ -9,7 +9,7 @@ import { z } from 'zod'
 export async function GET() {
   try {
     const session = await auth()
-    if (!session || session.user.role !== 'admin' && session.user.role !== 'employee') {
+    if (!session || (session.user.role !== 'owner' && session.user.role !== 'admin' && session.user.role !== 'employee')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -46,7 +46,7 @@ const createSchema = z.object({
 export async function POST(request) {
   try {
     const session = await auth()
-    if (!session || session.user.role !== 'admin' && session.user.role !== 'employee') {
+    if (!session || (session.user.role !== 'owner' && session.user.role !== 'admin' && session.user.role !== 'employee')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -58,6 +58,13 @@ export async function POST(request) {
     const parsed = createSchema.safeParse(body)
     if (!parsed.success) {
       return NextResponse.json({ error: 'Invalid input' }, { status: 400 })
+    }
+
+    // Check platform instructor limit
+    const { checkInstructorLimit } = await import('@/lib/platform-limits')
+    const { allowed: instrAllowed, reason: instrReason } = await checkInstructorLimit()
+    if (!instrAllowed) {
+      return NextResponse.json({ error: instrReason }, { status: 403 })
     }
 
     const { data: instructor, error } = await supabaseAdmin
@@ -84,7 +91,7 @@ export async function POST(request) {
 }
 
 const updateSchema = z.object({
-  id: z.string().min(1),
+  id: z.string().uuid(),
   name: z.string().min(1).optional(),
   bio: z.string().nullable().optional(),
   instagram_url: z.string().nullable().optional(),
@@ -97,7 +104,7 @@ const updateSchema = z.object({
 export async function PUT(request) {
   try {
     const session = await auth()
-    if (!session || session.user.role !== 'admin' && session.user.role !== 'employee') {
+    if (!session || (session.user.role !== 'owner' && session.user.role !== 'admin' && session.user.role !== 'employee')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 

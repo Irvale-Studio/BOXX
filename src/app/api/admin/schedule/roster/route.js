@@ -6,13 +6,13 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 
 const addMemberSchema = z.object({
-  classId: z.string().min(1),
-  userId: z.string().min(1),
+  classId: z.string().uuid(),
+  userId: z.string().uuid(),
 })
 
 const removeMemberSchema = z.object({
-  classId: z.string().min(1),
-  userId: z.string().min(1),
+  classId: z.string().uuid(),
+  userId: z.string().uuid(),
   refundCredit: z.boolean().optional(),
   fromWaitlist: z.boolean().optional(),
 })
@@ -23,7 +23,7 @@ const removeMemberSchema = z.object({
 export async function POST(request) {
   try {
     const session = await auth()
-    if (!session || session.user.role !== 'admin' && session.user.role !== 'employee') {
+    if (!session || (session.user.role !== 'owner' && session.user.role !== 'admin' && session.user.role !== 'employee')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
     if (!supabaseAdmin) {
@@ -154,7 +154,7 @@ export async function POST(request) {
 export async function DELETE(request) {
   try {
     const session = await auth()
-    if (!session || session.user.role !== 'admin' && session.user.role !== 'employee') {
+    if (!session || (session.user.role !== 'owner' && session.user.role !== 'admin' && session.user.role !== 'employee')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
     if (!supabaseAdmin) {

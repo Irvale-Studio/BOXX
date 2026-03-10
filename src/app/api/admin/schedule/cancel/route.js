@@ -5,7 +5,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 
 const cancelSchema = z.object({
-  classId: z.string().min(1),
+  classId: z.string().uuid(),
   cancelAll: z.boolean().optional(), // Cancel all classes with same recurring_id
 })
 
@@ -21,7 +21,7 @@ const cancelSchema = z.object({
 export async function POST(request) {
   try {
     const session = await auth()
-    if (!session || session.user.role !== 'admin' && session.user.role !== 'employee') {
+    if (!session || (session.user.role !== 'owner' && session.user.role !== 'admin' && session.user.role !== 'employee')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 

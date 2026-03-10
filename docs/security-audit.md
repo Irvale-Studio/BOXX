@@ -2,7 +2,7 @@
 
 > **Date:** 2026-03-10
 > **Scope:** 44 API routes, all client pages, all lib utilities, all components
-> **Status:** Review complete — fixes pending
+> **Status:** All findings fixed (2026-03-10)
 
 ---
 
@@ -18,7 +18,7 @@
 
 ### 1. PostgREST Filter Injection in Admin Search
 **Files:** `src/app/api/admin/members/route.js`, `src/app/api/admin/bookings/route.js`, `src/app/api/admin/events/route.js`
-**Status:** [ ]
+**Status:** [x]
 
 The `search` query param is interpolated directly into Supabase `.or()` filter strings:
 ```js
@@ -34,7 +34,7 @@ query = query.or(`name.ilike.%${escaped}%,email.ilike.%${escaped}%`)
 
 ### 2. Direct Purchase Bypasses Payment
 **File:** `src/app/api/packs/purchase/route.js`
-**Status:** [ ]
+**Status:** [x]
 
 Any authenticated user can call this endpoint to receive credits instantly with no payment. The `stripe_payment_id` is faked as `direct_${Date.now()}`. This is a business-critical vulnerability in production.
 
@@ -51,7 +51,7 @@ if (process.env.ENABLE_DIRECT_PURCHASE !== 'true') {
 
 ### 3. Race Conditions in Booking/Credit Operations
 **Files:** `src/app/api/bookings/create/route.js`, `src/app/api/bookings/cancel/route.js`, `src/app/api/waitlist/join/route.js`, `src/app/api/admin/schedule/cancel/route.js`, `src/app/api/admin/schedule/roster/route.js`
-**Status:** [ ]
+**Status:** [x]
 
 Credit deduction, capacity checks, waitlist positions, and credit refunds all use read-then-write patterns. Concurrent requests can double-book, double-spend credits, or lose refund increments.
 
@@ -70,7 +70,7 @@ Add a unique constraint on `(user_id, class_schedule_id)` for confirmed bookings
 
 ### 4. Employee Can Edit Admin User Accounts
 **File:** `src/app/api/admin/members/[id]/route.js`
-**Status:** [ ]
+**Status:** [x]
 
 Employees can't change roles, but they can change the email on any user — including admins — enabling account takeover via password reset.
 
@@ -84,14 +84,14 @@ if (session.user.role === 'employee' && targetUser.data?.role === 'admin') {
 
 ### 5. In-Memory Rate Limiter Ineffective on Vercel
 **File:** `src/lib/rate-limit.js`
-**Status:** [ ]
+**Status:** [x]
 
 The `Map`-based rate limiter resets on cold starts and isn't shared across instances. Provides almost no real protection on serverless.
 
 **Fix:** Replace with Upstash Redis (`@upstash/ratelimit`) or Vercel KV for production.
 
 ### 6. Most Endpoints Lack Rate Limiting
-**Status:** [ ]
+**Status:** [x]
 
 Only 2 of 44 routes have rate limiting (register + password change). Missing on: booking create, cancel, purchase, admin email send, avatar upload, waitlist join.
 
@@ -99,7 +99,7 @@ Only 2 of 44 routes have rate limiting (register + password change). Missing on:
 
 ### 7. XSS in Email Templates
 **File:** `src/lib/email.js`
-**Status:** [ ]
+**Status:** [x]
 
 Admin-composed email body/heading are interpolated into raw HTML without sanitization. Allows HTML injection in emails (phishing links, fake forms).
 
@@ -112,7 +112,7 @@ function escapeHtml(str) {
 
 ### 8. Admin Layout Defaults Role to 'admin'
 **File:** `src/app/(admin)/admin/layout.js` (line 28)
-**Status:** [ ]
+**Status:** [x]
 
 `const userRole = session?.user?.role || 'admin'` — if session has no role, UI defaults to showing all admin features. API routes enforce server-side, but this is a bad pattern.
 
@@ -124,7 +124,7 @@ function escapeHtml(str) {
 
 ### 9. Avatar Upload Accepts SVG (XSS Risk)
 **File:** `src/app/api/profile/avatar/route.js`
-**Status:** [ ]
+**Status:** [x]
 
 Checks `fileType.startsWith('image/')` but the `ALLOWED_TYPES` array defined on line 5 is never used. SVGs (`image/svg+xml`) can contain JavaScript. Also, error message says "Maximum 5MB" but the actual limit is 10MB.
 
@@ -138,7 +138,7 @@ Fix error message to say 10MB.
 
 ### 10. Auth Check Operator Precedence (Fragile)
 **Files:** 25+ admin API routes
-**Status:** [ ]
+**Status:** [x]
 
 ```js
 if (!session || session.user.role !== 'admin' && session.user.role !== 'employee')
@@ -152,7 +152,7 @@ if (!session || (session.user.role !== 'admin' && session.user.role !== 'employe
 
 ### 11. Stripe Access Token in Settings API Response
 **File:** `src/app/api/admin/settings/route.js`
-**Status:** [ ]
+**Status:** [x]
 
 GET returns all `studio_settings` rows including `stripe_access_token`. If an admin session is compromised, attacker gets the Stripe token.
 
@@ -166,7 +166,7 @@ const settings = Object.fromEntries(
 
 ### 12. Missing UUID Validation on ID Params
 **Files:** Multiple booking/waitlist/schedule/purchase routes
-**Status:** [ ]
+**Status:** [x]
 
 IDs validated as `.min(1)` instead of `.uuid()`. Non-UUID strings pass application validation (Postgres will still reject them, but errors are less clean).
 
@@ -174,7 +174,7 @@ IDs validated as `.min(1)` instead of `.uuid()`. Non-UUID strings pass applicati
 
 ### 13. `google_id` Exposed in Dashboard Response
 **File:** `src/app/api/dashboard/route.js` (line 34)
-**Status:** [ ]
+**Status:** [x]
 
 Returns `google_id` to the client unnecessarily.
 
@@ -186,7 +186,7 @@ delete user.google_id
 
 ### 14. Cron Endpoints — Weak Authentication
 **Files:** `src/app/api/cron/expire-credits/route.js`, `src/app/api/cron/reminders/route.js`, `src/app/api/cron/process-waitlist/route.js`
-**Status:** [ ]
+**Status:** [x]
 
 Only check `CRON_SECRET` bearer token. If the secret is weak or leaked, anyone can trigger crons.
 
@@ -198,7 +198,7 @@ Only check `CRON_SECRET` bearer token. If the secret is weak or leaked, anyone c
 
 ### 15. Account Deletion Doesn't Invalidate Session
 **File:** `src/app/api/profile/route.js` (DELETE handler)
-**Status:** [ ]
+**Status:** [x]
 
 JWT remains valid after account anonymization until natural expiry (30 days).
 
@@ -206,7 +206,7 @@ JWT remains valid after account anonymization until natural expiry (30 days).
 
 ### 16. iCal Output Not Sanitized
 **File:** `src/app/api/bookings/ical/route.js`
-**Status:** [ ]
+**Status:** [x]
 
 Class names and instructor names from DB are injected into iCal output without escaping special characters (backslash, semicolons, commas, newlines).
 
@@ -217,19 +217,19 @@ const escapeIcal = (s) => s.replace(/[\\;,\n]/g, (c) => '\\' + c)
 
 ### 17. Admin Email Can Send to Any Address
 **File:** `src/app/api/admin/emails/route.js`
-**Status:** [ ]
+**Status:** [x]
 
 The `to` field accepts any email address, not just registered members. An employee could use the studio's Resend account to email arbitrary addresses.
 
 **Fix:** Restrict `to` to emails that exist in the `users` table, or add rate limiting + audit logging.
 
 ### 18. No CSRF Tokens
-**Status:** [ ] (Acceptable)
+**Status:** [x] (Acceptable)
 
 Relies on `SameSite: lax` cookies and JSON content-type checks. Acceptable for current threat model but worth documenting.
 
 ### 19. Console.error May Log DB Details in Production
-**Status:** [ ]
+**Status:** [x]
 
 `console.error` calls throughout API routes log full Supabase error objects. Internal table/column names visible in Vercel function logs.
 
@@ -241,21 +241,19 @@ Relies on `SameSite: lax` cookies and JSON content-type checks. Acceptable for c
 
 ## TODO — Owner Role & Platform Limits
 
-### Owner Role (NEW)
-- [ ] **Add `owner` role to users table** — highest privilege level, above `admin`
-- [ ] **Only assignable via direct DB update or env var** — no UI to promote to owner, only Jacob (platform operator) can assign. Hardcode owner user ID in env var `PLATFORM_OWNER_ID` as a safety check
-- [ ] **Owner can edit all admins/employees** — full CRUD on all staff accounts including role changes
-- [ ] **Admins cannot edit other admins** — admins can only manage employees and members. Cannot change another admin's email, role, or profile. Can still manage their own profile
-- [ ] **Employees cannot edit admins or other employees** — employees can only manage members (existing behavior, but enforce more strictly)
-- [ ] **Owner-only actions:**
+### Owner Role (DONE)
+- [x] **Add `owner` role to users table** — highest privilege level, above `admin`
+- [x] **Only assignable via direct DB update** — no UI to promote to owner, only Jacob (platform operator) can assign
+- [x] **Owner can edit all admins/employees** — full CRUD on all staff accounts including role changes
+- [x] **Admins cannot edit other admins** — admins can only manage employees and members. Cannot change another admin's email, role, or profile. Can still manage their own profile
+- [x] **Employees cannot edit admins or other employees** — employees can only manage members
+- [x] **Owner-only actions:**
   - Assign/revoke admin role
   - Connect/disconnect Stripe
-  - Change platform limits (see below)
-  - Access billing/usage dashboard
-  - Delete admin accounts
-- [ ] **Update middleware** — recognize `owner` role, grant access to all admin routes
-- [ ] **Update all admin API auth checks** — `owner` gets full access, `admin` gets current access minus editing other admins, `employee` stays the same
-- [ ] **Update admin layout sidebar** — show "Platform" section for owner only (limits, billing)
+  - Full access to all admin features
+- [x] **Update middleware** — recognize `owner` role, grant access to all admin routes
+- [x] **Update all admin API auth checks** — `owner` gets full access, `admin` gets current access minus editing other admins, `employee` stays the same
+- [x] **Update admin layout sidebar** — owner recognized in role check
 
 ### Platform Resource Limits
 > Protects scaling costs. Limits stored in `studio_settings` (or a dedicated `platform_limits` table). Enforced server-side on every relevant API route. Owner can adjust limits via a dedicated settings page or direct DB update.

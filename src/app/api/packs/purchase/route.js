@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 
 const purchaseSchema = z.object({
-  packId: z.string().min(1),
+  packId: z.string().uuid(),
 })
 
 /**
@@ -16,6 +16,11 @@ export async function POST(request) {
     const session = await auth()
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Direct purchase must be explicitly enabled — otherwise use Stripe checkout
+    if (process.env.ENABLE_DIRECT_PURCHASE !== 'true') {
+      return NextResponse.json({ error: 'Direct purchase is disabled. Please use the checkout flow.' }, { status: 403 })
     }
 
     const body = await request.json()

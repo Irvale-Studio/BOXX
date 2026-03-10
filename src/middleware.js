@@ -28,7 +28,7 @@ export default auth((req) => {
       return NextResponse.redirect(loginUrl)
     }
     const role = session.user.role
-    if (role !== 'admin' && role !== 'employee') {
+    if (role !== 'owner' && role !== 'admin' && role !== 'employee') {
       return NextResponse.redirect(new URL('/dashboard', req.url))
     }
 

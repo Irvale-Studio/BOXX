@@ -11,7 +11,7 @@ const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
 export async function GET(request) {
   try {
     const session = await auth()
-    if (!session || session.user.role !== 'admin') {
+    if (!session || (session.user.role !== 'admin' && session.user.role !== 'owner')) {
       return NextResponse.redirect(`${APP_URL}/login`)
     }
 

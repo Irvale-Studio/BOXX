@@ -9,7 +9,7 @@ import { z } from 'zod'
 export async function GET() {
   try {
     const session = await auth()
-    if (!session || session.user.role !== 'admin') {
+    if (!session || (session.user.role !== 'admin' && session.user.role !== 'owner')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -52,7 +52,7 @@ const createPackSchema = z.object({
 export async function POST(request) {
   try {
     const session = await auth()
-    if (!session || session.user.role !== 'admin') {
+    if (!session || (session.user.role !== 'admin' && session.user.role !== 'owner')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -64,6 +64,13 @@ export async function POST(request) {
     const parsed = createPackSchema.safeParse(body)
     if (!parsed.success) {
       return NextResponse.json({ error: 'Invalid input', details: parsed.error.flatten() }, { status: 400 })
+    }
+
+    // Check platform pack limit
+    const { checkPackLimit } = await import('@/lib/platform-limits')
+    const { allowed: packAllowed, reason: packReason } = await checkPackLimit()
+    if (!packAllowed) {
+      return NextResponse.json({ error: packReason }, { status: 403 })
     }
 
     const { data: pack, error } = await supabaseAdmin
@@ -88,7 +95,7 @@ export async function POST(request) {
 }
 
 const updatePackSchema = z.object({
-  id: z.string().min(1),
+  id: z.string().uuid(),
   name: z.string().min(1).optional(),
   description: z.string().optional(),
   credits: z.number().int().min(1).nullable().optional(),
@@ -108,7 +115,7 @@ const updatePackSchema = z.object({
 export async function PUT(request) {
   try {
     const session = await auth()
-    if (!session || session.user.role !== 'admin') {
+    if (!session || (session.user.role !== 'admin' && session.user.role !== 'owner')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 

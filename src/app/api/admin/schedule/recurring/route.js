@@ -4,8 +4,8 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 
 const recurringSchema = z.object({
-  classTypeId: z.string().min(1),
-  instructorId: z.string().min(1),
+  classTypeId: z.string().uuid(),
+  instructorId: z.string().uuid(),
   startTime: z.string().regex(/^\d{2}:\d{2}$/), // HH:MM
   endTime: z.string().regex(/^\d{2}:\d{2}$/),
   capacity: z.number().int().min(1).max(50).optional(),
@@ -21,7 +21,7 @@ const recurringSchema = z.object({
 export async function POST(request) {
   try {
     const session = await auth()
-    if (!session || session.user.role !== 'admin' && session.user.role !== 'employee') {
+    if (!session || (session.user.role !== 'owner' && session.user.role !== 'admin' && session.user.role !== 'employee')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
     if (!supabaseAdmin) {
@@ -35,6 +35,13 @@ export async function POST(request) {
     }
 
     const { classTypeId, instructorId, startTime, endTime, capacity, days, weeks, startDate, notes } = parsed.data
+
+    // Check platform class limit
+    const { checkClassLimit } = await import('@/lib/platform-limits')
+    const { allowed: classAllowed, reason: classReason } = await checkClassLimit()
+    if (!classAllowed) {
+      return NextResponse.json({ error: classReason }, { status: 403 })
+    }
 
     // Generate a recurring_id to group these classes
     const recurringId = crypto.randomUUID()

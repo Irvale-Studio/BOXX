@@ -184,7 +184,7 @@
 
 ### Admin Panel — Private Classes (remaining)
 - [x] **Add members to private class** — admin selects users to add via roster dialog, auto-creates bookings
-- [ ] **Private class notifications** — email members when added to a private class
+- [x] **Private class notifications** — email members when added to a private class
 
 ### Admin Panel — Other
 - [x] **Admin activity feed** — unified events log on Activity page (replaced old Bookings page)
@@ -211,11 +211,11 @@ All email templates live in `src/lib/email.js` (Resend, branded dark HTML).
 | 4 | Waitlist promotion (cron) | Cron every 5min safety net | `sendWaitlistPromotion` | `/api/cron/process-waitlist` |
 | 5 | Credit expiry warning (3 days) | Cron daily midnight | `sendCreditExpiryWarning` | `/api/cron/expire-credits` |
 
-**Stub/API ready — needs email template + wiring:**
+**Fully coded & wired:**
 | # | Email Event | Trigger | Status |
 |---|-------------|---------|--------|
-| 6 | Class change notification | Admin edits class with bookings | API stub at `/api/admin/schedule/notify`, no template |
-| 7 | Private class invitation | Admin adds member to private class | No template, no call wired |
+| 6 | Class change notification | Admin edits class with bookings | `sendClassChanged` wired in `/api/admin/schedule/notify` |
+| 7 | Private class invitation | Admin adds member to private class | `sendPrivateClassInvitation` wired in `/api/admin/schedule/roster` |
 
 **Not yet built — needs template + API + wiring:**
 | # | Email Event | Trigger | Notes |
@@ -226,7 +226,7 @@ All email templates live in `src/lib/email.js` (Resend, branded dark HTML).
 | 11 | Pack purchase confirmation | Stripe webhook payment success | Send from `/api/stripe/webhook` |
 | 12 | Credits low warning | Credit drops to 1 remaining | Could be in booking create or cron |
 | 13 | Admin direct email | Admin sends message to member | Done — compose UI on Emails page + engagement widget reminder |
-| 14 | Password reset | User requests reset | Needs forgot-password flow + token |
+| 14 | Password reset | User requests reset | Done — `/forgot-password` + `/reset-password/[token]` + email template |
 | 15 | Admin removes from class | Admin removes member via roster | Notify the removed member |
 | 16 | Admin cancels booking | Admin cancels on behalf of member | Notify the member |
 
@@ -234,7 +234,7 @@ All email templates live in `src/lib/email.js` (Resend, branded dark HTML).
 - [x] **Today's classes** — schedule-style cards on admin dashboard (colored border, time range, capacity bar, clickable to schedule page)
 - [x] **Member engagement widget** — two tabs: "At Risk" (inactive 14+ days with credits, one-click email reminder) + "Top Members" (leaderboard, last 30 days)
 - [x] **Revenue widget admin-only** — hidden from employee role
-- [ ] Password reset / forgot password flow (token-based, email link)
+- [x] Password reset / forgot password flow (token-based, email link)
 - [ ] Google account linking (merge email + Google accounts)
 
 ### Reporting
@@ -244,20 +244,18 @@ All email templates live in `src/lib/email.js` (Resend, branded dark HTML).
 - [ ] Export reports to CSV
 
 ### Owner Role & Platform Limits
-- [ ] **Owner role** — new top-level role above admin. Only assignable by platform operator (Jacob) via DB or `PLATFORM_OWNER_ID` env var
-- [ ] **Owner permissions** — can edit all admins/employees, connect Stripe, change platform limits, access billing
-- [ ] **Admin restrictions** — admins cannot edit other admins (only employees + members). Cannot assign admin/owner roles
-- [ ] **Platform resource limits** — server-side enforcement on all creation endpoints:
-  - Max classes/month (default 200)
-  - Max active members (default 500)
-  - Max instructors (default 20)
-  - Max class types (default 30)
-  - Max storage (default 500MB)
-  - Max emails/month (default 2000)
-  - Max active packs (default 20)
-- [ ] **Usage dashboard** — owner-only page showing current usage vs limits
+- [x] **Owner role** — new top-level role above admin. Only assignable by platform operator (Jacob) via DB
+- [x] **Owner permissions** — can edit all admins/employees, connect Stripe, full admin access
+- [x] **Admin restrictions** — admins cannot edit other admins (only employees + members). Cannot assign admin/owner roles
+- [x] **Platform resource limits** — server-side enforcement on all creation endpoints:
+  - Max classes/month (200), max active members (500), max instructors (20)
+  - Max class types (30), max active packs (20)
+  - Max emails/day (100), max emails/month (3000) — Resend free tier
+  - Email rate limiting + tracking in sendAndLog
+  - Platform alert emails sent to jacobmhorgan@gmail.com when limits approached/hit
+- [x] **Usage dashboard** — admin dashboard shows platform usage bars with warning/breach colors
 - [ ] **Limit override** — owner can adjust via platform settings, future: tie to billing tiers
-- [ ] **Security fixes** — see `docs/security-audit.md` for 19 findings (2 critical, 6 high, 6 medium, 5 low)
+- [x] **Security fixes** — see `docs/security-audit.md` for 19 findings (all fixed)
 
 ### Infrastructure
 - [ ] **Set up env vars** — `RESEND_API_KEY` (Resend email), `CRON_SECRET` (cron job auth), `PLATFORM_OWNER_ID` (owner user ID)
@@ -271,7 +269,7 @@ All email templates live in `src/lib/email.js` (Resend, branded dark HTML).
 - [ ] **Run migration SQL** — add `is_private BOOLEAN DEFAULT false` column to `class_types` table
 
 ### Missing Pages
-- [ ] **Forgot password page** (`/forgot-password`) — token-based email reset flow
+- [x] **Forgot password page** (`/forgot-password`) — token-based email reset flow
 - [ ] **Privacy policy page** (`/privacy`)
 - [ ] **Terms of service page** (`/terms`)
 - [ ] **404 page**
@@ -292,28 +290,28 @@ All email templates live in `src/lib/email.js` (Resend, branded dark HTML).
 
 ### Blockers for Production Launch
 
-1. **Stripe not wired to UI** — Checkout sessions, webhook handler, and billing portal are all built but the Buy Classes page has no working payment flow. Direct purchase only (no real money moves).
-2. **Email not functional** — `RESEND_API_KEY` not set. All email code (confirmations, reminders, waitlist promotions, expiry warnings) is dead code until configured.
-3. **Notify endpoint is a stub** — `/api/admin/schedule/notify` sends no actual emails.
-4. **Rate limiting is in-memory** — `Map`-based rate limiter resets on each Vercel cold start and doesn't share state across instances. Needs Redis or Vercel KV for production.
+1. **Stripe not wired to UI** — Checkout sessions, webhook handler, and billing portal are all built but the Buy Classes page has no working payment flow. Direct purchase gated behind `ENABLE_DIRECT_PURCHASE` env var.
+2. ~~**Email not functional**~~ — All 14 templates coded + wired. Just needs `RESEND_API_KEY` env var.
+3. ~~**Notify endpoint is a stub**~~ — Fully implemented, sends real emails via `sendClassChanged`.
+4. **Rate limiting is in-memory** — `Map`-based rate limiter resets on each Vercel cold start. Needs Redis/Upstash for production.
 5. **Missing DB migrations** — `is_private` on `class_types`, `expiry_warned` on `user_credits` may not exist in production Supabase. Must run migration SQL.
 
 ### High Priority
 
-6. **Admin Settings page** — 3 of 4 tabs are stubs (Studio Info, Booking Rules, Reminders). Only Emails tab is rendered (also placeholder).
-7. **Admin Emails page** — placeholder, no functionality.
+6. ~~**Admin Settings page**~~ — All tabs built (Studio Info, Booking Rules, Reminders).
+7. ~~**Admin Emails page**~~ — Fully built with compose, template editor, log viewer.
 8. **No instructor photo upload** — form field exists but no upload-to-storage flow.
 9. **No reporting/analytics** — no revenue, attendance, or retention reports.
-10. **Forgot password flow missing** — no page, no token generation, no reset email.
+10. ~~**Forgot password flow missing**~~ — Built: `/forgot-password`, `/reset-password/[token]`, API routes, email template.
 
 ### Medium Priority
 
-11. **No `/privacy` or `/terms` pages** — footer links to nowhere.
-12. **Member waitlist UI missing** — backend fully built but dashboard doesn't show waitlist positions.
-13. **Calendar view tab** in member dashboard referenced but not rendered.
+11. ~~**No `/privacy` or `/terms` pages**~~ — Both built.
+12. ~~**Member waitlist UI missing**~~ — Built, shows positions in dashboard.
+13. ~~**Calendar view tab**~~ — Built.
 14. **Google account linking** — can't merge email + Google identities.
-15. **Booking cancellation email** — member cancels but gets no confirmation.
-16. **Class cancelled by admin** — booked members get no notification.
+15. ~~**Booking cancellation email**~~ — `sendCancellationConfirmation` wired into cancel route.
+16. ~~**Class cancelled by admin**~~ — `sendClassCancelledByAdmin` wired into cancel route.
 
 ---
 

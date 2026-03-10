@@ -6,7 +6,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 
 const cancelSchema = z.object({
-  bookingId: z.string().min(1),
+  bookingId: z.string().uuid(),
 })
 
 /**

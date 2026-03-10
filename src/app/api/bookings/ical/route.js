@@ -34,9 +34,11 @@ export async function GET(request) {
       return NextResponse.json({ error: 'Booking not found' }, { status: 404 })
     }
 
+    const escapeIcal = (s) => s.replace(/[\\;,\n]/g, (c) => '\\' + c)
+
     const cls = booking.class_schedule
-    const className = cls.class_types?.name || 'BOXX Class'
-    const instructor = cls.instructors?.name || ''
+    const className = escapeIcal(cls.class_types?.name || 'BOXX Class')
+    const instructor = escapeIcal(cls.instructors?.name || '')
     const start = new Date(cls.starts_at)
     const end = new Date(start.getTime() + (cls.duration_minutes || 55) * 60000)
 

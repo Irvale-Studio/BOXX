@@ -22,14 +22,14 @@ export async function POST(request) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 })
     }
 
-    // Some mobile browsers send empty or generic MIME types — allow if it starts with image/
+    // Validate file type against allowed list (blocks SVGs which can contain JS)
     const fileType = file.type || ''
-    if (fileType && !fileType.startsWith('image/')) {
-      return NextResponse.json({ error: 'Invalid file type. Please upload an image.' }, { status: 400 })
+    if (fileType && !ALLOWED_TYPES.includes(fileType)) {
+      return NextResponse.json({ error: 'Invalid file type. Allowed: JPEG, PNG, WebP, HEIC.' }, { status: 400 })
     }
 
     if (file.size > MAX_SIZE) {
-      return NextResponse.json({ error: 'File too large. Maximum 5MB.' }, { status: 400 })
+      return NextResponse.json({ error: 'File too large. Maximum 10MB.' }, { status: 400 })
     }
 
     if (!supabaseAdmin) {

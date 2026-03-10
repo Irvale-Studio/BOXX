@@ -9,7 +9,7 @@ import { z } from 'zod'
 export async function GET() {
   try {
     const session = await auth()
-    if (!session || session.user.role !== 'admin' && session.user.role !== 'employee') {
+    if (!session || (session.user.role !== 'owner' && session.user.role !== 'admin' && session.user.role !== 'employee')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
     if (!supabaseAdmin) {
@@ -48,7 +48,7 @@ const createSchema = z.object({
 export async function POST(request) {
   try {
     const session = await auth()
-    if (!session || session.user.role !== 'admin' && session.user.role !== 'employee') {
+    if (!session || (session.user.role !== 'owner' && session.user.role !== 'admin' && session.user.role !== 'employee')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
     if (!supabaseAdmin) {
@@ -59,6 +59,13 @@ export async function POST(request) {
     const parsed = createSchema.safeParse(body)
     if (!parsed.success) {
       return NextResponse.json({ error: 'Invalid input', details: parsed.error.flatten() }, { status: 400 })
+    }
+
+    // Check platform class type limit
+    const { checkClassTypeLimit } = await import('@/lib/platform-limits')
+    const { allowed: ctAllowed, reason: ctReason } = await checkClassTypeLimit()
+    if (!ctAllowed) {
+      return NextResponse.json({ error: ctReason }, { status: 403 })
     }
 
     const { data: ct, error } = await supabaseAdmin
@@ -96,7 +103,7 @@ export async function POST(request) {
 }
 
 const updateSchema = z.object({
-  id: z.string().min(1),
+  id: z.string().uuid(),
   name: z.string().min(1).max(100).optional(),
   description: z.string().max(500).nullable().optional(),
   duration_mins: z.number().int().min(1).max(300).optional(),
@@ -112,7 +119,7 @@ const updateSchema = z.object({
 export async function PUT(request) {
   try {
     const session = await auth()
-    if (!session || session.user.role !== 'admin' && session.user.role !== 'employee') {
+    if (!session || (session.user.role !== 'owner' && session.user.role !== 'admin' && session.user.role !== 'employee')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
     if (!supabaseAdmin) {

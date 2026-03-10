@@ -37,6 +37,17 @@ export async function POST(request) {
     const { name, email, password } = parsed.data
     const emailLower = email.toLowerCase()
 
+    // Check platform member limit
+    try {
+      const { checkMemberLimit } = await import('@/lib/platform-limits')
+      const { allowed, reason } = await checkMemberLimit()
+      if (!allowed) {
+        return NextResponse.json({ error: 'Registration is temporarily unavailable. Please try again later.' }, { status: 503 })
+      }
+    } catch {
+      // Don't block registration if limit check fails
+    }
+
     // Check if email already exists
     const { data: existing } = await supabaseAdmin
       .from('users')

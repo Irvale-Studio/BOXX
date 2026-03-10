@@ -2,7 +2,13 @@ import { Resend } from 'resend'
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null
 
-const FROM = 'BOXX Thailand <noreply@boxxthailand.com>'
+const FROM = process.env.EMAIL_FROM || 'BOXX Thailand <noreply@boxxthailand.com>'
+
+// HTML-encode user-provided values to prevent XSS/injection in emails
+function escapeHtml(str) {
+  if (!str) return ''
+  return String(str).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
+}
 
 // ─── Email logging helper ───────────────────────────────────────────────────
 
@@ -28,9 +34,36 @@ async function sendAndLog({ emailType, to, subject, html }) {
     await logEmail({ emailType, recipient: to, subject, status: 'skipped', error: 'No RESEND_API_KEY' })
     return
   }
+
+  // Check email rate limits before sending
+  try {
+    const { checkEmailLimit } = await import('@/lib/platform-limits')
+    const { allowed, reason } = await checkEmailLimit()
+    if (!allowed) {
+      await logEmail({ emailType, recipient: to, subject, status: 'rate_limited', error: reason })
+      console.warn(`[email] Rate limited: ${reason}`)
+      return
+    }
+  } catch {
+    // Don't block sending if limit check fails
+  }
+
   try {
     const result = await resend.emails.send({ from: FROM, to, subject, html })
+    if (result?.error) {
+      const errMsg = result.error.message || JSON.stringify(result.error)
+      console.error(`[email] Resend error for ${emailType}:`, errMsg)
+      await logEmail({ emailType, recipient: to, subject, status: 'failed', error: errMsg })
+      return
+    }
     await logEmail({ emailType, recipient: to, subject, status: 'sent', resendId: result?.data?.id })
+    // Track the send for platform limits
+    try {
+      const { trackEmailSent } = await import('@/lib/platform-limits')
+      await trackEmailSent()
+    } catch {
+      // Non-critical
+    }
   } catch (err) {
     await logEmail({ emailType, recipient: to, subject, status: 'failed', error: err.message || String(err) })
     throw err
@@ -659,15 +692,35 @@ export async function sendAdminDirectEmail({ to, subject, body }) {
   await sendAndLog({
     emailType: 'admin_direct',
     to,
-    subject,
+    subject: escapeHtml(subject),
     html: emailTemplate({
-      heading: subject,
-      body: `<div style="white-space:pre-wrap;">${body}</div>`,
+      heading: escapeHtml(subject),
+      body: `<div style="white-space:pre-wrap;">${escapeHtml(body)}</div>`,
     }),
   })
 }
 
-// ─── 14. Private Class Invitation ────────────────────────────────────────────
+// ─── 14. Password Reset ─────────────────────────────────────────────────────
+
+export async function sendPasswordResetEmail({ to, name, resetUrl }) {
+  await sendAndLog({
+    emailType: 'password_reset',
+    to,
+    subject: 'Reset Your Password — BOXX',
+    html: emailTemplate({
+      heading: 'Reset Your Password',
+      body: `
+        <p>Hey ${name || 'there'},</p>
+        <p>We received a request to reset your password. Click the button below to set a new one.</p>
+        <p style="color:#888;font-size:14px;">This link expires in 1 hour. If you didn't request this, you can safely ignore this email.</p>
+      `,
+      ctaUrl: resetUrl,
+      ctaText: 'Reset Password',
+    }),
+  })
+}
+
+// ─── 15. Private Class Invitation ────────────────────────────────────────────
 
 export async function sendPrivateClassInvitation({ to, name, className, instructor, date, time }) {
   if (!(await isEmailEnabled('private_class_invitation'))) return

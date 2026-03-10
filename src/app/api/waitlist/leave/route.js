@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 
 const leaveSchema = z.object({
-  classScheduleId: z.string().min(1),
+  classScheduleId: z.string().uuid(),
 })
 
 /**

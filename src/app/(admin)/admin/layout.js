@@ -25,7 +25,8 @@ export default function AdminLayout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
 
-  const userRole = session?.user?.role || 'admin'
+  const userRole = session?.user?.role || 'member'
+  const isOwner = userRole === 'owner'
   const isEmployee = userRole === 'employee'
   const sidebarLinks = isEmployee
     ? allSidebarLinks.filter((link) => !link.adminOnly)

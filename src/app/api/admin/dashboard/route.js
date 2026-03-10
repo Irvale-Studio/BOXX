@@ -8,7 +8,7 @@ import { NextResponse } from 'next/server'
 export async function GET(request) {
   try {
     const session = await auth()
-    if (!session || session.user.role !== 'admin' && session.user.role !== 'employee') {
+    if (!session || (session.user.role !== 'owner' && session.user.role !== 'admin' && session.user.role !== 'employee')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -385,6 +385,18 @@ export async function GET(request) {
         .slice(0, 8)
     }
 
+    // Get platform usage for admin/owner
+    let platformUsage = null
+    const userRole = session.user.role
+    if (userRole === 'admin' || userRole === 'owner') {
+      try {
+        const { getUsageSummary } = await import('@/lib/platform-limits')
+        platformUsage = await getUsageSummary()
+      } catch {
+        // Non-critical
+      }
+    }
+
     return NextResponse.json({
       stats: {
         totalMembers: membersRes.count || 0,
@@ -407,6 +419,7 @@ export async function GET(request) {
         topMembers,
         atRiskMembers,
       },
+      platformUsage,
     })
   } catch (error) {
     console.error('[admin/dashboard] Error:', error)

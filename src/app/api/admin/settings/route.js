@@ -9,7 +9,7 @@ import { z } from 'zod'
 export async function GET() {
   try {
     const session = await auth()
-    if (!session || session.user.role !== 'admin') {
+    if (!session || (session.user.role !== 'admin' && session.user.role !== 'owner')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -26,7 +26,10 @@ export async function GET() {
       return NextResponse.json({ error: 'Failed to load settings' }, { status: 500 })
     }
 
-    const settings = Object.fromEntries((data || []).map((r) => [r.key, r.value]))
+    const sensitiveKeys = ['stripe_access_token']
+    const settings = Object.fromEntries(
+      (data || []).filter((r) => !sensitiveKeys.includes(r.key)).map((r) => [r.key, r.value])
+    )
     return NextResponse.json({ settings })
   } catch (error) {
     console.error('[admin/settings] Error:', error)
@@ -42,7 +45,7 @@ const updateSchema = z.record(z.string(), z.string())
 export async function PUT(request) {
   try {
     const session = await auth()
-    if (!session || session.user.role !== 'admin') {
+    if (!session || (session.user.role !== 'admin' && session.user.role !== 'owner')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 

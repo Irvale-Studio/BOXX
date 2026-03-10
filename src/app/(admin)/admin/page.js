@@ -30,7 +30,7 @@ function TrendIndicator({ current, previous, label }) {
 
 export default function AdminDashboard() {
   const { data: session } = useSession()
-  const isAdmin = session?.user?.role === 'admin'
+  const isAdmin = session?.user?.role === 'admin' || session?.user?.role === 'owner'
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [expandedClass, setExpandedClass] = useState(null)
@@ -164,6 +164,38 @@ export default function AdminDashboard() {
   return (
     <div>
       <h1 className="text-2xl font-bold text-foreground mb-6">Dashboard</h1>
+
+      {/* Platform usage warnings */}
+      {isAdmin && data?.platformUsage?.warnings?.length > 0 && (
+        <div className="mb-6 space-y-2">
+          {data.platformUsage.breached?.length > 0 && (
+            <div className="bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-3">
+              <p className="text-sm font-semibold text-red-400 mb-1">Resource limit reached</p>
+              <div className="space-y-1">
+                {data.platformUsage.breached.map((u) => (
+                  <p key={u.key} className="text-xs text-red-300">
+                    {u.label}: {u.current}/{u.limit} ({Math.round((u.current / u.limit) * 100)}%)
+                  </p>
+                ))}
+              </div>
+            </div>
+          )}
+          {data.platformUsage.warnings?.filter((w) => !data.platformUsage.breached?.find((b) => b.key === w.key)).length > 0 && (
+            <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-3">
+              <p className="text-sm font-semibold text-amber-400 mb-1">Approaching resource limits</p>
+              <div className="space-y-1">
+                {data.platformUsage.warnings
+                  .filter((w) => !data.platformUsage.breached?.find((b) => b.key === w.key))
+                  .map((u) => (
+                    <p key={u.key} className="text-xs text-amber-300">
+                      {u.label}: {u.current}/{u.limit} ({Math.round((u.current / u.limit) * 100)}%)
+                    </p>
+                  ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Stat cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-8">
@@ -709,6 +741,47 @@ export default function AdminDashboard() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Platform Usage (admin/owner only) */}
+        {isAdmin && data?.platformUsage?.usage && (
+          <Card className="lg:col-span-2">
+            <CardHeader>
+              <CardTitle className="text-base">Platform Usage</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {data.platformUsage.usage.map((u) => {
+                  const pct = u.limit > 0 ? Math.round((u.current / u.limit) * 100) : 0
+                  const isWarning = pct >= 80
+                  const isBreached = pct >= 100
+                  return (
+                    <div key={u.key} className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-muted">{u.label}</span>
+                        <span className={cn(
+                          'text-xs font-mono',
+                          isBreached ? 'text-red-400' : isWarning ? 'text-amber-400' : 'text-foreground'
+                        )}>
+                          {u.current}/{u.limit}
+                        </span>
+                      </div>
+                      <div className="h-1.5 bg-card-border rounded-full overflow-hidden">
+                        <div
+                          className={cn(
+                            'h-full rounded-full transition-all',
+                            isBreached ? 'bg-red-500' : isWarning ? 'bg-amber-500' : 'bg-accent'
+                          )}
+                          style={{ width: `${Math.min(pct, 100)}%` }}
+                        />
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+              <p className="text-[11px] text-muted mt-4">Free tier limits (Vercel + Resend + Supabase). You'll be emailed when limits are approached.</p>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   )

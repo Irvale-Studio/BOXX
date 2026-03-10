@@ -16,23 +16,37 @@ export async function requireStaff() {
     return { response: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) }
   }
   const role = session.user.role
-  if (role !== 'admin' && role !== 'employee') {
+  if (role !== 'owner' && role !== 'admin' && role !== 'employee') {
     return { response: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) }
   }
   return {
     session,
-    isAdmin: role === 'admin',
+    isOwner: role === 'owner',
+    isAdmin: role === 'admin' || role === 'owner',
     isEmployee: role === 'employee',
   }
 }
 
 /**
- * Check if the current user is an admin (not employee).
- * Returns { session } or a 401 response.
+ * Check if the current user is an admin or owner (not employee).
+ * Returns { session, isOwner } or a 401 response.
  */
 export async function requireAdmin() {
   const session = await auth()
-  if (!session || session.user.role !== 'admin') {
+  const role = session?.user?.role
+  if (!session || (role !== 'admin' && role !== 'owner')) {
+    return { response: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) }
+  }
+  return { session, isOwner: role === 'owner' }
+}
+
+/**
+ * Check if the current user is the owner.
+ * Returns { session } or a 401 response.
+ */
+export async function requireOwner() {
+  const session = await auth()
+  if (!session || session.user.role !== 'owner') {
     return { response: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) }
   }
   return { session }

@@ -10,7 +10,7 @@ import { NextResponse } from 'next/server'
 export async function GET(request) {
   try {
     const session = await auth()
-    if (!session || session.user.role !== 'admin' && session.user.role !== 'employee') {
+    if (!session || (session.user.role !== 'owner' && session.user.role !== 'admin' && session.user.role !== 'employee')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -30,10 +30,11 @@ export async function GET(request) {
     // If searching, find matching user IDs first
     let searchUserIds = null
     if (search) {
+      const escaped = search.replace(/[%_,().\\]/g, '\\$&')
       const { data: matchedUsers } = await supabaseAdmin
         .from('users')
         .select('id')
-        .or(`name.ilike.%${search}%,email.ilike.%${search}%`)
+        .or(`name.ilike.%${escaped}%,email.ilike.%${escaped}%`)
       searchUserIds = (matchedUsers || []).map((u) => u.id)
       if (searchUserIds.length === 0) {
         return NextResponse.json({ events: [], total: 0, page, limit })

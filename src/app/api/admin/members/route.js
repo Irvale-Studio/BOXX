@@ -9,7 +9,7 @@ import { z } from 'zod'
 export async function GET(request) {
   try {
     const session = await auth()
-    if (!session || session.user.role !== 'admin' && session.user.role !== 'employee') {
+    if (!session || (session.user.role !== 'owner' && session.user.role !== 'admin' && session.user.role !== 'employee')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -41,7 +41,8 @@ export async function GET(request) {
       .range(offset, offset + limit - 1)
 
     if (search) {
-      query = query.or(`name.ilike.%${search}%,email.ilike.%${search}%`)
+      const escaped = search.replace(/[%_,().\\]/g, '\\$&')
+      query = query.or(`name.ilike.%${escaped}%,email.ilike.%${escaped}%`)
     }
     if (role) {
       query = query.eq('role', role)
@@ -117,8 +118,8 @@ export async function GET(request) {
 }
 
 const grantCreditsSchema = z.object({
-  userId: z.string().min(1),
-  packId: z.string().min(1),
+  userId: z.string().uuid(),
+  packId: z.string().uuid(),
   notes: z.string().optional(),
 })
 
@@ -128,7 +129,7 @@ const grantCreditsSchema = z.object({
 export async function POST(request) {
   try {
     const session = await auth()
-    if (!session || session.user.role !== 'admin' && session.user.role !== 'employee') {
+    if (!session || (session.user.role !== 'owner' && session.user.role !== 'admin' && session.user.role !== 'employee')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 

@@ -192,8 +192,15 @@ export async function GET() {
       (b) => new Date(b.class_schedule?.starts_at) <= currentTime
     )
 
+    // Strip google_id from response, expose only a boolean
+    const userData = userRes.data
+    if (userData) {
+      userData.is_google_user = !!userData.google_id
+      delete userData.google_id
+    }
+
     return NextResponse.json({
-      user: userRes.data,
+      user: userData,
       credits: creditsRes.data || [],
       packs: packsRes.data || [],
       schedule: scheduleRes.data || [],

@@ -9,7 +9,7 @@ import { z } from 'zod'
 export async function GET(request) {
   try {
     const session = await auth()
-    if (!session || session.user.role !== 'admin' && session.user.role !== 'employee') {
+    if (!session || (session.user.role !== 'owner' && session.user.role !== 'admin' && session.user.role !== 'employee')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -107,8 +107,8 @@ export async function GET(request) {
 }
 
 const createClassSchema = z.object({
-  classTypeId: z.string().min(1),
-  instructorId: z.string().min(1),
+  classTypeId: z.string().uuid(),
+  instructorId: z.string().uuid(),
   startsAt: z.string().min(1),
   endsAt: z.string().min(1),
   capacity: z.number().int().min(1).max(50).optional(),
@@ -121,7 +121,7 @@ const createClassSchema = z.object({
 export async function POST(request) {
   try {
     const session = await auth()
-    if (!session || session.user.role !== 'admin' && session.user.role !== 'employee') {
+    if (!session || (session.user.role !== 'owner' && session.user.role !== 'admin' && session.user.role !== 'employee')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -136,6 +136,13 @@ export async function POST(request) {
     }
 
     const { classTypeId, instructorId, startsAt, endsAt, capacity, notes } = parsed.data
+
+    // Check platform class limit
+    const { checkClassLimit } = await import('@/lib/platform-limits')
+    const { allowed: classAllowed, reason: classReason } = await checkClassLimit()
+    if (!classAllowed) {
+      return NextResponse.json({ error: classReason }, { status: 403 })
+    }
 
     // Business rule: check for time clashes with same instructor
     const newStart = new Date(startsAt)
@@ -193,9 +200,9 @@ export async function POST(request) {
 }
 
 const updateClassSchema = z.object({
-  id: z.string().min(1),
-  classTypeId: z.string().min(1).optional(),
-  instructorId: z.string().min(1).optional(),
+  id: z.string().uuid(),
+  classTypeId: z.string().uuid().optional(),
+  instructorId: z.string().uuid().optional(),
   startsAt: z.string().min(1).optional(),
   endsAt: z.string().min(1).optional(),
   capacity: z.number().int().min(1).max(50).optional(),
@@ -216,7 +223,7 @@ const updateClassSchema = z.object({
 export async function PUT(request) {
   try {
     const session = await auth()
-    if (!session || session.user.role !== 'admin' && session.user.role !== 'employee') {
+    if (!session || (session.user.role !== 'owner' && session.user.role !== 'admin' && session.user.role !== 'employee')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
