@@ -148,6 +148,7 @@ function ProfileSection({ user, credits, onUpdate, creditAnimation }) {
   const [deleting, setDeleting] = useState(false)
   const [showBadges, setShowBadges] = useState(false)
   const [gamification, setGamification] = useState(null)
+  const [localAvatar, setLocalAvatar] = useState(null)
   const fileInputRef = useRef(null)
 
   const isGoogleUser = !!user?.google_id
@@ -246,6 +247,11 @@ function ProfileSection({ user, credits, onUpdate, creditAnimation }) {
         body: formData,
       })
       if (res.ok) {
+        const data = await res.json()
+        // Set a local preview URL so the avatar updates immediately
+        if (data.avatar_url) {
+          setLocalAvatar(data.avatar_url)
+        }
         onUpdate()
       } else {
         const data = await res.json()
@@ -270,12 +276,11 @@ function ProfileSection({ user, credits, onUpdate, creditAnimation }) {
                 className="w-[72px] h-[72px] rounded-full bg-accent/10 flex items-center justify-center overflow-hidden cursor-pointer group ring-2 ring-card-border"
                 onClick={() => fileInputRef.current?.click()}
               >
-                {user?.avatar_url ? (
-                  <Image
-                    src={user.avatar_url}
-                    alt={user.name || 'Avatar'}
-                    width={72}
-                    height={72}
+                {(localAvatar || user?.avatar_url) ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img
+                    src={localAvatar || user.avatar_url}
+                    alt={user?.name || 'Avatar'}
                     className="w-full h-full object-cover"
                   />
                 ) : (
