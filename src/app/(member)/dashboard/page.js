@@ -73,6 +73,8 @@ function DashboardContent() {
     }
   }, [justPurchased, router])
 
+  const isGoogleUser = !!data?.user?.google_id
+
   if (loading) return <DashboardSkeleton />
   if (error) return <p className="text-red-400">{error}</p>
   if (!data) return null
