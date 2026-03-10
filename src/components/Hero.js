@@ -127,7 +127,7 @@ export default function Hero() {
           <Link
             href="/book"
             target="_blank"
-            className="min-w-[220px] px-14 py-6 bg-cta text-[#0a0a0a] text-sm tracking-[0.2em] uppercase font-semibold hover:bg-cta-hover transition-all duration-500 text-center"
+            className="sm:flex-1 px-14 py-6 bg-cta text-[#0a0a0a] text-sm tracking-[0.2em] uppercase font-semibold hover:bg-cta-hover transition-all duration-500 text-center"
           >
             Book a Class
           </Link>
@@ -135,7 +135,7 @@ export default function Hero() {
             onClick={() => {
               document.querySelector('#classes')?.scrollIntoView({ behavior: 'smooth' });
             }}
-            className="min-w-[220px] px-14 py-6 border border-white/20 text-sm tracking-[0.2em] uppercase hover:bg-white/10 hover:border-white/40 transition-all duration-500 text-center"
+            className="sm:flex-1 px-14 py-6 border border-white/20 text-sm tracking-[0.2em] uppercase hover:bg-white/10 hover:border-white/40 transition-all duration-500 text-center"
           >
             Explore Classes
           </button>
