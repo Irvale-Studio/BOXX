@@ -260,145 +260,135 @@ function ProfileSection({ user, credits, onUpdate, creditAnimation }) {
 
   return (
     <Card>
-      <CardContent className="p-6">
-        <div className="flex items-start gap-5">
-          {/* Avatar */}
-          <div className="relative shrink-0">
-            <div
-              className="w-16 h-16 rounded-full bg-accent/20 flex items-center justify-center overflow-hidden cursor-pointer group"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              {user?.avatar_url ? (
-                <Image
-                  src={user.avatar_url}
-                  alt={user.name || 'Avatar'}
-                  width={64}
-                  height={64}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <span className="text-xl font-bold text-accent">
-                  {(user?.name || 'U').charAt(0).toUpperCase()}
-                </span>
-              )}
-              <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-full">
-                <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-              </div>
-            </div>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handleAvatarUpload}
-            />
-            {uploading && (
-              <div className="absolute inset-0 flex items-center justify-center bg-black/60 rounded-full">
-                <div className="w-4 h-4 border-2 border-accent border-t-transparent rounded-full animate-spin" />
-              </div>
-            )}
-          </div>
-
-          {/* Info */}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-3">
-              <h2 className="text-lg font-bold text-foreground truncate">{user?.name || 'Member'}</h2>
-              <button
-                onClick={() => setEditing(!editing)}
-                className="text-muted hover:text-accent transition-colors shrink-0"
-                title="Edit profile"
+      <CardContent className="p-0">
+        {/* Profile header */}
+        <div className="p-6 pb-0">
+          <div className="flex items-center gap-4">
+            {/* Avatar */}
+            <div className="relative shrink-0">
+              <div
+                className="w-[72px] h-[72px] rounded-full bg-accent/10 flex items-center justify-center overflow-hidden cursor-pointer group ring-2 ring-card-border"
+                onClick={() => fileInputRef.current?.click()}
               >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                </svg>
-              </button>
+                {user?.avatar_url ? (
+                  <Image
+                    src={user.avatar_url}
+                    alt={user.name || 'Avatar'}
+                    width={72}
+                    height={72}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <span className="text-2xl font-bold text-accent">
+                    {(user?.name || 'U').charAt(0).toUpperCase()}
+                  </span>
+                )}
+                <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-full">
+                  <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                </div>
+              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleAvatarUpload}
+              />
+              {uploading && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/60 rounded-full">
+                  <div className="w-4 h-4 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+                </div>
+              )}
+            </div>
+
+            {/* Name + edit */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <h2 className="text-lg font-bold text-foreground truncate">{user?.name || 'Member'}</h2>
+                <button
+                  onClick={() => setEditing(!editing)}
+                  className="text-muted hover:text-accent transition-colors shrink-0"
+                  title="Edit profile"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                </button>
+              </div>
+              {/* Inline stats next to name */}
+              {gamification && (
+                <div className="flex items-center gap-3 mt-1.5 text-xs text-muted">
+                  <span><span className="text-foreground font-semibold">{gamification.stats.totalClasses}</span> classes</span>
+                  <span className="text-card-border">|</span>
+                  <span>
+                    <span className="text-foreground font-semibold">{gamification.stats.currentStreak}</span> week streak
+                    {gamification.stats.currentStreak >= 3 && ' 🔥'}
+                  </span>
+                  <span className="text-card-border">|</span>
+                  <span><span className="text-accent font-semibold">{gamification.earnedBadges.length}</span> badges</span>
+                </div>
+              )}
             </div>
           </div>
         </div>
 
-        {/* Gamification stats row */}
-        {gamification && (
-          <div className="mt-4 pt-4 border-t border-card-border">
-            <div className="flex items-center gap-4 sm:gap-6">
-              <div className="text-center flex-1">
-                <p className="text-xl font-bold text-foreground">{gamification.stats.totalClasses}</p>
-                <p className="text-[10px] text-muted mt-0.5">Total Classes</p>
-              </div>
-              <div className="w-px h-7 bg-card-border" />
-              <div className="text-center flex-1">
-                <p className="text-xl font-bold text-foreground flex items-center justify-center gap-1">
-                  {gamification.stats.currentStreak}
-                  {gamification.stats.currentStreak >= 3 && <span className="text-sm">🔥</span>}
-                </p>
-                <p className="text-[10px] text-muted mt-0.5">Week Streak</p>
-              </div>
-              <div className="w-px h-7 bg-card-border" />
-              <div className="text-center flex-1">
-                <p className="text-xl font-bold text-accent">{gamification.earnedBadges.length}</p>
-                <p className="text-[10px] text-muted mt-0.5">Badges</p>
-              </div>
-            </div>
+        {/* Badges — collapsible, subtle */}
+        {gamification && gamification.allBadges.length > 0 && (
+          <div className="px-6 mt-4">
+            <button
+              onClick={() => setShowBadges(!showBadges)}
+              className="w-full flex items-center justify-between text-xs text-muted hover:text-foreground transition-colors"
+            >
+              <span>
+                {gamification.earnedBadges.length > 0
+                  ? `${gamification.earnedBadges.map(b => b.icon).join(' ')} ${gamification.earnedBadges.length} of ${gamification.allBadges.length} badges earned`
+                  : 'No badges earned yet — keep going!'
+                }
+              </span>
+              <svg className={cn('w-3.5 h-3.5 transition-transform', showBadges && 'rotate-180')} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
 
-            {/* Badges toggle */}
-            {gamification.allBadges.length > 0 && (
-              <>
-                <button
-                  onClick={() => setShowBadges(!showBadges)}
-                  className="mt-3 w-full flex items-center justify-between text-xs text-muted hover:text-foreground transition-colors pt-3 border-t border-card-border"
+            <AnimatePresence>
+              {showBadges && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="overflow-hidden"
                 >
-                  <span>
-                    {gamification.earnedBadges.length > 0
-                      ? `${gamification.earnedBadges.map(b => b.icon).join(' ')} ${gamification.earnedBadges.length} of ${gamification.allBadges.length} badges earned`
-                      : 'No badges earned yet — keep going!'
-                    }
-                  </span>
-                  <svg className={cn('w-3.5 h-3.5 transition-transform', showBadges && 'rotate-180')} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
-
-                <AnimatePresence>
-                  {showBadges && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      className="overflow-hidden"
-                    >
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-3">
-                        {gamification.allBadges.map((badge) => {
-                          const isEarned = gamification.earnedBadges.some((b) => b.id === badge.id)
-                          return (
-                            <div
-                              key={badge.id}
-                              className={cn(
-                                'rounded-lg p-3 text-center border transition-colors',
-                                isEarned
-                                  ? 'bg-accent/5 border-accent/20'
-                                  : 'bg-background/50 border-card-border/50 opacity-40'
-                              )}
-                            >
-                              <span className="text-2xl">{badge.icon}</span>
-                              <p className="text-xs font-medium text-foreground mt-1">{badge.name}</p>
-                              <p className="text-[10px] text-muted mt-0.5">{badge.description}</p>
-                            </div>
-                          )
-                        })}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </>
-            )}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-3">
+                    {gamification.allBadges.map((badge) => {
+                      const isEarned = gamification.earnedBadges.some((b) => b.id === badge.id)
+                      return (
+                        <div
+                          key={badge.id}
+                          className={cn(
+                            'rounded-lg p-3 text-center border transition-colors',
+                            isEarned
+                              ? 'bg-accent/5 border-accent/20'
+                              : 'bg-background/50 border-card-border/50 opacity-40'
+                          )}
+                        >
+                          <span className="text-2xl">{badge.icon}</span>
+                          <p className="text-xs font-medium text-foreground mt-1">{badge.name}</p>
+                          <p className="text-[10px] text-muted mt-0.5">{badge.description}</p>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         )}
 
-        {/* Credits summary */}
+        {/* Credits — separated by a subtle background band */}
         {(() => {
-          // Filter out packs that are fully used (0 credits remaining for non-unlimited)
           const activePacks = credits.filter((c) =>
             c.credits_remaining === null || c.credits_remaining > 0
           )
@@ -411,13 +401,10 @@ function ProfileSection({ user, credits, onUpdate, creditAnimation }) {
             return daysLeft <= 5
           })
           const isLow = totalCredits !== Infinity && totalCredits <= 2 && totalCredits > 0
-
-          // Color logic: green = healthy, amber = low credits, red = expiring soon
           const creditColor = hasExpiring ? '#f87171' : isLow ? '#f59e0b' : '#22c55e'
 
           return activePacks.length > 0 ? (
-            <div className="mt-5">
-              {/* Compact total display */}
+            <div className="mt-4 bg-background/50 border-t border-card-border">
               <motion.button
                 onClick={() => setShowCredits(!showCredits)}
                 animate={creditAnimation
@@ -425,7 +412,7 @@ function ProfileSection({ user, credits, onUpdate, creditAnimation }) {
                   : { boxShadow: '0 0 0px rgba(34,197,94,0)' }
                 }
                 transition={creditAnimation ? { duration: 2, ease: 'easeInOut' } : {}}
-                className="w-full flex items-center justify-between p-3 rounded-lg border border-card-border bg-background hover:border-accent/20 transition-colors"
+                className="w-full flex items-center justify-between px-6 py-4 hover:bg-card/50 transition-colors"
               >
                 <div className="flex items-center gap-3">
                   <div className="flex items-baseline gap-1.5">
@@ -450,7 +437,6 @@ function ProfileSection({ user, credits, onUpdate, creditAnimation }) {
                 </svg>
               </motion.button>
 
-              {/* Expandable pack details */}
               <AnimatePresence>
                 {showCredits && (
                   <motion.div
@@ -459,7 +445,7 @@ function ProfileSection({ user, credits, onUpdate, creditAnimation }) {
                     exit={{ height: 0, opacity: 0 }}
                     className="overflow-hidden"
                   >
-                    <div className="grid gap-3 mt-3 sm:grid-cols-2 lg:grid-cols-3">
+                    <div className="grid gap-3 px-6 pb-5 sm:grid-cols-2 lg:grid-cols-3">
                       {activePacks.map((c) => {
                         const daysLeft = Math.ceil((new Date(c.expires_at) - Date.now()) / (1000 * 60 * 60 * 24))
                         const isUnlimited = c.credits_remaining === null
@@ -467,7 +453,6 @@ function ProfileSection({ user, credits, onUpdate, creditAnimation }) {
                         const percentUsed = isUnlimited ? 0 : c.credits_total > 0 ? (usedCredits / c.credits_total) * 100 : 0
                         const packLow = !isUnlimited && c.credits_remaining <= 2 && c.credits_remaining > 0
                         const isExpiringSoon = daysLeft <= 5
-                        // Bar color: red = expiring, amber = low credits, green = healthy
                         const barColor = isExpiringSoon ? 'bg-red-500' : packLow ? 'bg-amber-500' : 'bg-green-500'
 
                         return (
@@ -477,7 +462,7 @@ function ProfileSection({ user, credits, onUpdate, creditAnimation }) {
                               'rounded-lg border p-4 space-y-3',
                               isExpiringSoon ? 'border-red-500/30 bg-red-500/5'
                                 : packLow ? 'border-amber-500/20 bg-amber-500/5'
-                                : 'border-card-border bg-background'
+                                : 'border-card-border bg-card'
                             )}
                           >
                             <div className="flex items-start justify-between gap-2">
@@ -540,7 +525,7 @@ function ProfileSection({ user, credits, onUpdate, creditAnimation }) {
               </AnimatePresence>
             </div>
           ) : (
-            <div className="mt-5 p-4 rounded-lg border border-accent/20 bg-accent/5 text-center space-y-3">
+            <div className="mt-4 mx-6 mb-1 p-4 rounded-lg border border-accent/20 bg-accent/5 text-center space-y-3">
               <p className="text-sm text-muted">No active credits</p>
               <Button size="sm" asChild>
                 <Link href="/buy-classes">Buy a Pack</Link>
@@ -558,7 +543,7 @@ function ProfileSection({ user, credits, onUpdate, creditAnimation }) {
               exit={{ height: 0, opacity: 0 }}
               className="overflow-hidden"
             >
-              <div className="mt-4 pt-4 border-t border-card-border space-y-4">
+              <div className="mx-6 mt-4 pt-4 border-t border-card-border space-y-4">
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-1.5">
                     <Label htmlFor="name">Name</Label>
@@ -608,7 +593,7 @@ function ProfileSection({ user, credits, onUpdate, creditAnimation }) {
         </AnimatePresence>
 
         {/* Account Management toggle — only visible when editing profile */}
-        {editing && <div className="mt-4 pt-4 border-t border-card-border">
+        {editing && <div className="mx-6 mt-4 pt-4 border-t border-card-border">
           <button
             onClick={() => setShowAccount(!showAccount)}
             className="flex items-center gap-2 text-xs text-muted hover:text-foreground transition-colors"
@@ -705,6 +690,8 @@ function ProfileSection({ user, credits, onUpdate, creditAnimation }) {
             )}
           </AnimatePresence>
         </div>}
+        {/* Bottom spacer when editing */}
+        {editing && <div className="pb-6" />}
       </CardContent>
     </Card>
   )
