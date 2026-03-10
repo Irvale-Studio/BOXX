@@ -331,7 +331,7 @@ function SeoTab() {
             seo_keywords: settings.seo_keywords || 'boxing, chiang mai, personal training, boutique gym, luxury fitness, boxing classes, strength training, thailand',
             seo_og_title: settings.seo_og_title || 'BOXX | Luxury Boutique Boxing Studio in Chiang Mai',
             seo_og_description: settings.seo_og_description || 'Boxing and strength training, done properly. Small-group classes led by UK-qualified coaches.',
-            seo_og_image: settings.seo_og_image || '',
+            seo_og_image: settings.seo_og_image || '/images/brand/og-share.jpg',
             seo_url: settings.seo_url || 'https://www.boxxthailand.com',
           })
         }

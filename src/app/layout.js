@@ -23,7 +23,7 @@ const DEFAULTS = {
   seo_url: "https://www.boxxthailand.com",
   seo_og_title: "BOXX | Luxury Boutique Boxing Studio in Chiang Mai",
   seo_og_description: "Boxing and strength training, done properly. Small-group classes led by UK-qualified coaches.",
-  seo_og_image: "",
+  seo_og_image: "/images/brand/og-share.jpg",
 };
 
 export async function generateMetadata() {
