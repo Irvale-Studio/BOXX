@@ -1,5 +1,6 @@
 import { auth } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase/admin'
+import { sendPackPurchaseConfirmation } from '@/lib/email'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 
@@ -84,6 +85,26 @@ export async function POST(request) {
     if (creditError) {
       console.error('[packs/purchase] Error:', creditError)
       return NextResponse.json({ error: 'Failed to add credits' }, { status: 500 })
+    }
+
+    // Send purchase confirmation email (non-blocking)
+    const { data: purchaseUser } = await supabaseAdmin
+      .from('users')
+      .select('email, name')
+      .eq('id', session.user.id)
+      .single()
+
+    if (purchaseUser?.email) {
+      sendPackPurchaseConfirmation({
+        to: purchaseUser.email,
+        name: purchaseUser.name,
+        packName: pack.name,
+        credits: pack.credits || 'Unlimited',
+        validityDays: pack.validity_days,
+        expiresAt: expiresAt.toLocaleDateString('en-US', {
+          weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
+        }),
+      }).catch((err) => console.error('[packs/purchase] Email failed:', err))
     }
 
     return NextResponse.json({
