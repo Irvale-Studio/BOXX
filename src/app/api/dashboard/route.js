@@ -182,15 +182,15 @@ export async function GET() {
       (w) => w.class_schedule?.status === 'active' && new Date(w.class_schedule.starts_at) > new Date()
     )
 
-    // Separate bookings: active = class date in future, past = class date has passed
+    // Separate bookings: upcoming = class hasn't started yet, past = class has started/passed
     const allBookings = bookingsRes.data || []
     const currentTime = new Date()
-    const upcomingBookings = allBookings.filter(
-      (b) => new Date(b.class_schedule?.starts_at) > currentTime
-    )
-    const pastBookings = allBookings.filter(
-      (b) => new Date(b.class_schedule?.starts_at) <= currentTime
-    )
+    const upcomingBookings = allBookings
+      .filter((b) => new Date(b.class_schedule?.starts_at) > currentTime)
+      .sort((a, b) => new Date(a.class_schedule?.starts_at) - new Date(b.class_schedule?.starts_at))
+    const pastBookings = allBookings
+      .filter((b) => new Date(b.class_schedule?.starts_at) <= currentTime)
+      .sort((a, b) => new Date(b.class_schedule?.starts_at) - new Date(a.class_schedule?.starts_at))
 
     // Strip google_id from response, expose only a boolean
     const userData = userRes.data

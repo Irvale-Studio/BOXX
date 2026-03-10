@@ -50,8 +50,9 @@ export async function GET(request) {
       return NextResponse.json({ error: 'Failed to load schedule' }, { status: 500 })
     }
 
-    // Also filter out classes whose class_type is private
-    const schedule = (scheduleData || []).filter((cls) => !cls.class_types?.is_private)
+    // Filter out classes whose class_type is private, and hide classes that have already started
+    const now = new Date()
+    const schedule = (scheduleData || []).filter((cls) => !cls.class_types?.is_private && new Date(cls.starts_at) > now)
     const scheduleIds = schedule.map((s) => s.id)
 
     if (scheduleIds.length === 0) {

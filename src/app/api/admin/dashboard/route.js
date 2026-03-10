@@ -177,6 +177,34 @@ export async function GET(request) {
         .order('starts_at', { ascending: true }),
     ])
 
+    // Additional activity queries: WAM, MAM, bookings this month
+    const [weeklyActiveRes, monthlyActiveRes, monthBookingsRes] = await Promise.all([
+      // Weekly active members: unique users with a confirmed booking in last 7 days
+      supabaseAdmin
+        .from('bookings')
+        .select('user_id')
+        .eq('status', 'confirmed')
+        .gte('created_at', sevenDaysAgo.toISOString()),
+
+      // Monthly active members: unique users with a confirmed booking this month
+      supabaseAdmin
+        .from('bookings')
+        .select('user_id')
+        .eq('status', 'confirmed')
+        .gte('created_at', monthStart.toISOString()),
+
+      // Total bookings this month
+      supabaseAdmin
+        .from('bookings')
+        .select('id', { count: 'exact', head: true })
+        .eq('status', 'confirmed')
+        .gte('created_at', monthStart.toISOString()),
+    ])
+
+    const weeklyActiveMembers = new Set((weeklyActiveRes.data || []).map((b) => b.user_id)).size
+    const monthlyActiveMembers = new Set((monthlyActiveRes.data || []).map((b) => b.user_id)).size
+    const bookingsThisMonth = monthBookingsRes.count || 0
+
     // ── Member Engagement ──────────────────────────────────────
     const thirtyDaysAgo = new Date(now)
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
@@ -405,6 +433,9 @@ export async function GET(request) {
         todayBookings: todayBookingsRes.count || 0,
         totalBookings: totalBookingsRes.count || 0,
         revenueThisMonth: revenue,
+        weeklyActiveMembers,
+        monthlyActiveMembers,
+        bookingsThisMonth,
       },
       trends: {
         bookings: { thisWeek: thisWeekBookings, lastWeek: lastWeekBookings },

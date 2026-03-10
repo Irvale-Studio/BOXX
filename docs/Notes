@@ -1,0 +1,132 @@
+A. Admin Emails Page (6 tasks)
+
+  - A1. Email log viewer — reference table of all 16 email events with live/stubbed/not-built status
+  - A2. Branded email template system — rich Mailchimp-style HTML base template (dark theme, gold accents, logo, social footer, CTA buttons)
+  - A3. Built 14 email templates in src/lib/email.js — welcome, booking confirmation, cancellation, class cancelled by admin, pack purchase, credits low warning, removed from class, admin direct email, class changed,       
+  private class invitation, waitlist promotion, class reminder, credit expiry warning, admin cancelled booking
+  - A4. Wired templates into trigger points — register route, cancel route, admin cancel class, stripe webhook, booking create (low credit check), admin roster remove, admin schedule notify
+  - A5. Admin compose email — form on Emails page to send direct email to any member (member search, subject, body)
+  - A6. Email overview tab showing all 16 events with triggers and template status
+
+  B. Admin Settings (3 tasks)
+
+  - B1. Studio Info tab — name, address, phone, email, website (read/write studio_settings)
+  - B2. Booking Rules tab — default capacity, cancellation window hours, max advance booking days
+  - B3. Reminders tab — toggle 24h/1h reminder switches
+
+  C. Missing Pages (3 tasks)
+
+  - C1. Privacy Policy page (/privacy) — 9-section PDPA-compliant policy
+  - C2. Terms of Service page (/terms) — 12-section terms with cancellation policy, health waiver
+  - C3. 404 page (not-found.js) — branded dark theme with navigation links
+
+  D. Admin Activity Page Redesign (3 tasks)
+
+  - D1. Richer event cards — color-coded by type (green=booking, red=cancellation, blue=signup, amber=admin)
+  - D2. Expandable detail view — full context with credit info, timestamps, late cancel flags
+  - D3. Better filtering and grouping — events grouped by date, type filter pills, CSV export built in
+
+  E. Employee Role (1 task)
+
+  - E1. New employee role — middleware + UI enforcement across 14 admin API routes, sidebar filtering, restricted from settings/packs/design, blocked from role changes and member deactivation
+
+  F. Member Dashboard Gaps (4 tasks)
+
+  - F1. Waitlist positions in dashboard — active waitlist entries with position badges and leave button
+  - F2. Private class badge — distinct visual for private classes in My Bookings
+  - F3. Fixed iCal download — changed from window.open() to fetch+blob pattern
+  - F4. Hue effect on bookings — category color system (purple=recurring, amber=private, sky=regular)
+
+  G. Buy Packs Page Redesign (1 task)
+
+  - G1. Full redesign — pricing psychology (anchor pricing, per-class cost, savings %), "Most Popular"/"Best Value" auto-detection, tiered cards with feature checklists, gold checkmarks, staggered motion animations
+
+  H. Gamification & Member Profiles (5 tasks)
+
+  - H1. Weekly streak tracker — consecutive weeks with at least 1 class
+  - H2. Total classes counter — lifetime attendance
+  - H3. Achievement badges — 12 badges (milestones, streaks, variety, time-based)
+  - H4. Profile gamification display — widget on dashboard showing stats
+  - H5. Badge showcase — expandable visual badge grid
+
+  I. Admin Dashboard Review (1 task)
+
+  - I1. Enhanced dashboard — revenue card (month, ฿), week-over-week trend indicators, "Needs Attention" widget (full/low-booking classes), recent cancellations feed with late cancel badges
+
+  J. Admin Design/CMS Page (1 task)
+
+  - J1. New /admin/design page — 4 tabs (Hero & Branding, Social Links, Contact Info, Gallery), all stored in studio_settings, admin-only with middleware protection
+
+  K. Business Logic (6 tasks)
+
+  - K1. Completed /api/admin/schedule/notify — sends sendClassChanged emails to all booked members
+  - K2. Class type deactivation safety — blocks if future active classes exist
+  - K3. Instructor deactivation safety — blocks if future active classes assigned
+  - K4. Pack deactivation safety — blocks if members have active credits
+  - K5. Freeze member — replaces deactivate, preserves data, blocks login, cancels future bookings (returns credits), removes from waitlists, reversible via unfreeze button
+  - K6. Login redirect fix — proper same-tab redirect, frozen account error message
+
+  L. CSV Export (1 task)
+
+  - L1. Bookings CSV export — download button built into the Activity page
+
+
+
+✅Buy packs
+- Make sure all cards are the same height always
+- remove most popular from the single class purchase
+- show them in a 2x2 grid fromat on mobile
+
+
+
+✅My bookings
+- Private class colour code should be the same colour set by the admin in the class type settings. This should be for all class types, if admin changes that colour then it should update in the public views
+- Pick an existing image in the website and use it for the card image for private class type
+- That add to calendar button, can we only show that if user is using gmail login, and can that open up their google calendar with a prompt to add the event to their google calednar or hwoever that works? Or do we need to set up a load of settings with google to do  that, if so lets just remove that add to calendar functionality completely and put it in the extra features setion for later maybe
+
+
+
+  ✅Email page:
+  - Admin should be able to edit the message of each email event. 
+  - They should be able to toggle live or not live
+  - They should be able to click on it to see a preview
+  - The Email temaple section to be hideen or removed
+
+
+  ✅Settings page
+  - Include the classic SEO stuff for user here, title, Share image, all theat classic wesbite stuff
+
+
+  ✅Design page
+  - Remove this page completely
+  - Move the social links to the seetings page. make sure that when user updates stuff in the settings, it actually updates live on the webiste. Stuff like social links, contact info, etc
+
+  ✅My bookings
+  - Waitlisted and confirmed should use the same style cards here
+  - Put waitlisted under the confirmed ones, keep that little subtitle it has
+  Add Pills into the headers to show the statsu, confirmed, cancelled, Waitlist
+  Only move a event into the past bookigns when the date has actually passed, just cancelled should keep it in active bookings but displayed as cancelled
+
+  ✅Pages
+  - Include priacy and terms in the footer
+
+
+  ✅Activity page
+  - Should give the admin events an d employee events a little more info, removed who from what class for example
+
+
+  Empoyee role
+  - test
+
+
+  ✅Calendar share
+  - Need to open the users calendar and add to their gogole calendar if using gmail
+
+
+
+  ✅Things to add:
+  - Distinction between cancelled and live bookings in my bookings tab
+  - Make sure my bookings are lsited by date, soonest at the top
+  - Fully delete and hide option on cancelled classes inside the admin panel. So after a class has been cancelled and set to red colour, show a delete icon on it as well, if admin presses that then popup with delete confirmation, if confirm then this completely removes that event so can not be seen anywhere by anyone
+  - move classes into past classes as soon as the time has gone past
+  - Hide classes from book screen as sopon as they have already started

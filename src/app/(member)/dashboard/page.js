@@ -2019,14 +2019,22 @@ function BookingsSection({ upcoming, past, waitlist = [], onUpdate, isGoogleUser
         </Card>
       ) : (
         <div className="space-y-2">
-          {/* Confirmed and cancelled (future) bookings */}
-          {upcoming.map((b) => renderBookingCard(b, { isUpcoming: true }))}
+          {/* Live (confirmed) upcoming bookings */}
+          {upcoming.filter((b) => b.status === 'confirmed' && b.class_schedule?.status !== 'cancelled').map((b) => renderBookingCard(b, { isUpcoming: true }))}
 
           {/* Waitlisted under confirmed, same card style */}
           {waitlist.length > 0 && (
             <>
               <p className="text-xs font-medium text-muted pt-2">Waitlisted ({waitlist.length})</p>
               {waitlist.map((w) => renderBookingCard(w, { isUpcoming: true, isWaitlist: true }))}
+            </>
+          )}
+
+          {/* Cancelled upcoming bookings — separated */}
+          {upcoming.filter((b) => b.status === 'cancelled' || b.class_schedule?.status === 'cancelled').length > 0 && (
+            <>
+              <p className="text-xs font-medium text-muted pt-2">Cancelled ({upcoming.filter((b) => b.status === 'cancelled' || b.class_schedule?.status === 'cancelled').length})</p>
+              {upcoming.filter((b) => b.status === 'cancelled' || b.class_schedule?.status === 'cancelled').map((b) => renderBookingCard(b, { isUpcoming: true }))}
             </>
           )}
 

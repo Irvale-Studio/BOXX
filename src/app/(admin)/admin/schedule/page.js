@@ -25,6 +25,7 @@ export default function AdminSchedulePage() {
   const [cancelDialog, setCancelDialog] = useState(null)
   const [rosterDialog, setRosterDialog] = useState(null)
   const [notifyDialog, setNotifyDialog] = useState(null) // { classId, message }
+  const [deleteDialog, setDeleteDialog] = useState(null) // cancelled class to permanently delete
   const [submitting, setSubmitting] = useState(false)
 
   // Form state for add/edit (recurring fields included)
@@ -313,6 +314,23 @@ export default function AdminSchedulePage() {
     finally { setSubmitting(false) }
   }
 
+  async function handleDelete() {
+    if (!deleteDialog) return
+    setSubmitting(true)
+    try {
+      const res = await fetch('/api/admin/schedule/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ classScheduleId: deleteDialog.id }),
+      })
+      const data = await res.json()
+      if (!res.ok) { setToast({ message: data.error || 'Failed to delete', type: 'error' }); return }
+      setToast({ message: 'Class permanently deleted', type: 'success' })
+      setDeleteDialog(null); fetchClasses()
+    } catch { setToast({ message: 'Something went wrong', type: 'error' }) }
+    finally { setSubmitting(false) }
+  }
+
   const weekLabel = (() => {
     const s = weekDays[0], e = weekDays[6]
     const sM = s.toLocaleDateString('en-US', { month: 'short' })
@@ -422,7 +440,18 @@ export default function AdminSchedulePage() {
                           </div>
                         )}
                         {isCancelled && (
-                          <p className="text-[10px] text-red-400 font-medium mt-1">Cancelled</p>
+                          <div className="flex items-center justify-between mt-1">
+                            <p className="text-[10px] text-red-400 font-medium">Cancelled</p>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setDeleteDialog(cls) }}
+                              className="text-red-400/60 hover:text-red-400 transition-colors p-0.5"
+                              title="Permanently delete"
+                            >
+                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          </div>
                         )}
                       </button>
                     )
@@ -826,6 +855,30 @@ export default function AdminSchedulePage() {
                 {submitting ? 'Cancelling...' : cancelDialog?.recurring_id ? 'Cancel This Only' : 'Cancel Class'}
               </Button>
             </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Cancelled Class Confirmation */}
+      <Dialog open={!!deleteDialog} onOpenChange={(open) => !open && setDeleteDialog(null)}>
+        <DialogContent className="sm:max-w-md" onOpenAutoFocus={(e) => e.preventDefault()}>
+          <DialogHeader>
+            <DialogTitle>Permanently Delete Class</DialogTitle>
+            <DialogDescription>This will permanently remove this cancelled class. It will no longer be visible to anyone.</DialogDescription>
+          </DialogHeader>
+          {deleteDialog && (
+            <div className="py-4 space-y-2">
+              <p className="text-sm font-medium text-foreground">{deleteDialog.class_types?.name || 'Class'}</p>
+              <p className="text-xs text-muted">
+                {new Date(deleteDialog.starts_at).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', timeZone: 'Asia/Bangkok' })} at {new Date(deleteDialog.starts_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Bangkok' })}
+              </p>
+            </div>
+          )}
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setDeleteDialog(null)}>Cancel</Button>
+            <Button className="bg-red-600 hover:bg-red-700 text-white" onClick={handleDelete} disabled={submitting}>
+              {submitting ? 'Deleting...' : 'Delete Permanently'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

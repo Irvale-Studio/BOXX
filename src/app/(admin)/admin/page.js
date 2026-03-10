@@ -157,6 +157,23 @@ export default function AdminDashboard() {
       icon: '📅',
       sub: `${activeClasses.filter((c) => c.status !== 'cancelled').length} active`,
     },
+    {
+      title: 'Active (Week)',
+      value: stats.weeklyActiveMembers || 0,
+      icon: '🔥',
+      sub: 'members who booked',
+    },
+    {
+      title: 'Active (Month)',
+      value: stats.monthlyActiveMembers || 0,
+      icon: '📊',
+      sub: 'members who booked',
+    },
+    {
+      title: 'Bookings (Month)',
+      value: stats.bookingsThisMonth || 0,
+      icon: '🎯',
+    },
   ]
 
   const dayLabel = selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', timeZone: 'Asia/Bangkok' })
@@ -778,7 +795,7 @@ export default function AdminDashboard() {
                   )
                 })}
               </div>
-              <p className="text-[11px] text-muted mt-4">Free tier limits (Vercel + Resend + Supabase). You'll be emailed when limits are approached.</p>
+              <p className="text-[11px] text-muted mt-4">Resource usage across connected services.</p>
             </CardContent>
           </Card>
         )}
