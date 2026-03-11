@@ -12,6 +12,7 @@ export async function GET() {
   try {
     const session = await auth()
     const tenantId = session?.user?.tenantId || DEFAULT_TENANT_ID
+    console.log('[tenant/theme] session tenantId:', session?.user?.tenantId, '→ resolved:', tenantId)
 
     if (!supabaseAdmin) {
       return NextResponse.json({ theme: null })

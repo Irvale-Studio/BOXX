@@ -26,6 +26,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (!credentials?.email || !credentials?.password) return null
         if (!supabaseAdmin) return null
 
+        console.log('[auth] authorize called. email:', credentials.email, 'tenantId:', credentials.tenantId)
+
         // Tenant-scoped login: if tenantId provided, scope lookup
         const query = supabaseAdmin
           .from('users')
@@ -38,7 +40,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         const { data: user, error } = await query.single()
 
-        if (error || !user || !user.password_hash) return null
+        if (error || !user || !user.password_hash) {
+          console.log('[auth] authorize failed. error:', error?.message, 'user found:', !!user)
+          return null
+        }
 
         const valid = await bcrypt.compare(credentials.password, user.password_hash)
         if (!valid) return null
@@ -46,6 +51,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         // Block frozen accounts
         if (user.role === 'frozen') return null
 
+        console.log('[auth] authorize success. userId:', user.id, 'tenant_id:', user.tenant_id, 'role:', user.role)
         return {
           id: user.id,
           email: user.email,

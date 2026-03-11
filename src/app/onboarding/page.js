@@ -738,8 +738,10 @@ function LaunchScreen({ form, effectiveTheme, googleAuth, session, updateSession
         }
 
         // Auth — sign in to the new tenant
+        console.log('[onboarding] Auth step. googleAuth:', googleAuth, 'tenantId:', data.tenant.id)
         if (googleAuth) {
-          await updateSession()
+          const updated = await updateSession()
+          console.log('[onboarding] Session updated:', updated?.user?.tenantId)
         } else {
           const signInResult = await signIn('credentials', {
             email: form.ownerEmail,
@@ -747,6 +749,7 @@ function LaunchScreen({ form, effectiveTheme, googleAuth, session, updateSession
             tenantId: data.tenant.id,
             redirect: false,
           })
+          console.log('[onboarding] signIn result:', JSON.stringify(signInResult))
           if (signInResult?.error) {
             console.error('[onboarding] Sign-in failed:', signInResult.error)
             setError('Account created but sign-in failed. Please log in manually.')
