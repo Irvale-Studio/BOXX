@@ -277,10 +277,10 @@ export default function AssistantPage() {
     <>
       <div
         className={cn(
-          'fixed top-16 left-0 right-0 flex flex-col bg-background z-20',
+          'fixed left-0 right-0 flex flex-col bg-background z-20',
           'lg:static lg:z-auto lg:flex-row lg:h-[calc(100vh-4rem)] lg:-m-6 lg:overflow-hidden'
         )}
-        style={{ bottom: `${keyboardHeight}px`, transform: `translateY(${vpOffset}px)` }}
+        style={{ top: `${64 + vpOffset}px`, bottom: `${keyboardHeight}px` }}
       >
         {/* Mobile sidebar overlay */}
         {sidebarOpen && (
