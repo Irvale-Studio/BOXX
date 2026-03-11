@@ -689,6 +689,23 @@ function LaunchScreen({ form, effectiveTheme, googleAuth, session, updateSession
       try {
         const payload = { ...form }
 
+        // Include theme data for tenant branding
+        payload.theme = {
+          background: effectiveTheme.background,
+          surface: effectiveTheme.surface,
+          surfaceHover: effectiveTheme.surfaceHover,
+          primary: effectiveTheme.primary,
+          primaryHover: effectiveTheme.primaryHover,
+          secondary: effectiveTheme.secondary,
+          accent: effectiveTheme.accent,
+          foreground: effectiveTheme.foreground,
+          muted: effectiveTheme.muted,
+          border: effectiveTheme.border,
+          borderHover: effectiveTheme.borderHover,
+          titleFont: effectiveTheme.titleFont,
+          bodyFont: effectiveTheme.bodyFont,
+        }
+
         if (googleAuth && session?.user?.id) {
           payload.googleUserId = session.user.id
           delete payload.password
@@ -845,13 +862,14 @@ function LaunchScreen({ form, effectiveTheme, googleAuth, session, updateSession
         >
           {/* Liquid fill */}
           <div
-            className="absolute bottom-0 left-0 right-0 transition-all"
+            className="absolute left-[-1px] right-[-1px] transition-all"
             style={{
-              height: `${fillPercent}%`,
+              bottom: '-1px',
+              height: `calc(${fillPercent}% + 2px)`,
+              maxHeight: 'calc(100% + 2px)',
               transitionDuration: fillPercent === 100 ? '800ms' : '150ms',
               transitionTimingFunction: fillPercent === 100 ? 'cubic-bezier(0.34, 1.56, 0.64, 1)' : 'linear',
               background: `linear-gradient(to top, ${primaryColor}, ${effectiveTheme.secondary || primaryColor}90)`,
-              borderRadius: fillPercent < 100 ? '0 0 0 0' : '0',
             }}
           >
             {/* Wave effect on top of liquid */}

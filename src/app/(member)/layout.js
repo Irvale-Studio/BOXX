@@ -5,15 +5,20 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { signOut, useSession } from 'next-auth/react'
 import { cn } from '@/lib/utils'
+import ThemeProvider, { useTheme } from '@/components/ThemeProvider'
 
 const memberLinks = [
   { name: 'Book Classes', href: '/dashboard' },
   { name: 'Buy Packs', href: '/buy-classes' },
 ]
 
-export default function MemberLayout({ children }) {
+function MemberLayoutInner({ children }) {
   const pathname = usePathname()
   const { data: session } = useSession()
+  const theme = useTheme()
+
+  const studioName = theme?.studioName || 'Studio'
+  const logoUrl = theme?.logoUrl
 
   return (
     <div className="min-h-screen bg-background">
@@ -21,13 +26,11 @@ export default function MemberLayout({ children }) {
       <nav className="bg-card border-b border-card-border sticky top-0 z-50">
         <div className="max-w-6xl mx-auto px-4 flex items-center justify-between h-16">
           <Link href="/">
-            <Image
-              src="/images/brand/logo-primary-white.png"
-              alt="BOXX"
-              width={100}
-              height={40}
-              className="h-8 w-auto"
-            />
+            {logoUrl ? (
+              <Image src={logoUrl} alt={studioName} width={100} height={40} className="h-8 w-auto object-contain" />
+            ) : (
+              <span className="font-bold text-lg text-foreground tracking-wide tenant-title">{studioName}</span>
+            )}
           </Link>
 
           {/* Desktop nav */}
@@ -92,22 +95,28 @@ export default function MemberLayout({ children }) {
       <footer className="border-t border-card-border py-8 px-4">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <Link href="/">
-            <Image
-              src="/images/brand/logo-primary-white.png"
-              alt="BOXX"
-              width={80}
-              height={32}
-              className="h-6 w-auto opacity-40"
-            />
+            {logoUrl ? (
+              <Image src={logoUrl} alt={studioName} width={80} height={32} className="h-6 w-auto opacity-40 object-contain" />
+            ) : (
+              <span className="text-sm font-bold text-muted/40 tenant-title">{studioName}</span>
+            )}
           </Link>
           <div className="flex items-center gap-4 text-xs text-muted">
             <Link href="/" className="hover:text-foreground transition-colors">Home</Link>
             <Link href="/dashboard" className="hover:text-foreground transition-colors">Book Classes</Link>
             <Link href="/buy-classes" className="hover:text-foreground transition-colors">Buy Packs</Link>
           </div>
-          <p className="text-[10px] text-muted/50">&copy; {new Date().getFullYear()} BOXX Thailand</p>
+          <p className="text-[10px] text-muted/50">&copy; {new Date().getFullYear()} {studioName}</p>
         </div>
       </footer>
     </div>
+  )
+}
+
+export default function MemberLayout({ children }) {
+  return (
+    <ThemeProvider>
+      <MemberLayoutInner>{children}</MemberLayoutInner>
+    </ThemeProvider>
   )
 }

@@ -74,11 +74,24 @@ async function sendAndLog({ emailType, to, subject, html }) {
 
 // ─── Shared email template wrapper (Mailchimp-style dark theme) ──────────────
 
-function emailTemplate({ heading, body, ctaUrl, ctaText }) {
+function emailTemplate({ heading, body, ctaUrl, ctaText, brand }) {
+  const b = brand || {}
+  const studioName = b.studioName || 'BOXX'
+  const primaryColor = b.primaryColor || '#c8a750'
+  const bgColor = b.background || '#0a0a0a'
+  const cardColor = b.surface || '#111111'
+  const borderColor = b.border || '#1a1a1a'
+
   const ctaBlock = ctaUrl && ctaText ? `
     <div style="text-align:center;margin:32px 0 16px;">
-      <a href="${ctaUrl}" style="display:inline-block;padding:14px 32px;background:#c8a750;color:#0a0a0a;font-weight:700;font-size:15px;text-decoration:none;border-radius:6px;letter-spacing:0.02em;">${ctaText}</a>
+      <a href="${ctaUrl}" style="display:inline-block;padding:14px 32px;background:${primaryColor};color:${bgColor};font-weight:700;font-size:15px;text-decoration:none;border-radius:6px;letter-spacing:0.02em;">${ctaText}</a>
     </div>` : ''
+
+  const logoBlock = b.logoUrl
+    ? `<img src="${b.logoUrl}" alt="${escapeHtml(studioName)}" style="max-height:48px;max-width:200px;" />`
+    : `<div style="display:inline-block;padding:12px 24px;border:2px solid ${primaryColor};border-radius:4px;">
+        <span style="font-size:28px;font-weight:800;color:#f5f5f5;letter-spacing:0.12em;">${escapeHtml(studioName)}</span>
+      </div>`
 
   return `
 <!DOCTYPE html>
@@ -89,22 +102,20 @@ function emailTemplate({ heading, body, ctaUrl, ctaText }) {
   <meta name="color-scheme" content="dark">
   <meta name="supported-color-schemes" content="dark">
 </head>
-<body style="margin:0;padding:0;background:#0a0a0a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;-webkit-font-smoothing:antialiased;">
+<body style="margin:0;padding:0;background:${bgColor};font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;-webkit-font-smoothing:antialiased;">
   <div style="max-width:560px;margin:0 auto;padding:48px 24px;">
     <!-- Logo -->
     <div style="text-align:center;margin-bottom:32px;">
-      <div style="display:inline-block;padding:12px 24px;border:2px solid #c8a750;border-radius:4px;">
-        <span style="font-size:28px;font-weight:800;color:#f5f5f5;letter-spacing:0.12em;">BOXX</span>
-      </div>
+      ${logoBlock}
     </div>
 
     <!-- Main card -->
-    <div style="background:#111111;border:1px solid #1a1a1a;border-radius:8px;overflow:hidden;">
-      <!-- Gold accent bar -->
-      <div style="height:3px;background:linear-gradient(90deg,#c8a750,#a08535);"></div>
+    <div style="background:${cardColor};border:1px solid ${borderColor};border-radius:8px;overflow:hidden;">
+      <!-- Accent bar -->
+      <div style="height:3px;background:linear-gradient(90deg,${primaryColor},${primaryColor}80);"></div>
 
       <div style="padding:40px 32px;">
-        <h1 style="font-size:22px;font-weight:700;color:#c8a750;margin:0 0 24px 0;letter-spacing:0.01em;">${heading}</h1>
+        <h1 style="font-size:22px;font-weight:700;color:${primaryColor};margin:0 0 24px 0;letter-spacing:0.01em;">${heading}</h1>
         <div style="color:#e0e0e0;font-size:15px;line-height:1.7;">
           ${body}
         </div>
@@ -113,15 +124,9 @@ function emailTemplate({ heading, body, ctaUrl, ctaText }) {
     </div>
 
     <!-- Footer -->
-    <div style="text-align:center;margin-top:32px;padding-top:24px;border-top:1px solid #1a1a1a;">
-      <p style="color:#555;font-size:12px;margin:0;">BOXX Boxing Studio</p>
-      <p style="color:#444;font-size:11px;margin:6px 0 0;">89/2 Bumruang Road, Wat Ket, Chiang Mai 50000</p>
-      <div style="margin-top:12px;">
-        <a href="https://boxxthailand.com" style="color:#c8a750;text-decoration:none;font-size:11px;">boxxthailand.com</a>
-        <span style="color:#333;margin:0 8px;">|</span>
-        <a href="https://instagram.com/boxxthailand" style="color:#c8a750;text-decoration:none;font-size:11px;">Instagram</a>
-      </div>
-      <p style="color:#333;font-size:10px;margin-top:16px;">You received this email because you have an account with BOXX Boxing Studio.</p>
+    <div style="text-align:center;margin-top:32px;padding-top:24px;border-top:1px solid ${borderColor};">
+      <p style="color:#555;font-size:12px;margin:0;">${escapeHtml(studioName)}</p>
+      <p style="color:#333;font-size:10px;margin-top:16px;">You received this email because you have an account with ${escapeHtml(studioName)}.</p>
     </div>
   </div>
 </body>
@@ -463,12 +468,14 @@ export async function sendCreditExpiryWarning({ to, name, packName, creditsRemai
 
 // ─── 5. Welcome Email ────────────────────────────────────────────────────────
 
-export async function sendWelcomeEmail({ to, name, studioName, dashboardUrl }) {
+export async function sendWelcomeEmail({ to, name, studioName, dashboardUrl, brand }) {
   if (!(await isEmailEnabled('welcome'))) return
   const custom = await getCustomMessage('welcome')
   const studio = studioName || 'BOXX'
   const subject = custom.subject || `Welcome to ${studio}`
   const url = dashboardUrl || 'https://boxxthailand.com/dashboard'
+  const emailBrand = { studioName: studio, ...brand }
+  const accentColor = emailBrand.primaryColor || '#c8a750'
   await sendAndLog({
     emailType: 'welcome',
     to,
@@ -482,13 +489,14 @@ export async function sendWelcomeEmail({ to, name, studioName, dashboardUrl }) {
         <p>Thanks for joining ${studio}! Your account is all set up and ready to go.</p>
         <p>Here's how to get started:</p>
         <table style="margin:20px 0;border-collapse:collapse;">
-          <tr><td style="padding:8px 12px 8px 0;color:#c8a750;font-weight:700;font-size:18px;vertical-align:top;">1</td><td style="padding:8px 0;color:#e0e0e0;">Browse available classes on your dashboard</td></tr>
-          <tr><td style="padding:8px 12px 8px 0;color:#c8a750;font-weight:700;font-size:18px;vertical-align:top;">2</td><td style="padding:8px 0;color:#e0e0e0;">Purchase a class pack to get credits</td></tr>
-          <tr><td style="padding:8px 12px 8px 0;color:#c8a750;font-weight:700;font-size:18px;vertical-align:top;">3</td><td style="padding:8px 0;color:#e0e0e0;">Book your first class and show up ready</td></tr>
+          <tr><td style="padding:8px 12px 8px 0;color:${accentColor};font-weight:700;font-size:18px;vertical-align:top;">1</td><td style="padding:8px 0;color:#e0e0e0;">Browse available classes on your dashboard</td></tr>
+          <tr><td style="padding:8px 12px 8px 0;color:${accentColor};font-weight:700;font-size:18px;vertical-align:top;">2</td><td style="padding:8px 0;color:#e0e0e0;">Purchase a class pack to get credits</td></tr>
+          <tr><td style="padding:8px 12px 8px 0;color:${accentColor};font-weight:700;font-size:18px;vertical-align:top;">3</td><td style="padding:8px 0;color:#e0e0e0;">Book your first class and show up ready</td></tr>
         </table>
       `,
       ctaUrl: url,
       ctaText: 'Go to Dashboard',
+      brand: emailBrand,
     }),
   })
 }
@@ -707,11 +715,12 @@ export async function sendAdminDirectEmail({ to, subject, body }) {
 
 // ─── 14. Password Reset ─────────────────────────────────────────────────────
 
-export async function sendPasswordResetEmail({ to, name, resetUrl }) {
+export async function sendPasswordResetEmail({ to, name, resetUrl, brand }) {
+  const studioName = brand?.studioName || 'BOXX'
   await sendAndLog({
     emailType: 'password_reset',
     to,
-    subject: 'Reset Your Password — BOXX',
+    subject: `Reset Your Password — ${studioName}`,
     html: emailTemplate({
       heading: 'Reset Your Password',
       body: `

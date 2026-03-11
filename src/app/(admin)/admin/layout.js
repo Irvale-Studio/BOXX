@@ -6,6 +6,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { signOut, useSession } from 'next-auth/react'
 import { cn } from '@/lib/utils'
+import ThemeProvider, { useTheme } from '@/components/ThemeProvider'
 import {
   LayoutDashboard,
   CalendarDays,
@@ -37,9 +38,10 @@ const allSidebarLinks = [
   { name: 'Settings', href: '/admin/settings', icon: Settings, adminOnly: true },
 ]
 
-export default function AdminLayout({ children }) {
+function AdminLayoutInner({ children }) {
   const pathname = usePathname()
   const { data: session } = useSession()
+  const theme = useTheme()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
 
@@ -54,6 +56,9 @@ export default function AdminLayout({ children }) {
     if (href === '/admin') return pathname === '/admin'
     return pathname.startsWith(href)
   }
+
+  const studioName = theme?.studioName || 'Studio'
+  const logoUrl = theme?.logoUrl
 
   return (
     <div className="min-h-screen bg-background flex">
@@ -77,8 +82,12 @@ export default function AdminLayout({ children }) {
         <div className="h-16 flex items-center justify-between px-4 border-b border-card-border">
           {!collapsed && (
             <div className="flex items-center gap-2">
-              <Dumbbell className="w-5 h-5 text-accent" />
-              <span className="font-bold text-foreground tracking-wide">BOXX Admin</span>
+              {logoUrl ? (
+                <Image src={logoUrl} alt={studioName} width={24} height={24} className="w-6 h-6 rounded object-cover" />
+              ) : (
+                <Dumbbell className="w-5 h-5 text-accent" />
+              )}
+              <span className="font-bold text-foreground tracking-wide tenant-title">{studioName}</span>
             </div>
           )}
           <button
@@ -166,13 +175,11 @@ export default function AdminLayout({ children }) {
 
           {/* Studio name — show on mobile too */}
           <div className="flex items-center gap-3">
-            <Image
-              src="/images/brand/logo-primary-white.png"
-              alt="BOXX"
-              width={80}
-              height={32}
-              className="h-5 lg:h-6 w-auto"
-            />
+            {logoUrl ? (
+              <Image src={logoUrl} alt={studioName} width={80} height={32} className="h-5 lg:h-6 w-auto object-contain" />
+            ) : (
+              <span className="font-bold text-foreground tracking-wide tenant-title">{studioName}</span>
+            )}
           </div>
 
           {/* Right side */}
@@ -196,5 +203,13 @@ export default function AdminLayout({ children }) {
         </main>
       </div>
     </div>
+  )
+}
+
+export default function AdminLayout({ children }) {
+  return (
+    <ThemeProvider>
+      <AdminLayoutInner>{children}</AdminLayoutInner>
+    </ThemeProvider>
   )
 }

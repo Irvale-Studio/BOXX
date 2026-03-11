@@ -23,7 +23,6 @@ CREATE TABLE tenants (
   custom_domain  TEXT UNIQUE,
   vertical       TEXT NOT NULL DEFAULT 'boxing',
   plan           TEXT NOT NULL DEFAULT 'free',
-  trial_ends_at  TIMESTAMPTZ,
   logo_url       TEXT,
   primary_color  TEXT DEFAULT '#c8a750',
   timezone       TEXT DEFAULT 'UTC',
@@ -143,7 +142,7 @@ INSERT INTO feature_flags (key, description, default_enabled, enabled_for_plans)
 -- 2. SEED BERT'S TENANT
 -- ─────────────────────────────────────
 
-INSERT INTO tenants (id, name, slug, vertical, plan, timezone, currency, primary_color, trial_ends_at, is_active)
+INSERT INTO tenants (id, name, slug, vertical, plan, timezone, currency, primary_color, is_active)
 VALUES (
   'a0000000-0000-0000-0000-000000000001',
   'BOXX Boxing Studio',
@@ -153,7 +152,6 @@ VALUES (
   'Asia/Bangkok',
   'THB',
   '#c8a750',
-  NULL,  -- no trial, already live
   true
 );
 

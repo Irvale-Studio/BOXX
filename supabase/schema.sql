@@ -13,7 +13,6 @@ CREATE TABLE tenants (
   custom_domain  TEXT UNIQUE,
   vertical       TEXT NOT NULL DEFAULT 'boxing',
   plan           TEXT NOT NULL DEFAULT 'free',
-  trial_ends_at  TIMESTAMPTZ,
   logo_url       TEXT,
   primary_color  TEXT DEFAULT '#c8a750',
   timezone       TEXT DEFAULT 'UTC',

@@ -36,7 +36,7 @@
 > Goal: Add multi-tenancy columns, create new tables, backfill Bert's data. Zero downtime. Bert's app must work identically after.
 
 ### 1A. New Core Tables
-- [x] `tenants` — id, name, slug, custom_domain, vertical, plan, trial_ends_at, logo_url, primary_color, timezone, currency, created_at
+- [x] `tenants` — id, name, slug, custom_domain, vertical, plan, logo_url, primary_color, timezone, currency, created_at
 - [x] `locations` — id, tenant_id, name, address, city, country, phone, timezone, is_active
 - [ ] `zones` — id, location_id, name, capacity, description (deferred — not needed for MVP)
 - [x] `staff_tenants` — user_id, tenant_id, role, location_ids[], invited_at, accepted_at
@@ -256,11 +256,11 @@ These items are currently hardcoded to BOXX but will be resolved when tenant sco
 
 ### 4B. Onboarding API
 - [x] `POST /api/onboarding/create-tenant`:
-  - Creates tenant row (14-day free trial)
+  - Creates tenant row (free plan)
   - Creates location row
   - Creates owner user (hashed password)
   - Creates staff_tenants row (role: owner)
-  - Enables all feature flags for trial period
+  - Enables all feature flags for free plan
   - Seeds vertical-specific defaults (class types, packs, studio_settings)
   - Adds studio_name to studio_settings
   - Sends welcome email (non-blocking)
@@ -312,11 +312,9 @@ These items are currently hardcoded to BOXX but will be resolved when tenant sco
   - `invoice.payment_failed` → notify owner, grace period
   - `invoice.paid` → clear payment failure state
 
-### 5B. Trial Management
-- [ ] 14-day free trial on paid plans (no credit card required)
-- [ ] `cron/trial-expiry` — daily check, expire trials → downgrade to free
-- [ ] Trial expiry warning emails (7 days, 3 days, 1 day, expired)
-- [ ] Banner in admin UI during trial: "X days left — upgrade now"
+### 5B. Plan Management
+- [ ] Free plan baseline — all tenants start on free
+- [ ] Upgrade flow: free → paid plan via Stripe checkout
 
 ### 5C. Billing UI
 - [ ] Admin → Settings → Billing page
@@ -325,7 +323,7 @@ These items are currently hardcoded to BOXX but will be resolved when tenant sco
 - [ ] Payment method management (via Stripe Portal)
 
 ### Validation
-- [ ] Test: full subscription lifecycle (trial → subscribe → upgrade → cancel)
+- [ ] Test: full subscription lifecycle (free → subscribe → upgrade → cancel)
 - [ ] Test: failed payment → grace period → downgrade
 - [ ] Test: Stripe webhook signature verification
 - [ ] Test: plan change immediately updates feature flags

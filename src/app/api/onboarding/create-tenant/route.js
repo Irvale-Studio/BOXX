@@ -29,6 +29,23 @@ const baseSchema = z.object({
   primaryColor: z.string().regex(/^#[0-9a-fA-F]{6}$/).default('#3b82f6'),
   logoUrl: z.string().url().optional().nullable(),
 
+  // Theme (full color palette + fonts from onboarding)
+  theme: z.object({
+    background: z.string().optional(),
+    surface: z.string().optional(),
+    surfaceHover: z.string().optional(),
+    primary: z.string().optional(),
+    primaryHover: z.string().optional(),
+    secondary: z.string().optional(),
+    accent: z.string().optional(),
+    foreground: z.string().optional(),
+    muted: z.string().optional(),
+    border: z.string().optional(),
+    borderHover: z.string().optional(),
+    titleFont: z.string().optional(),
+    bodyFont: z.string().optional(),
+  }).optional(),
+
   // Google auth (optional — present when user signed up via Google OAuth)
   googleUserId: z.string().uuid().optional(),
   password: z.string().min(8).max(128).optional(),
@@ -97,10 +114,6 @@ export async function POST(request) {
     // Hash password (only for email/password signups)
     const passwordHash = data.password ? await bcrypt.hash(data.password, 12) : null
 
-    // Calculate trial end (14 days)
-    const trialEndsAt = new Date()
-    trialEndsAt.setDate(trialEndsAt.getDate() + 14)
-
     // 1. Create tenant
     const { data: tenant, error: tenantError } = await supabaseAdmin
       .from('tenants')
@@ -109,7 +122,6 @@ export async function POST(request) {
         slug: data.slug,
         vertical: data.vertical,
         plan: 'free',
-        trial_ends_at: trialEndsAt.toISOString(),
         timezone: data.timezone,
         currency: data.currency,
         primary_color: data.primaryColor,
@@ -190,7 +202,7 @@ export async function POST(request) {
       role: 'owner',
     })
 
-    // 5. Enable all feature flags for trial (same as paid plans)
+    // 5. Enable all feature flags for free plan
     const { data: flags } = await supabaseAdmin.from('feature_flags').select('key')
     if (flags?.length) {
       await supabaseAdmin.from('tenant_feature_flags').insert(
@@ -250,6 +262,21 @@ export async function POST(request) {
       value: data.studioName,
     })
 
+    // 6b. Save theme settings
+    if (data.theme) {
+      const themeKeys = [
+        'background', 'surface', 'surfaceHover', 'primary', 'primaryHover',
+        'secondary', 'accent', 'foreground', 'muted', 'border', 'borderHover',
+        'titleFont', 'bodyFont',
+      ]
+      const themeSettings = themeKeys
+        .filter(k => data.theme[k])
+        .map(k => ({ tenant_id: tenant.id, key: `theme_${k}`, value: data.theme[k] }))
+      if (themeSettings.length) {
+        await supabaseAdmin.from('studio_settings').upsert(themeSettings)
+      }
+    }
+
     // 7. Send welcome email (non-blocking)
     try {
       const { sendWelcomeEmail } = await import('@/lib/email')
@@ -258,6 +285,13 @@ export async function POST(request) {
         name: data.ownerName,
         studioName: data.studioName,
         dashboardUrl: `https://${data.slug}.zatrovo.com/admin`,
+        brand: {
+          primaryColor: data.primaryColor,
+          background: data.theme?.background,
+          surface: data.theme?.surface,
+          border: data.theme?.border,
+          logoUrl: data.logoUrl || null,
+        },
       }).catch(() => {})
     } catch {
       // Non-critical
@@ -270,7 +304,6 @@ export async function POST(request) {
         name: tenant.name,
         slug: tenant.slug,
         plan: tenant.plan,
-        trialEndsAt: tenant.trial_ends_at,
       },
       location: location ? { id: location.id, name: location.name } : null,
       owner: { id: owner.id, email: owner.email },
