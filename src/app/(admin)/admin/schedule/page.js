@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
-import { Lock, X, Trash2, CalendarDays, Clock, User, Check, Plus, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Lock, X, Trash2, CalendarDays, Clock, User, Check, Plus, ChevronLeft, ChevronRight, Mail, MailX } from 'lucide-react'
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
@@ -104,6 +104,7 @@ export default function AdminSchedulePage() {
   const [notifyDialog, setNotifyDialog] = useState(null)
   const [deleteDialog, setDeleteDialog] = useState(null)
   const [submitting, setSubmitting] = useState(false)
+  const [saveConfirm, setSaveConfirm] = useState(null) // 'this' | 'all' — which save mode needs confirm
 
   // Form state
   const [form, setForm] = useState({
@@ -342,7 +343,7 @@ export default function AdminSchedulePage() {
     finally { setSubmitting(false) }
   }
 
-  async function handleUpdate(mode = 'this') {
+  async function handleUpdate(mode = 'this', notify = false) {
     if (!editDialog) return
     setSubmitting(true)
     try {
@@ -391,19 +392,29 @@ export default function AdminSchedulePage() {
         setToast({ message: 'Class updated', type: 'success' })
       }
 
-      const bookedCount = editDialog.booked_count || 0
-      const savedClassId = editDialog.id
+      // Send notification email if requested
+      if (notify && (editDialog.booked_count || 0) > 0) {
+        try {
+          await fetch('/api/admin/schedule/notify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ classId: editDialog.id }),
+          })
+          setToast({ message: `Class updated — ${editDialog.booked_count} member${editDialog.booked_count !== 1 ? 's' : ''} notified`, type: 'success' })
+        } catch {
+          // notification failed but update succeeded
+        }
+      }
+
+      setSaveConfirm(null)
       setEditDialog(null)
       fetchClasses()
-      if (bookedCount > 0) {
-        setNotifyDialog({ classId: savedClassId, count: bookedCount })
-      }
     } catch { setToast({ message: 'Something went wrong', type: 'error' }) }
     finally { setSubmitting(false) }
   }
 
   // Quick update for drag/resize — no dialog, direct API call
-  async function handleQuickUpdate(cls, newDate, newStartTime, newEndTime) {
+  async function handleQuickUpdate(cls, newDate, newStartTime, newEndTime, notify = false) {
     try {
       const res = await fetch('/api/admin/schedule', {
         method: 'PUT',
@@ -422,7 +433,20 @@ export default function AdminSchedulePage() {
         const data = await res.json()
         setToast({ message: data.error || 'Failed to move class', type: 'error' })
       } else {
-        setToast({ message: 'Class moved', type: 'success' })
+        if (notify && (cls.booked_count || 0) > 0) {
+          try {
+            await fetch('/api/admin/schedule/notify', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ classId: cls.id }),
+            })
+            setToast({ message: `Class moved — ${cls.booked_count} member${cls.booked_count !== 1 ? 's' : ''} notified`, type: 'success' })
+          } catch {
+            setToast({ message: 'Class moved (notification failed)', type: 'success' })
+          }
+        } else {
+          setToast({ message: 'Class moved', type: 'success' })
+        }
       }
       fetchClasses()
     } catch {
@@ -685,9 +709,9 @@ export default function AdminSchedulePage() {
   }, [createDrag])
 
   // Click on empty grid space to create
-  function confirmPendingMove() {
+  function confirmPendingMove(notify = false) {
     if (!pendingMove) return
-    handleQuickUpdate(pendingMove.cls, pendingMove.newDate, pendingMove.newStartTime, pendingMove.newEndTime)
+    handleQuickUpdate(pendingMove.cls, pendingMove.newDate, pendingMove.newStartTime, pendingMove.newEndTime, notify)
     setPendingMove(null)
   }
 
@@ -1140,20 +1164,39 @@ export default function AdminSchedulePage() {
 
                           {/* Pending move confirm/cancel */}
                           {pendingMove?.classId === cls.id && (
-                            <div className="absolute inset-0 flex items-center justify-center gap-1.5 bg-background/80 backdrop-blur-[2px] rounded-md z-10" onPointerDown={(e) => e.stopPropagation()}>
-                              <button
-                                onClick={(e) => { e.stopPropagation(); confirmPendingMove() }}
-                                className="w-7 h-7 rounded-full bg-green-500/20 text-green-400 hover:bg-green-500/30 flex items-center justify-center transition-colors"
-                                title="Confirm"
-                              >
-                                <Check className="w-4 h-4" />
-                              </button>
+                            <div className="absolute inset-0 flex items-center justify-center gap-1 bg-background/80 backdrop-blur-[2px] rounded-md z-10" onPointerDown={(e) => e.stopPropagation()}>
+                              {(cls.booked_count || 0) > 0 ? (
+                                <>
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); confirmPendingMove(true) }}
+                                    className="w-7 h-7 rounded-full bg-accent/20 text-accent hover:bg-accent/30 flex items-center justify-center transition-colors"
+                                    title="Save & notify members"
+                                  >
+                                    <Mail className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); confirmPendingMove(false) }}
+                                    className="w-7 h-7 rounded-full bg-green-500/20 text-green-400 hover:bg-green-500/30 flex items-center justify-center transition-colors"
+                                    title="Save without notifying"
+                                  >
+                                    <Check className="w-3.5 h-3.5" />
+                                  </button>
+                                </>
+                              ) : (
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); confirmPendingMove() }}
+                                  className="w-7 h-7 rounded-full bg-green-500/20 text-green-400 hover:bg-green-500/30 flex items-center justify-center transition-colors"
+                                  title="Confirm"
+                                >
+                                  <Check className="w-4 h-4" />
+                                </button>
+                              )}
                               <button
                                 onClick={(e) => { e.stopPropagation(); cancelPendingMove() }}
                                 className="w-7 h-7 rounded-full bg-red-500/20 text-red-400 hover:bg-red-500/30 flex items-center justify-center transition-colors"
                                 title="Cancel"
                               >
-                                <X className="w-4 h-4" />
+                                <X className="w-3.5 h-3.5" />
                               </button>
                             </div>
                           )}
@@ -1203,20 +1246,39 @@ export default function AdminSchedulePage() {
                           <div className="px-1.5 py-1 h-full flex flex-col overflow-hidden">
                             <span className="text-[11px] font-semibold text-foreground truncate">{cls.class_types?.name || 'Class'}</span>
                           </div>
-                          <div className="absolute inset-0 flex items-center justify-center gap-1.5 bg-background/80 backdrop-blur-[2px] rounded-md z-10" onPointerDown={(e) => e.stopPropagation()}>
-                            <button
-                              onClick={(e) => { e.stopPropagation(); confirmPendingMove() }}
-                              className="w-7 h-7 rounded-full bg-green-500/20 text-green-400 hover:bg-green-500/30 flex items-center justify-center transition-colors"
-                              title="Confirm"
-                            >
-                              <Check className="w-4 h-4" />
-                            </button>
+                          <div className="absolute inset-0 flex items-center justify-center gap-1 bg-background/80 backdrop-blur-[2px] rounded-md z-10" onPointerDown={(e) => e.stopPropagation()}>
+                            {(pendingMove.cls.booked_count || 0) > 0 ? (
+                              <>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); confirmPendingMove(true) }}
+                                  className="w-7 h-7 rounded-full bg-accent/20 text-accent hover:bg-accent/30 flex items-center justify-center transition-colors"
+                                  title="Save & notify members"
+                                >
+                                  <Mail className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); confirmPendingMove(false) }}
+                                  className="w-7 h-7 rounded-full bg-green-500/20 text-green-400 hover:bg-green-500/30 flex items-center justify-center transition-colors"
+                                  title="Save without notifying"
+                                >
+                                  <Check className="w-3.5 h-3.5" />
+                                </button>
+                              </>
+                            ) : (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); confirmPendingMove() }}
+                                className="w-7 h-7 rounded-full bg-green-500/20 text-green-400 hover:bg-green-500/30 flex items-center justify-center transition-colors"
+                                title="Confirm"
+                              >
+                                <Check className="w-4 h-4" />
+                              </button>
+                            )}
                             <button
                               onClick={(e) => { e.stopPropagation(); cancelPendingMove() }}
                               className="w-7 h-7 rounded-full bg-red-500/20 text-red-400 hover:bg-red-500/30 flex items-center justify-center transition-colors"
                               title="Cancel"
                             >
-                              <X className="w-4 h-4" />
+                              <X className="w-3.5 h-3.5" />
                             </button>
                           </div>
                         </div>
@@ -1366,7 +1428,7 @@ export default function AdminSchedulePage() {
       </Dialog>
 
       {/* Edit Class Dialog */}
-      <Dialog open={!!editDialog} onOpenChange={(open) => !open && setEditDialog(null)}>
+      <Dialog open={!!editDialog} onOpenChange={(open) => { if (!open) { setEditDialog(null); setSaveConfirm(null) } }}>
         <DialogContent className="sm:max-w-3xl p-0 gap-0" hideClose onOpenAutoFocus={(e) => e.preventDefault()}>
           {editDialog && (() => {
             const color = editDialog.class_types?.color || '#c8a750'
@@ -1517,27 +1579,66 @@ export default function AdminSchedulePage() {
                   </div>
                 </div>
 
-                <div className="border-t border-card-border px-4 sm:px-6 py-4 flex flex-col sm:flex-row gap-2">
-                  <Button variant="outline" className="text-red-400 border-red-400/30 hover:bg-red-400/10 w-full sm:w-auto" onClick={() => { setEditDialog(null); setCancelDialog(editDialog) }}>
-                    {isRecurring ? 'Cancel...' : 'Cancel Class'}
-                  </Button>
-                  <div className="flex flex-col sm:flex-row gap-2 sm:ml-auto">
-                    <Button variant="outline" className="w-full sm:w-auto" onClick={() => setEditDialog(null)}>Close</Button>
-                    {isRecurring ? (
-                      <>
-                        <Button variant="outline" className="w-full sm:w-auto" onClick={() => handleUpdate('this')} disabled={submitting} title="Save changes to this class only and remove it from the recurring set">
-                          {submitting ? 'Saving...' : 'Save This Only'}
-                        </Button>
-                        <Button className="w-full sm:w-auto" onClick={() => handleUpdate('all')} disabled={submitting}>
-                          {submitting ? 'Saving...' : 'Save All Recurring'}
-                        </Button>
-                      </>
-                    ) : (
-                      <Button className="w-full sm:w-auto" onClick={() => handleUpdate('this')} disabled={submitting}>
-                        {submitting ? 'Saving...' : form.recurring ? 'Save & Create Recurring' : 'Save Changes'}
+                <div className="border-t border-card-border px-4 sm:px-6 py-4">
+                  {/* Save confirm strip — 3 options when members are booked */}
+                  {saveConfirm && (editDialog.booked_count || 0) > 0 ? (
+                    <div className="flex items-center gap-3">
+                      <p className="text-xs text-muted flex-1">
+                        {editDialog.booked_count} member{editDialog.booked_count !== 1 ? 's' : ''} booked
+                      </p>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => handleUpdate(saveConfirm, true)}
+                          disabled={submitting}
+                          className="h-9 px-3 rounded-lg bg-accent/15 text-accent hover:bg-accent/25 flex items-center gap-1.5 text-xs font-medium transition-colors disabled:opacity-50"
+                          title="Save and notify members"
+                        >
+                          <Mail className="w-3.5 h-3.5" />
+                          <span className="hidden sm:inline">Save & Notify</span>
+                          <Check className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleUpdate(saveConfirm, false)}
+                          disabled={submitting}
+                          className="h-9 px-3 rounded-lg bg-green-500/15 text-green-400 hover:bg-green-500/25 flex items-center gap-1.5 text-xs font-medium transition-colors disabled:opacity-50"
+                          title="Save without notifying"
+                        >
+                          <MailX className="w-3.5 h-3.5" />
+                          <span className="hidden sm:inline">Save Quiet</span>
+                        </button>
+                        <button
+                          onClick={() => setSaveConfirm(null)}
+                          className="w-9 h-9 rounded-lg bg-red-500/15 text-red-400 hover:bg-red-500/25 flex items-center justify-center transition-colors"
+                          title="Cancel"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <Button variant="outline" className="text-red-400 border-red-400/30 hover:bg-red-400/10 w-full sm:w-auto" onClick={() => { setEditDialog(null); setCancelDialog(editDialog) }}>
+                        {isRecurring ? 'Cancel...' : 'Cancel Class'}
                       </Button>
-                    )}
-                  </div>
+                      <div className="flex flex-col sm:flex-row gap-2 sm:ml-auto">
+                        <Button variant="outline" className="w-full sm:w-auto" onClick={() => setEditDialog(null)}>Close</Button>
+                        {isRecurring ? (
+                          <>
+                            <Button variant="outline" className="w-full sm:w-auto" onClick={() => (editDialog.booked_count || 0) > 0 ? setSaveConfirm('this') : handleUpdate('this')} disabled={submitting} title="Save changes to this class only and remove it from the recurring set">
+                              {submitting ? 'Saving...' : 'Save This Only'}
+                            </Button>
+                            <Button className="w-full sm:w-auto" onClick={() => (editDialog.booked_count || 0) > 0 ? setSaveConfirm('all') : handleUpdate('all')} disabled={submitting}>
+                              {submitting ? 'Saving...' : 'Save All Recurring'}
+                            </Button>
+                          </>
+                        ) : (
+                          <Button className="w-full sm:w-auto" onClick={() => (editDialog.booked_count || 0) > 0 ? setSaveConfirm('this') : handleUpdate('this')} disabled={submitting}>
+                            {submitting ? 'Saving...' : form.recurring ? 'Save & Create Recurring' : 'Save Changes'}
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </>
             )
