@@ -6,19 +6,34 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { signOut, useSession } from 'next-auth/react'
 import { cn } from '@/lib/utils'
+import {
+  LayoutDashboard,
+  CalendarDays,
+  Activity,
+  Users,
+  Package,
+  Tag,
+  Dumbbell,
+  BarChart3,
+  Mail,
+  Sparkles,
+  Settings,
+  ChevronsLeft,
+  ArrowLeft,
+} from 'lucide-react'
 
 const allSidebarLinks = [
-  { name: 'Dashboard', href: '/admin', icon: '🏠' },
-  { name: 'Schedule', href: '/admin/schedule', icon: '📅' },
-  { name: 'Activity', href: '/admin/bookings', icon: '📋' },
-  { name: 'Members', href: '/admin/members', icon: '👥' },
-  { name: 'Class Packs', href: '/admin/packs', icon: '📦', adminOnly: true },
-  { name: 'Products', href: '/admin/class-types', icon: '🏷️' },
-  { name: 'Instructors', href: '/admin/instructors', icon: '🥊' },
-  { name: 'Analytics', href: '/admin/analytics', icon: '📊' },
-  { name: 'Emails', href: '/admin/emails', icon: '✉️' },
-  { name: 'Assistant', href: '/admin/assistant', icon: '✨', adminOnly: true },
-  { name: 'Settings', href: '/admin/settings', icon: '⚙️', adminOnly: true },
+  { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
+  { name: 'Schedule', href: '/admin/schedule', icon: CalendarDays },
+  { name: 'Activity', href: '/admin/bookings', icon: Activity },
+  { name: 'Members', href: '/admin/members', icon: Users },
+  { name: 'Class Packs', href: '/admin/packs', icon: Package, adminOnly: true },
+  { name: 'Products', href: '/admin/class-types', icon: Tag },
+  { name: 'Instructors', href: '/admin/instructors', icon: Dumbbell },
+  { name: 'Analytics', href: '/admin/analytics', icon: BarChart3 },
+  { name: 'Emails', href: '/admin/emails', icon: Mail },
+  { name: 'Assistant', href: '/admin/assistant', icon: Sparkles, adminOnly: true },
+  { name: 'Settings', href: '/admin/settings', icon: Settings, adminOnly: true },
 ]
 
 export default function AdminLayout({ children }) {
@@ -61,7 +76,7 @@ export default function AdminLayout({ children }) {
         <div className="h-16 flex items-center justify-between px-4 border-b border-card-border">
           {!collapsed && (
             <div className="flex items-center gap-2">
-              <span className="text-lg">🥊</span>
+              <Dumbbell className="w-5 h-5 text-accent" />
               <span className="font-bold text-foreground tracking-wide">BOXX Admin</span>
             </div>
           )}
@@ -70,9 +85,7 @@ export default function AdminLayout({ children }) {
             className="hidden lg:flex w-8 h-8 items-center justify-center text-muted hover:text-foreground transition-colors rounded"
             aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
-            <svg className={cn('w-4 h-4 transition-transform', collapsed && 'rotate-180')} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
-            </svg>
+            <ChevronsLeft className={cn('w-4 h-4 transition-transform', collapsed && 'rotate-180')} />
           </button>
         </div>
 
@@ -91,7 +104,7 @@ export default function AdminLayout({ children }) {
               )}
               title={collapsed ? link.name : undefined}
             >
-              <span className="text-base shrink-0">{link.icon}</span>
+              <link.icon className="w-[18px] h-[18px] shrink-0" />
               {!collapsed && <span>{link.name}</span>}
             </Link>
           ))}
@@ -104,7 +117,7 @@ export default function AdminLayout({ children }) {
             className="flex items-center gap-3 px-3 py-2.5 rounded-md text-sm text-muted hover:text-foreground hover:bg-white/5 transition-colors"
             title={collapsed ? 'View Site' : undefined}
           >
-            <span className="text-base shrink-0">←</span>
+            <ArrowLeft className="w-[18px] h-[18px] shrink-0" />
             {!collapsed && <span>View Site</span>}
           </Link>
         </div>
