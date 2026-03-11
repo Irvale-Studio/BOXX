@@ -656,6 +656,9 @@ export default function AdminMembersPage() {
                   <div className="min-w-0">
                     <div className="flex items-center gap-1.5">
                       <p className="text-sm font-medium text-foreground truncate">{member.name || 'No name'}</p>
+                      {member.role === 'owner' && (
+                        <span className="text-[10px] font-medium text-purple-400 bg-purple-400/10 px-1.5 py-0.5 rounded shrink-0">Owner</span>
+                      )}
                       {member.role === 'admin' && (
                         <span className="text-[10px] font-medium text-accent bg-accent/10 px-1.5 py-0.5 rounded shrink-0">Admin</span>
                       )}
