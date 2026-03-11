@@ -6,6 +6,7 @@ import { AGENT_TOOLS } from '@/lib/agent/tools'
 import { executeTool } from '@/lib/agent/executor'
 import { rateLimit } from '@/lib/rate-limit'
 import { updateMemory } from '@/lib/agent/memory'
+import { checkUsageLimit, trackUsage, getUsage } from '@/lib/agent/usage'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -106,7 +107,7 @@ function generateTitle(message) {
  * POST /api/admin/agent — Process an agent chat message
  *
  * Body: { messages, conversationId?, newConversation? }
- * Response: { response, toolResults, conversationId }
+ * Response: { response, toolResults, conversationId, usage }
  */
 export async function POST(request) {
   try {
@@ -123,6 +124,15 @@ export async function POST(request) {
     const { limited } = rateLimit(`agent:${session.user.id}`, 30, 60 * 1000)
     if (limited) {
       return NextResponse.json({ error: 'Too many messages. Please wait a moment.' }, { status: 429 })
+    }
+
+    // Monthly cost limit
+    const usageLimited = await checkUsageLimit(session.user.id)
+    if (usageLimited) {
+      return NextResponse.json({
+        error: 'usage_limit',
+        message: 'You\'ve used your AI assistant allowance for this month. Contact the developer to upgrade your plan.',
+      }, { status: 429 })
     }
 
     // Daily rate limit
@@ -201,6 +211,10 @@ export async function POST(request) {
     const systemPrompt = await buildSystemPrompt(session.user.name)
     const context = { adminId: session.user.id, adminName: session.user.name }
 
+    // Track total tokens across all API calls
+    let totalInputTokens = 0
+    let totalOutputTokens = 0
+
     // Call Claude with tool use
     let response = await client.messages.create({
       model: 'claude-haiku-4-5-20251001',
@@ -209,6 +223,9 @@ export async function POST(request) {
       tools: AGENT_TOOLS,
       messages,
     })
+
+    totalInputTokens += response.usage?.input_tokens || 0
+    totalOutputTokens += response.usage?.output_tokens || 0
 
     // Process tool calls in a loop (Claude may chain multiple tools)
     const toolResults = []
@@ -243,6 +260,9 @@ export async function POST(request) {
           { role: 'user', content: toolResultMessages },
         ],
       })
+
+      totalInputTokens += response.usage?.input_tokens || 0
+      totalOutputTokens += response.usage?.output_tokens || 0
     }
 
     // Extract text response
@@ -269,13 +289,20 @@ export async function POST(request) {
       }
     }
 
+    // Track usage (best-effort, non-blocking)
+    trackUsage(session.user.id, totalInputTokens, totalOutputTokens).catch(() => {})
+
     // Update memory (best-effort, non-blocking)
     updateMemory(session.user.id, userMessage).catch(() => {})
+
+    // Get updated usage to return to frontend
+    const usage = await getUsage(session.user.id).catch(() => null)
 
     return NextResponse.json({
       response: textContent,
       toolResults,
       conversationId: convoId,
+      usage,
     })
   } catch (error) {
     console.error('[admin/agent] Error:', error)

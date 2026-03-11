@@ -2,6 +2,7 @@ import { auth } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
 import { getSuggestions } from '@/lib/agent/memory'
+import { getUsage } from '@/lib/agent/usage'
 
 const MAX_CONVERSATIONS = 50
 
@@ -22,11 +23,15 @@ export async function GET() {
       .order('updated_at', { ascending: false })
       .limit(MAX_CONVERSATIONS)
 
-    const suggestions = await getSuggestions(session.user.id)
+    const [suggestions, usage] = await Promise.all([
+      getSuggestions(session.user.id),
+      getUsage(session.user.id).catch(() => null),
+    ])
 
     return NextResponse.json({
       conversations: conversations || [],
       suggestions,
+      usage,
     })
   } catch (error) {
     console.error('[agent/conversations] Error:', error)
