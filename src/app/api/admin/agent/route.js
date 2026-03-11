@@ -5,8 +5,12 @@ import Anthropic from '@anthropic-ai/sdk'
 import { AGENT_TOOLS } from '@/lib/agent/tools'
 import { executeTool } from '@/lib/agent/executor'
 import { rateLimit } from '@/lib/rate-limit'
+import { updateMemory } from '@/lib/agent/memory'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+
+const DAILY_MESSAGE_LIMIT = 200
+const MAX_CONVERSATIONS = 50
 
 /**
  * Build system prompt with live studio context (class types, instructors, packs)
@@ -61,15 +65,48 @@ ${packs || '(none configured)'}
 ## Important
 - You cannot access Stripe, billing, or payment settings.
 - You cannot change system settings or modify the app itself.
-- You cannot create new class types, instructors, or packs — only use existing ones.
 - If the user asks for something outside your capabilities, politely explain what you can help with.`
+}
+
+/**
+ * Check daily message usage for a user
+ */
+async function checkDailyLimit(userId) {
+  const todayStart = new Date()
+  todayStart.setHours(0, 0, 0, 0)
+
+  // Get user's conversation IDs
+  const { data: convos } = await supabaseAdmin
+    .from('agent_conversations')
+    .select('id')
+    .eq('user_id', userId)
+
+  if (!convos?.length) return false
+
+  const { count } = await supabaseAdmin
+    .from('agent_messages')
+    .select('id', { count: 'exact', head: true })
+    .eq('role', 'user')
+    .gte('created_at', todayStart.toISOString())
+    .in('conversation_id', convos.map((c) => c.id))
+
+  return (count || 0) >= DAILY_MESSAGE_LIMIT
+}
+
+/**
+ * Auto-generate a conversation title from the first user message
+ */
+function generateTitle(message) {
+  const clean = message.replace(/[#*_`]/g, '').trim()
+  if (clean.length <= 40) return clean
+  return clean.slice(0, 40).replace(/\s\S*$/, '') + '...'
 }
 
 /**
  * POST /api/admin/agent — Process an agent chat message
  *
- * Body: { messages: [{ role: 'user'|'assistant', content: string }] }
- * Response: { response: string, toolResults: [] }
+ * Body: { messages, conversationId?, newConversation? }
+ * Response: { response, toolResults, conversationId }
  */
 export async function POST(request) {
   try {
@@ -82,17 +119,80 @@ export async function POST(request) {
       return NextResponse.json({ error: 'AI assistant is not configured.' }, { status: 500 })
     }
 
-    // Rate limit: 30 messages per minute
+    // Burst rate limit: 30 messages per minute
     const { limited } = rateLimit(`agent:${session.user.id}`, 30, 60 * 1000)
     if (limited) {
       return NextResponse.json({ error: 'Too many messages. Please wait a moment.' }, { status: 429 })
     }
 
+    // Daily rate limit
+    const dailyLimited = await checkDailyLimit(session.user.id)
+    if (dailyLimited) {
+      return NextResponse.json({ error: `Daily limit reached (${DAILY_MESSAGE_LIMIT} messages). Try again tomorrow.` }, { status: 429 })
+    }
+
     const body = await request.json()
-    const { messages } = body
+    const { messages, conversationId, newConversation } = body
 
     if (!messages?.length) {
       return NextResponse.json({ error: 'No messages provided' }, { status: 400 })
+    }
+
+    // Resolve or create conversation
+    let convoId = conversationId
+    const userMessage = messages[messages.length - 1]?.content || ''
+
+    if (newConversation || !convoId) {
+      // Enforce conversation cap
+      const { count } = await supabaseAdmin
+        .from('agent_conversations')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', session.user.id)
+
+      if (count >= MAX_CONVERSATIONS) {
+        const { data: oldest } = await supabaseAdmin
+          .from('agent_conversations')
+          .select('id')
+          .eq('user_id', session.user.id)
+          .order('updated_at', { ascending: true })
+          .limit(count - MAX_CONVERSATIONS + 1)
+
+        if (oldest?.length) {
+          await supabaseAdmin.from('agent_conversations').delete().in('id', oldest.map((c) => c.id))
+        }
+      }
+
+      const { data: convo } = await supabaseAdmin
+        .from('agent_conversations')
+        .insert({
+          user_id: session.user.id,
+          title: generateTitle(userMessage),
+        })
+        .select('id')
+        .single()
+
+      convoId = convo?.id
+    } else {
+      // Verify ownership
+      const { data: convo } = await supabaseAdmin
+        .from('agent_conversations')
+        .select('id')
+        .eq('id', convoId)
+        .eq('user_id', session.user.id)
+        .single()
+
+      if (!convo) {
+        return NextResponse.json({ error: 'Conversation not found' }, { status: 404 })
+      }
+    }
+
+    // Save user message
+    if (convoId) {
+      await supabaseAdmin.from('agent_messages').insert({
+        conversation_id: convoId,
+        role: 'user',
+        content: userMessage,
+      })
     }
 
     const systemPrompt = await buildSystemPrompt(session.user.name)
@@ -148,9 +248,29 @@ export async function POST(request) {
       .map((b) => b.text)
       .join('\n')
 
+    // Save assistant message
+    if (convoId) {
+      await supabaseAdmin.from('agent_messages').insert({
+        conversation_id: convoId,
+        role: 'assistant',
+        content: textContent,
+        tool_results: toolResults.length ? toolResults : null,
+      })
+
+      // Update conversation timestamp
+      await supabaseAdmin
+        .from('agent_conversations')
+        .update({ updated_at: new Date().toISOString() })
+        .eq('id', convoId)
+    }
+
+    // Update memory (best-effort, non-blocking)
+    updateMemory(session.user.id, userMessage).catch(() => {})
+
     return NextResponse.json({
       response: textContent,
       toolResults,
+      conversationId: convoId,
     })
   } catch (error) {
     console.error('[admin/agent] Error:', error)

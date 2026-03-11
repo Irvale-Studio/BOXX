@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useSession } from 'next-auth/react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -10,6 +11,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { cn } from '@/lib/utils'
 
 export default function AdminMembersPage() {
+  const { data: session } = useSession()
+  const myRole = session?.user?.role
   const [members, setMembers] = useState([])
   const [loading, setLoading] = useState(true)
   const [total, setTotal] = useState(0)
@@ -276,39 +279,42 @@ export default function AdminMembersPage() {
                     <Button size="sm" variant="outline" onClick={() => { setGrantDialog(true); setGrantPackId(packs[0]?.id || ''); setGrantNotes('') }}>
                       Grant Credits
                     </Button>
-                    {detail.member.role === 'frozen' ? (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="text-green-400 border-green-400/30 hover:bg-green-400/10"
-                        onClick={async () => {
-                          try {
-                            const res = await fetch(`/api/admin/members/${selectedMember.id}`, {
-                              method: 'PUT',
-                              headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({ role: 'member' }),
-                            })
-                            if (res.ok) {
-                              setToast({ message: 'Member unfrozen', type: 'success' })
-                              openDetail(selectedMember)
-                              fetchMembers()
+                    {/* Only owner can freeze/unfreeze admins and owners */}
+                    {(myRole === 'owner' || (detail.member.role !== 'admin' && detail.member.role !== 'owner')) && (
+                      detail.member.role === 'frozen' ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-green-400 border-green-400/30 hover:bg-green-400/10"
+                          onClick={async () => {
+                            try {
+                              const res = await fetch(`/api/admin/members/${selectedMember.id}`, {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ role: 'member' }),
+                              })
+                              if (res.ok) {
+                                setToast({ message: 'Member unfrozen', type: 'success' })
+                                openDetail(selectedMember)
+                                fetchMembers()
+                              }
+                            } catch {
+                              setToast({ message: 'Failed to unfreeze', type: 'error' })
                             }
-                          } catch {
-                            setToast({ message: 'Failed to unfreeze', type: 'error' })
-                          }
-                        }}
-                      >
-                        Unfreeze
-                      </Button>
-                    ) : (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="text-red-400 border-red-400/30 hover:bg-red-400/10"
-                        onClick={() => setDeleteDialog(true)}
-                      >
-                        Freeze
-                      </Button>
+                          }}
+                        >
+                          Unfreeze
+                        </Button>
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-red-400 border-red-400/30 hover:bg-red-400/10"
+                          onClick={() => setDeleteDialog(true)}
+                        >
+                          Freeze
+                        </Button>
+                      )
                     )}
                   </div>
                 </div>

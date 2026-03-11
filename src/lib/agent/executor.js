@@ -234,11 +234,11 @@ async function createClass(input, context) {
     details: { via: 'agent', class_type: ct.name, instructor: instructor.name },
   })
 
-  const time = new Date(cls.starts_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Bangkok' })
+  const displayTime = new Date(cls.starts_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Bangkok' })
   return {
     success: true,
     data: {
-      message: `Created "${ct.name}" with ${instructor.name} on ${input.date} at ${time}, capacity ${capacity}.`,
+      message: `Created "${ct.name}" with ${instructor.name} on ${input.date} at ${displayTime}, capacity ${capacity}.`,
       classId: cls.id,
     },
   }

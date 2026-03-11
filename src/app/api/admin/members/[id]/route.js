@@ -129,10 +129,15 @@ export async function PUT(request, { params }) {
       }
     }
 
-    // Only owner can assign admin/owner roles
+    // Only owner can assign admin/owner roles or freeze admins/owners
     if (parsed.data.role === 'admin' || parsed.data.role === 'owner') {
       if (session.user.role !== 'owner') {
         return NextResponse.json({ error: 'Only the owner can assign admin roles' }, { status: 403 })
+      }
+    }
+    if (parsed.data.role === 'frozen' && (targetUser.role === 'admin' || targetUser.role === 'owner')) {
+      if (session.user.role !== 'owner') {
+        return NextResponse.json({ error: 'Only the owner can freeze admin accounts' }, { status: 403 })
       }
     }
 
@@ -216,6 +221,11 @@ export async function DELETE(request, { params }) {
 
     if (user.role === 'frozen') {
       return NextResponse.json({ error: 'Member is already frozen' }, { status: 400 })
+    }
+
+    // Only owner can freeze admins or other owners
+    if ((user.role === 'admin' || user.role === 'owner') && session.user.role !== 'owner') {
+      return NextResponse.json({ error: 'Only the owner can freeze admin accounts' }, { status: 403 })
     }
 
     // Cancel future confirmed bookings (return credits)

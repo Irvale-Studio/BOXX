@@ -1,0 +1,8 @@
+{
+  "crons": [
+    { "path": "/api/cron/expire-credits", "schedule": "0 17 * * *" },
+    { "path": "/api/cron/reminders", "schedule": "0 * * * *" },
+    { "path": "/api/cron/process-waitlist", "schedule": "*/15 * * * *" },
+    { "path": "/api/cron/agent-cleanup", "schedule": "0 3 * * *" }
+  ]
+}

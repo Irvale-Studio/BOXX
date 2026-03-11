@@ -219,6 +219,43 @@ INSERT INTO studio_settings VALUES
   ('stripe_access_token',           '');
 
 -- ─────────────────────────────────────
+-- AGENT CONVERSATIONS
+-- ─────────────────────────────────────
+CREATE TABLE agent_conversations (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id     UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL,
+  title       TEXT NOT NULL DEFAULT 'New conversation',
+  created_at  TIMESTAMPTZ DEFAULT now(),
+  updated_at  TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX idx_agent_conversations_user_id ON agent_conversations(user_id);
+CREATE INDEX idx_agent_conversations_updated_at ON agent_conversations(updated_at DESC);
+
+-- ─────────────────────────────────────
+-- AGENT MESSAGES
+-- ─────────────────────────────────────
+CREATE TABLE agent_messages (
+  id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  conversation_id  UUID REFERENCES agent_conversations(id) ON DELETE CASCADE NOT NULL,
+  role             TEXT NOT NULL CHECK (role IN ('user', 'assistant')),
+  content          TEXT NOT NULL,
+  tool_results     JSONB,
+  created_at       TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX idx_agent_messages_conversation_id ON agent_messages(conversation_id);
+
+-- ─────────────────────────────────────
+-- AGENT MEMORY
+-- ─────────────────────────────────────
+CREATE TABLE agent_memory (
+  user_id     UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  patterns    JSONB DEFAULT '[]'::jsonb,
+  updated_at  TIMESTAMPTZ DEFAULT now()
+);
+
+-- ─────────────────────────────────────
 -- ROW LEVEL SECURITY
 -- ─────────────────────────────────────
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
