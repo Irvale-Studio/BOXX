@@ -22,17 +22,18 @@ import {
   ArrowLeft,
 } from 'lucide-react'
 
+const assistantLink = { name: 'AI Assistant', href: '/admin/assistant', icon: Sparkles, adminOnly: true }
+
 const allSidebarLinks = [
   { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
   { name: 'Schedule', href: '/admin/schedule', icon: CalendarDays },
   { name: 'Activity', href: '/admin/bookings', icon: Activity },
   { name: 'Members', href: '/admin/members', icon: Users },
-  { name: 'Class Packs', href: '/admin/packs', icon: Package, adminOnly: true },
-  { name: 'Products', href: '/admin/class-types', icon: Tag },
+  { name: 'Products', href: '/admin/packs', icon: Package, adminOnly: true },
+  { name: 'Events', href: '/admin/class-types', icon: Tag },
   { name: 'Instructors', href: '/admin/instructors', icon: Dumbbell },
   { name: 'Analytics', href: '/admin/analytics', icon: BarChart3 },
   { name: 'Emails', href: '/admin/emails', icon: Mail },
-  { name: 'Assistant', href: '/admin/assistant', icon: Sparkles, adminOnly: true },
   { name: 'Settings', href: '/admin/settings', icon: Settings, adminOnly: true },
 ]
 
@@ -89,8 +90,33 @@ export default function AdminLayout({ children }) {
           </button>
         </div>
 
+        {/* AI Assistant button */}
+        {!isEmployee && (
+          <div className="px-2 pt-4 pb-2">
+            <Link
+              href={assistantLink.href}
+              onClick={() => setSidebarOpen(false)}
+              className={cn(
+                'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all',
+                isActive(assistantLink.href)
+                  ? 'bg-accent text-background shadow-lg shadow-accent/20'
+                  : 'bg-accent/10 text-accent border border-accent/20 hover:bg-accent/20 hover:border-accent/30'
+              )}
+              title={collapsed ? assistantLink.name : undefined}
+            >
+              <Sparkles className="w-[18px] h-[18px] shrink-0" />
+              {!collapsed && <span>{assistantLink.name}</span>}
+            </Link>
+          </div>
+        )}
+
+        {/* Separator */}
+        <div className="px-4">
+          <div className="border-b border-card-border" />
+        </div>
+
         {/* Nav links */}
-        <nav className="flex-1 py-4 px-2 space-y-1 overflow-y-auto">
+        <nav className="flex-1 py-3 px-2 space-y-1 overflow-y-auto">
           {sidebarLinks.map((link) => (
             <Link
               key={link.href}
