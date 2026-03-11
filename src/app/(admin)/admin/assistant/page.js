@@ -42,6 +42,7 @@ export default function AssistantPage() {
   const [usageLimited, setUsageLimited] = useState(false)
 
   const messagesEndRef = useRef(null)
+  const messagesRef = useRef(null)
   const inputRef = useRef(null)
 
   // Lock page scroll + track keyboard via visualViewport
@@ -55,6 +56,16 @@ export default function AssistantPage() {
     body.style.position = 'fixed'
     body.style.width = '100%'
     body.style.top = '0'
+    body.style.overscrollBehavior = 'none'
+    html.style.overscrollBehavior = 'none'
+
+    // Prevent touchmove on everything except the messages scroll area
+    const preventTouch = (e) => {
+      const messagesEl = messagesRef.current
+      if (messagesEl && messagesEl.contains(e.target)) return // allow scrolling in messages
+      e.preventDefault()
+    }
+    document.addEventListener('touchmove', preventTouch, { passive: false })
 
     const vv = window.visualViewport
     if (vv) {
@@ -82,11 +93,14 @@ export default function AssistantPage() {
       return () => {
         vv.removeEventListener('resize', update)
         vv.removeEventListener('scroll', update)
+        document.removeEventListener('touchmove', preventTouch)
         html.style.overflow = ''
+        html.style.overscrollBehavior = ''
         body.style.overflow = ''
         body.style.position = ''
         body.style.width = ''
         body.style.top = ''
+        body.style.overscrollBehavior = ''
         // Reset header
         const header = document.querySelector('header[class*="fixed"]')
         if (header) header.style.transform = ''
@@ -94,11 +108,14 @@ export default function AssistantPage() {
     }
 
     return () => {
+      document.removeEventListener('touchmove', preventTouch)
       html.style.overflow = ''
+      html.style.overscrollBehavior = ''
       body.style.overflow = ''
       body.style.position = ''
       body.style.width = ''
       body.style.top = ''
+      body.style.overscrollBehavior = ''
     }
   }, [])
 
@@ -409,7 +426,7 @@ export default function AssistantPage() {
           ) : (
             <>
               {/* Messages */}
-              <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 min-h-0">
+              <div ref={messagesRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-4 min-h-0 overscroll-contain">
                 {messages.length === 0 && !loading && (
                   <div className="flex flex-col items-center justify-center h-full text-center px-4">
                     <div className="text-4xl mb-4">🥊</div>
