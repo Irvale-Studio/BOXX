@@ -185,7 +185,7 @@ export default function AssistantPage() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-7rem)] -m-4 lg:-m-6">
+    <div className="flex h-[calc(100dvh-4rem)] -m-4 lg:-m-6 overflow-hidden">
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div
@@ -262,7 +262,7 @@ export default function AssistantPage() {
       {/* Main chat area */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Chat header */}
-        <div className="h-12 border-b border-card-border flex items-center px-4 gap-3 shrink-0 sticky top-0 bg-background z-10">
+        <div className="h-12 border-b border-card-border flex items-center px-4 gap-3 shrink-0 bg-background z-10">
           {/* Mobile sidebar toggle */}
           <button
             onClick={() => setSidebarOpen(true)}
@@ -366,20 +366,21 @@ export default function AssistantPage() {
         </div>
 
         {/* Input */}
-        <div className="border-t border-card-border p-4">
-          <div className="flex gap-2">
+        <div className="border-t border-card-border p-3 shrink-0">
+          <form onSubmit={(e) => { e.preventDefault(); handleSend() }} className="flex gap-2">
             <textarea
               ref={inputRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
+              enterKeyHint="send"
               placeholder="Type a command..."
               rows={1}
               disabled={loading}
-              className="flex-1 resize-none rounded-lg bg-card border border-card-border px-4 py-3 text-sm text-foreground placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-accent/50 focus:border-accent/30 disabled:opacity-50"
+              className="flex-1 resize-none rounded-lg bg-card border border-card-border px-4 py-2.5 text-sm text-foreground placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-accent/50 focus:border-accent/30 disabled:opacity-50"
             />
             <Button
-              onClick={() => handleSend()}
+              type="submit"
               disabled={loading || !input.trim()}
               className="px-4 shrink-0"
             >
@@ -393,9 +394,9 @@ export default function AssistantPage() {
                 </svg>
               )}
             </Button>
-          </div>
-          <p className="text-[10px] text-muted mt-2 text-center">
-            AI assistant — actions are logged. Double-check important operations.
+          </form>
+          <p className="text-[10px] text-muted mt-1.5 text-center">
+            AI assistant — actions are logged.
           </p>
         </div>
       </div>
