@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -8,16 +8,92 @@ import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
-import { Lock, X, Trash2, CalendarDays, Clock, User } from 'lucide-react'
+import { Lock, X, Trash2, CalendarDays, Clock, User, Check, Plus, ChevronLeft, ChevronRight } from 'lucide-react'
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
+// ─── Calendar constants ──────────────────────────────────────────────────────
+const HOUR_HEIGHT = 60 // 1px per minute
+const START_HOUR = 0
+const END_HOUR = 24
+const SNAP_MINUTES = 15
+const SNAP_PX = SNAP_MINUTES // since HOUR_HEIGHT=60, 15min = 15px
+const TOTAL_HEIGHT = (END_HOUR - START_HOUR) * HOUR_HEIGHT
+const MIN_BLOCK_HEIGHT = SNAP_PX // 15 min minimum
+
+function minutesSinceStart(dateStr) {
+  const d = new Date(dateStr)
+  const h = parseInt(d.toLocaleTimeString('en-GB', { hour: '2-digit', hour12: false, timeZone: 'Asia/Bangkok' }))
+  const m = parseInt(d.toLocaleTimeString('en-GB', { minute: '2-digit', timeZone: 'Asia/Bangkok' }))
+  return (h - START_HOUR) * 60 + m
+}
+
+function durationMinutes(startStr, endStr) {
+  return (new Date(endStr) - new Date(startStr)) / 60000
+}
+
+function snapToGrid(px) {
+  return Math.round(px / SNAP_PX) * SNAP_PX
+}
+
+function pxToTime(px) {
+  const totalMins = Math.round(px / SNAP_PX) * SNAP_MINUTES + START_HOUR * 60
+  const h = Math.floor(totalMins / 60)
+  const m = totalMins % 60
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+}
+
+// Overlap layout: assign lanes to overlapping events
+function layoutEvents(dayClasses) {
+  if (!dayClasses.length) return new Map()
+  const sorted = [...dayClasses].sort((a, b) => new Date(a.starts_at) - new Date(b.starts_at))
+  const lanes = [] // array of { end: number } per lane
+  const result = new Map()
+
+  sorted.forEach((cls) => {
+    const top = minutesSinceStart(cls.starts_at)
+    const height = durationMinutes(cls.starts_at, cls.ends_at)
+    const end = top + height
+
+    // Find first lane where this event fits
+    let laneIdx = lanes.findIndex((lane) => lane.end <= top)
+    if (laneIdx === -1) {
+      laneIdx = lanes.length
+      lanes.push({ end })
+    } else {
+      lanes[laneIdx].end = end
+    }
+    result.set(cls.id, { top, height, lane: laneIdx })
+  })
+
+  // Second pass: determine total overlapping lanes for width calculation
+  sorted.forEach((cls) => {
+    const layout = result.get(cls.id)
+    const clsEnd = layout.top + layout.height
+    // Count how many lanes are active during this event's time
+    let maxLanes = 1
+    sorted.forEach((other) => {
+      const otherLayout = result.get(other.id)
+      const otherEnd = otherLayout.top + otherLayout.height
+      if (otherLayout.top < clsEnd && otherEnd > layout.top) {
+        maxLanes = Math.max(maxLanes, otherLayout.lane + 1)
+      }
+    })
+    layout.totalLanes = maxLanes
+  })
+
+  return result
+}
 
 export default function AdminSchedulePage() {
   const [classes, setClasses] = useState([])
   const [classTypes, setClassTypes] = useState([])
   const [instructors, setInstructors] = useState([])
   const [loading, setLoading] = useState(true)
+  const [viewMode, setViewMode] = useState('week') // 'day' | 'week' | 'month'
   const [weekOffset, setWeekOffset] = useState(0)
+  const [dayOffset, setDayOffset] = useState(0)
+  const [monthOffset, setMonthOffset] = useState(0)
   const [toast, setToast] = useState(null)
 
   // Dialog states
@@ -25,21 +101,35 @@ export default function AdminSchedulePage() {
   const [editDialog, setEditDialog] = useState(null)
   const [cancelDialog, setCancelDialog] = useState(null)
   const [rosterDialog, setRosterDialog] = useState(null)
-  const [notifyDialog, setNotifyDialog] = useState(null) // { classId, message }
-  const [deleteDialog, setDeleteDialog] = useState(null) // cancelled class to permanently delete
+  const [notifyDialog, setNotifyDialog] = useState(null)
+  const [deleteDialog, setDeleteDialog] = useState(null)
   const [submitting, setSubmitting] = useState(false)
 
-  // Form state for add/edit (recurring fields included)
+  // Form state
   const [form, setForm] = useState({
-    classTypeId: '', instructorId: '', date: '', startTime: '07:00', endTime: '07:55', capacity: 6, notes: '',
+    classTypeId: '', instructorId: '', date: '', startTime: '07:00', endTime: '08:00', capacity: 6, notes: '',
     recurring: false, days: [], weeks: 4, everyWeek: false,
   })
 
   // Private class member invite state
-  const [inviteMembers, setInviteMembers] = useState([]) // { id, name, email, avatar_url }
+  const [inviteMembers, setInviteMembers] = useState([])
   const [inviteSearch, setInviteSearch] = useState('')
   const [inviteResults, setInviteResults] = useState([])
   const [inviteSearching, setInviteSearching] = useState(false)
+
+  // Hover-to-add indicator
+  const [hoverSlot, setHoverSlot] = useState(null) // { dayIdx, top }
+
+  // Drag-to-create state
+  const [createDrag, setCreateDrag] = useState(null) // { dayIdx, startTop, currentTop }
+
+  // Drag & resize state
+  const [dragState, setDragState] = useState(null)
+  const [resizeState, setResizeState] = useState(null)
+  const [pendingMove, setPendingMove] = useState(null) // { classId, cls, newDate, newStartTime, newEndTime, top, height, dayIdx }
+  const justDragged = useRef(false) // suppress click after drag
+  const gridRef = useRef(null)
+  const columnRefs = useRef([])
 
   useEffect(() => {
     if (!toast) return
@@ -47,8 +137,30 @@ export default function AdminSchedulePage() {
     return () => clearTimeout(t)
   }, [toast])
 
-  const getWeekRange = useCallback(() => {
+  const getDateRange = useCallback(() => {
     const now = new Date()
+    if (viewMode === 'day') {
+      const day = new Date(now)
+      day.setDate(now.getDate() + dayOffset)
+      day.setHours(0, 0, 0, 0)
+      const end = new Date(day)
+      end.setHours(23, 59, 59, 999)
+      return { start: day, end }
+    }
+    if (viewMode === 'month') {
+      const d = new Date(now.getFullYear(), now.getMonth() + monthOffset, 1)
+      const start = new Date(d)
+      // Align to Monday before the 1st
+      const dayOfWeek = start.getDay()
+      const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
+      start.setDate(start.getDate() + diff)
+      start.setHours(0, 0, 0, 0)
+      const end = new Date(start)
+      end.setDate(start.getDate() + 41) // 6 weeks
+      end.setHours(23, 59, 59, 999)
+      return { start, end }
+    }
+    // week
     const startOfWeek = new Date(now)
     startOfWeek.setDate(now.getDate() - now.getDay() + 1 + weekOffset * 7)
     startOfWeek.setHours(0, 0, 0, 0)
@@ -56,10 +168,10 @@ export default function AdminSchedulePage() {
     endOfWeek.setDate(startOfWeek.getDate() + 6)
     endOfWeek.setHours(23, 59, 59, 999)
     return { start: startOfWeek, end: endOfWeek }
-  }, [weekOffset])
+  }, [viewMode, weekOffset, dayOffset, monthOffset])
 
   const fetchClasses = useCallback(async () => {
-    const { start, end } = getWeekRange()
+    const { start, end } = getDateRange()
     try {
       const res = await fetch(`/api/admin/schedule?start=${start.toISOString()}&end=${end.toISOString()}`)
       if (res.ok) {
@@ -71,7 +183,7 @@ export default function AdminSchedulePage() {
     } finally {
       setLoading(false)
     }
-  }, [getWeekRange])
+  }, [getDateRange])
 
   useEffect(() => {
     fetch('/api/admin/schedule/options')
@@ -82,11 +194,29 @@ export default function AdminSchedulePage() {
 
   useEffect(() => { setLoading(true); fetchClasses() }, [fetchClasses])
 
-  const { start: weekStart } = getWeekRange()
-  const weekDays = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(weekStart); d.setDate(weekStart.getDate() + i); return d
-  })
+  const { start: rangeStart } = getDateRange()
   const today = new Date(); today.setHours(0, 0, 0, 0)
+
+  // Compute viewDays based on viewMode
+  const viewDays = (() => {
+    if (viewMode === 'day') {
+      const d = new Date(rangeStart)
+      return [d]
+    }
+    if (viewMode === 'month') {
+      const { start } = getDateRange()
+      return Array.from({ length: 42 }, (_, i) => {
+        const d = new Date(start); d.setDate(start.getDate() + i); return d
+      })
+    }
+    // week
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(rangeStart); d.setDate(rangeStart.getDate() + i); return d
+    })
+  })()
+
+  // For time grid views (day/week), the columns to render
+  const gridDays = viewMode === 'month' ? [] : viewDays
 
   const classesByDay = {}
   const recurringCounts = {}
@@ -99,13 +229,20 @@ export default function AdminSchedulePage() {
     }
   })
 
-  function openAddDialog(date) {
+  function openAddDialog(date, time, customEndTime) {
     const d = date ? new Date(date + 'T00:00:00') : new Date()
     const dayOfWeek = d.getDay()
+    const startTime = time || '07:00'
+    let endTime = customEndTime
+    if (!endTime) {
+      const [sh, sm] = startTime.split(':').map(Number)
+      const endMins = sh * 60 + sm + 60
+      endTime = `${String(Math.floor(endMins / 60)).padStart(2, '0')}:${String(endMins % 60).padStart(2, '0')}`
+    }
     setForm({
       classTypeId: classTypes[0]?.id || '', instructorId: instructors[0]?.id || '',
       date: date || new Date().toISOString().split('T')[0],
-      startTime: '07:00', endTime: '07:55', capacity: 6, notes: '',
+      startTime, endTime, capacity: 6, notes: '',
       recurring: false, days: [dayOfWeek], weeks: 4, everyWeek: false,
     })
     setInviteMembers([])
@@ -155,7 +292,6 @@ export default function AdminSchedulePage() {
       let createdClassId = null
 
       if (form.recurring && form.days.length > 0) {
-        // Recurring: use the recurring endpoint
         const weeks = form.everyWeek ? 52 : form.weeks
         const res = await fetch('/api/admin/schedule/recurring', {
           method: 'POST',
@@ -171,7 +307,6 @@ export default function AdminSchedulePage() {
         if (!res.ok) { setToast({ message: data.error || 'Failed to create', type: 'error' }); return }
         setToast({ message: `Created ${data.created} classes`, type: 'success' })
       } else {
-        // Single class
         const res = await fetch('/api/admin/schedule', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -187,7 +322,6 @@ export default function AdminSchedulePage() {
         setToast({ message: 'Class created', type: 'success' })
       }
 
-      // Add invited members to the class (private classes)
       if (createdClassId && inviteMembers.length > 0) {
         let added = 0
         for (const member of inviteMembers) {
@@ -208,7 +342,6 @@ export default function AdminSchedulePage() {
     finally { setSubmitting(false) }
   }
 
-  // mode: 'this' = save this only (unlink if recurring), 'all' = apply to all recurring siblings
   async function handleUpdate(mode = 'this') {
     if (!editDialog) return
     setSubmitting(true)
@@ -224,14 +357,12 @@ export default function AdminSchedulePage() {
           id: editDialog.id, classTypeId: form.classTypeId, instructorId: form.instructorId,
           startsAt: buildDatetime(form.date, form.startTime), endsAt: buildDatetime(form.date, form.endTime),
           capacity: form.capacity, notes: form.notes || null,
-          updateAll,
-          unlinkFromRecurring,
+          updateAll, unlinkFromRecurring,
         }),
       })
       const data = await res.json()
       if (!res.ok) { setToast({ message: data.error || 'Failed to update', type: 'error' }); return }
 
-      // If "make recurring" toggle is on (for non-recurring classes or extending), create future copies
       if (form.recurring && form.days.length > 0 && !isRecurring) {
         const weeks = form.everyWeek ? 52 : form.weeks
         const nextDate = new Date(form.date + 'T00:00:00+07:00')
@@ -260,7 +391,6 @@ export default function AdminSchedulePage() {
         setToast({ message: 'Class updated', type: 'success' })
       }
 
-      // If the class has bookings, offer to notify members
       const bookedCount = editDialog.booked_count || 0
       const savedClassId = editDialog.id
       setEditDialog(null)
@@ -270,6 +400,35 @@ export default function AdminSchedulePage() {
       }
     } catch { setToast({ message: 'Something went wrong', type: 'error' }) }
     finally { setSubmitting(false) }
+  }
+
+  // Quick update for drag/resize — no dialog, direct API call
+  async function handleQuickUpdate(cls, newDate, newStartTime, newEndTime) {
+    try {
+      const res = await fetch('/api/admin/schedule', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: cls.id,
+          classTypeId: cls.class_type_id,
+          instructorId: cls.instructor_id,
+          startsAt: buildDatetime(newDate, newStartTime),
+          endsAt: buildDatetime(newDate, newEndTime),
+          capacity: cls.capacity,
+          notes: cls.notes || null,
+        }),
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        setToast({ message: data.error || 'Failed to move class', type: 'error' })
+      } else {
+        setToast({ message: 'Class moved', type: 'success' })
+      }
+      fetchClasses()
+    } catch {
+      setToast({ message: 'Something went wrong', type: 'error' })
+      fetchClasses()
+    }
   }
 
   async function handleNotifyMembers() {
@@ -332,17 +491,276 @@ export default function AdminSchedulePage() {
     finally { setSubmitting(false) }
   }
 
-  const weekLabel = (() => {
-    const s = weekDays[0], e = weekDays[6]
+  const viewLabel = (() => {
+    if (viewMode === 'day') {
+      return viewDays[0].toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
+    }
+    if (viewMode === 'month') {
+      const now = new Date()
+      const d = new Date(now.getFullYear(), now.getMonth() + monthOffset, 1)
+      return d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+    }
+    const s = viewDays[0], e = viewDays[6]
     const sM = s.toLocaleDateString('en-US', { month: 'short' })
     const eM = e.toLocaleDateString('en-US', { month: 'short' })
     return sM === eM ? `${sM} ${s.getDate()}–${e.getDate()}, ${s.getFullYear()}` : `${sM} ${s.getDate()} – ${eM} ${e.getDate()}, ${e.getFullYear()}`
   })()
 
+  // ─── Drag handlers ──────────────────────────────────────────────────────────
+  function handleDragStart(e, cls, dayIdx) {
+    if (cls.status === 'cancelled') return
+    e.preventDefault()
+    const top = minutesSinceStart(cls.starts_at)
+    const height = durationMinutes(cls.starts_at, cls.ends_at)
+    setDragState({
+      cls, dayIdx, top, height,
+      startX: e.clientX, startY: e.clientY,
+      currentTop: top, currentDayIdx: dayIdx,
+      moved: false,
+    })
+  }
+
+  function handleResizeStart(e, cls, dayIdx) {
+    e.preventDefault()
+    e.stopPropagation()
+    const top = minutesSinceStart(cls.starts_at)
+    const height = durationMinutes(cls.starts_at, cls.ends_at)
+    setResizeState({
+      cls, dayIdx, top, originalHeight: height,
+      startY: e.clientY, currentHeight: height,
+    })
+  }
+
+  useEffect(() => {
+    if (!dragState && !resizeState) return
+
+    function onMove(e) {
+      if (dragState) {
+        const dx = e.clientX - dragState.startX
+        const dy = e.clientY - dragState.startY
+        const moved = Math.abs(dx) > 3 || Math.abs(dy) > 3
+
+        const rawTop = dragState.top + dy
+        const snappedTop = Math.max(0, Math.min(TOTAL_HEIGHT - dragState.height, snapToGrid(rawTop)))
+
+        // Figure out which day column we're over
+        let newDayIdx = dragState.dayIdx
+        if (gridRef.current) {
+          const cols = columnRefs.current
+          for (let i = 0; i < cols.length; i++) {
+            if (cols[i]) {
+              const rect = cols[i].getBoundingClientRect()
+              if (e.clientX >= rect.left && e.clientX < rect.right) {
+                newDayIdx = i
+                break
+              }
+            }
+          }
+        }
+
+        setDragState((prev) => ({ ...prev, currentTop: snappedTop, currentDayIdx: newDayIdx, moved: moved || prev.moved }))
+      }
+
+      if (resizeState) {
+        const dy = e.clientY - resizeState.startY
+        const rawHeight = resizeState.originalHeight + dy
+        const snappedHeight = Math.max(MIN_BLOCK_HEIGHT, snapToGrid(rawHeight))
+        const maxHeight = TOTAL_HEIGHT - resizeState.top
+        setResizeState((prev) => ({ ...prev, currentHeight: Math.min(snappedHeight, maxHeight) }))
+      }
+    }
+
+    function onUp() {
+      if (dragState) {
+        if (dragState.moved) {
+          justDragged.current = true
+          setTimeout(() => { justDragged.current = false }, 100)
+          const newDate = gridDays[dragState.currentDayIdx].toLocaleDateString('en-CA', { timeZone: 'Asia/Bangkok' })
+          const newStartTime = pxToTime(dragState.currentTop)
+          const endMins = dragState.currentTop + dragState.height
+          const newEndTime = pxToTime(endMins)
+
+          // Block moving into a past time slot
+          const proposedStart = new Date(`${newDate}T${newStartTime}:00+07:00`)
+          if (proposedStart < new Date()) {
+            setToast({ message: 'Cannot move a class into a past time slot', type: 'error' })
+          } else {
+            setPendingMove({
+              classId: dragState.cls.id, cls: dragState.cls,
+              newDate, newStartTime, newEndTime,
+              top: dragState.currentTop, height: dragState.height, dayIdx: dragState.currentDayIdx,
+            })
+          }
+        }
+        setDragState(null)
+      }
+      if (resizeState) {
+        justDragged.current = true
+        setTimeout(() => { justDragged.current = false }, 100)
+        const newEndMins = resizeState.top + resizeState.currentHeight
+        const newEndTime = pxToTime(newEndMins)
+        const date = new Date(resizeState.cls.starts_at).toLocaleDateString('en-CA', { timeZone: 'Asia/Bangkok' })
+        const startTime = new Date(resizeState.cls.starts_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Bangkok' })
+        setPendingMove({
+          classId: resizeState.cls.id, cls: resizeState.cls,
+          newDate: date, newStartTime: startTime, newEndTime,
+          top: resizeState.top, height: resizeState.currentHeight, dayIdx: resizeState.dayIdx,
+        })
+        setResizeState(null)
+      }
+    }
+
+    function onKeyDown(e) {
+      if (e.key === 'Escape') {
+        setDragState(null)
+        setResizeState(null)
+        setPendingMove(null)
+      }
+    }
+
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
+    window.addEventListener('keydown', onKeyDown)
+    return () => {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+      window.removeEventListener('keydown', onKeyDown)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dragState, resizeState])
+
+  // Drag-to-create on empty grid space
+  useEffect(() => {
+    if (!createDrag) return
+
+    function onMove(e) {
+      const dy = Math.abs(e.clientY - createDrag.startY)
+      if (dy < 5 && !createDrag.activated) return // wait for real drag
+      const col = columnRefs.current[createDrag.dayIdx]
+      if (!col) return
+      const rect = col.getBoundingClientRect()
+      const y = e.clientY - rect.top
+      const snappedY = Math.max(createDrag.startTop + SNAP_PX, Math.min(TOTAL_HEIGHT, snapToGrid(y)))
+      setCreateDrag((prev) => ({ ...prev, currentTop: snappedY, activated: true }))
+    }
+
+    function onUp() {
+      const wasActivated = createDrag.activated
+      if (wasActivated) {
+        justDragged.current = true
+        setTimeout(() => { justDragged.current = false }, 150)
+      }
+      const startTime = pxToTime(createDrag.startTop)
+      const endTime = wasActivated ? pxToTime(createDrag.currentTop) : null
+      const dateKey = gridDays[createDrag.dayIdx].toLocaleDateString('en-CA', { timeZone: 'Asia/Bangkok' })
+      setCreateDrag(null)
+      setHoverSlot(null)
+
+      // Block creation in past time slots
+      const proposedStart = new Date(`${dateKey}T${startTime}:00+07:00`)
+      if (proposedStart < new Date()) {
+        setToast({ message: 'Cannot create a class in a past time slot', type: 'error' })
+        return
+      }
+
+      if (wasActivated) {
+        openAddDialog(dateKey, startTime, endTime)
+      }
+      // If not activated (just a click), let handleGridClick handle it
+    }
+
+    function onKeyDown(e) {
+      if (e.key === 'Escape') { setCreateDrag(null) }
+    }
+
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
+    window.addEventListener('keydown', onKeyDown)
+    return () => {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+      window.removeEventListener('keydown', onKeyDown)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [createDrag])
+
+  // Click on empty grid space to create
+  function confirmPendingMove() {
+    if (!pendingMove) return
+    handleQuickUpdate(pendingMove.cls, pendingMove.newDate, pendingMove.newStartTime, pendingMove.newEndTime)
+    setPendingMove(null)
+  }
+
+  function cancelPendingMove() {
+    setPendingMove(null)
+  }
+
+  function handleGridClick(e, dayIdx) {
+    if (dragState || resizeState || pendingMove || createDrag) return
+    if (justDragged.current) return
+    // Only trigger on direct click on column background
+    if (e.target !== e.currentTarget) return
+    const rect = e.currentTarget.getBoundingClientRect()
+    const y = e.clientY - rect.top
+    const snappedY = snapToGrid(y)
+    const time = pxToTime(snappedY)
+    const dateKey = gridDays[dayIdx].toLocaleDateString('en-CA', { timeZone: 'Asia/Bangkok' })
+
+    // Block creation in past time slots
+    const proposedStart = new Date(`${dateKey}T${time}:00+07:00`)
+    if (proposedStart < new Date()) {
+      setToast({ message: 'Cannot create a class in a past time slot', type: 'error' })
+      return
+    }
+    openAddDialog(dateKey, time)
+  }
+
+  function handleGridPointerDown(e, dayIdx) {
+    if (dragState || resizeState || pendingMove || createDrag) return
+    // Only trigger on column background
+    if (e.target !== e.currentTarget) return
+    e.preventDefault()
+    const rect = e.currentTarget.getBoundingClientRect()
+    const y = e.clientY - rect.top
+    const snappedY = snapToGrid(y)
+    setCreateDrag({ dayIdx, startTop: snappedY, currentTop: snappedY + SNAP_PX, startY: e.clientY, activated: false })
+    setHoverSlot(null)
+  }
+
+  // Current time line position
+  const [nowMinutes, setNowMinutes] = useState(() => {
+    const now = new Date()
+    const h = parseInt(now.toLocaleTimeString('en-GB', { hour: '2-digit', hour12: false, timeZone: 'Asia/Bangkok' }))
+    const m = parseInt(now.toLocaleTimeString('en-GB', { minute: '2-digit', timeZone: 'Asia/Bangkok' }))
+    return (h - START_HOUR) * 60 + m
+  })
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = new Date()
+      const h = parseInt(now.toLocaleTimeString('en-GB', { hour: '2-digit', hour12: false, timeZone: 'Asia/Bangkok' }))
+      const m = parseInt(now.toLocaleTimeString('en-GB', { minute: '2-digit', timeZone: 'Asia/Bangkok' }))
+      setNowMinutes((h - START_HOUR) * 60 + m)
+    }, 60000)
+    return () => clearInterval(interval)
+  }, [])
+
+  const todayIdx = gridDays.findIndex((d) => d.toDateString() === new Date().toDateString())
+
+  // Auto-scroll to current time on mount
+  const scrollContainerRef = useRef(null)
+  useEffect(() => {
+    if (!loading && scrollContainerRef.current) {
+      const scrollTarget = Math.max(0, nowMinutes - 60) // scroll to 1hr before now
+      scrollContainerRef.current.scrollTop = scrollTarget
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading])
+
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-foreground">Schedule</h1>
+    <div className="flex flex-col h-full overflow-hidden">
+      <div className="flex items-center justify-between mb-4 shrink-0">
+        <h1 className="text-xl sm:text-2xl font-bold text-foreground">Schedule</h1>
         <Button onClick={() => openAddDialog()}>+ Add Class</Button>
       </div>
 
@@ -353,122 +771,470 @@ export default function AdminSchedulePage() {
         </div>
       )}
 
-      {/* Week navigation */}
-      <div className="flex items-center justify-between mb-4">
-        <button onClick={() => setWeekOffset((o) => o - 1)} className="text-sm text-muted hover:text-foreground transition-colors px-3 py-2 min-h-[44px] border border-card-border rounded">← Prev</button>
-        <div className="text-center">
-          <p className="text-sm font-medium text-foreground">{weekLabel}</p>
-          {weekOffset !== 0 && (
-            <button onClick={() => setWeekOffset(0)} className="text-xs text-accent hover:text-accent-dim transition-colors py-1">Today</button>
-          )}
+      {/* Navigation bar */}
+      <div className="flex items-center gap-2 mb-3 shrink-0">
+        {/* Prev / Today / Next */}
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => viewMode === 'day' ? setDayOffset(o => o - 1) : viewMode === 'month' ? setMonthOffset(o => o - 1) : setWeekOffset(o => o - 1)}
+            className="w-8 h-8 flex items-center justify-center rounded-md border border-card-border text-muted hover:text-foreground hover:bg-white/[0.04] transition-colors"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => { setDayOffset(0); setWeekOffset(0); setMonthOffset(0) }}
+            className="h-8 px-3 text-xs font-medium rounded-md border border-card-border text-muted hover:text-foreground hover:bg-white/[0.04] transition-colors"
+          >
+            Today
+          </button>
+          <button
+            onClick={() => viewMode === 'day' ? setDayOffset(o => o + 1) : viewMode === 'month' ? setMonthOffset(o => o + 1) : setWeekOffset(o => o + 1)}
+            className="w-8 h-8 flex items-center justify-center rounded-md border border-card-border text-muted hover:text-foreground hover:bg-white/[0.04] transition-colors"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
         </div>
-        <button onClick={() => setWeekOffset((o) => o + 1)} className="text-sm text-muted hover:text-foreground transition-colors px-3 py-2 min-h-[44px] border border-card-border rounded">Next →</button>
+
+        {/* Date label */}
+        <p className="text-sm font-semibold text-foreground flex-1 ml-1">{viewLabel}</p>
+
+        {/* View toggle */}
+        <div className="flex items-center rounded-lg border border-card-border bg-card p-0.5">
+          {['day', 'week', 'month'].map((mode) => (
+            <button
+              key={mode}
+              onClick={() => {
+                if (mode === viewMode) return
+                // Sync offsets when switching views
+                if (mode === 'day' && viewMode === 'week') {
+                  // Go to today if it's in current week, else Monday of current week
+                  const todayDate = new Date(); todayDate.setHours(0, 0, 0, 0)
+                  const inWeek = gridDays.some(d => d.toDateString() === todayDate.toDateString())
+                  if (!inWeek) {
+                    const diff = Math.round((gridDays[0] - todayDate) / (1000 * 60 * 60 * 24))
+                    setDayOffset(diff)
+                  }
+                } else if (mode === 'week' && viewMode === 'day') {
+                  // Set week offset to contain the current day view date
+                  const todayDate = new Date(); todayDate.setHours(0, 0, 0, 0)
+                  const targetDay = new Date(todayDate); targetDay.setDate(todayDate.getDate() + dayOffset)
+                  const diffDays = Math.round((targetDay - todayDate) / (1000 * 60 * 60 * 24))
+                  setWeekOffset(Math.floor(diffDays / 7))
+                }
+                setViewMode(mode)
+              }}
+              className={cn(
+                'px-3 h-7 text-xs font-medium rounded-md transition-all capitalize',
+                viewMode === mode
+                  ? 'bg-accent/15 text-accent shadow-sm'
+                  : 'text-muted hover:text-foreground'
+              )}
+            >
+              {mode}
+            </button>
+          ))}
+        </div>
       </div>
 
       {loading ? (
-        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2 sm:gap-3">
-          {[1, 2, 3, 4, 5, 6, 7].map((i) => <div key={i} className="h-48 bg-card border border-card-border rounded-lg animate-pulse" />)}
+        <div className="flex-1 bg-card border border-card-border rounded-lg animate-pulse" />
+      ) : viewMode === 'month' ? (
+        /* ─── Month View ──────────────────────────────────────────────────────── */
+        <div className="flex-1 min-h-0 border border-card-border rounded-lg overflow-y-auto bg-card">
+          {/* Weekday headers */}
+          <div className="grid grid-cols-7 border-b border-card-border">
+            {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((d) => (
+              <div key={d} className="text-center py-2 text-[10px] text-muted uppercase tracking-wider border-r border-card-border last:border-r-0">{d}</div>
+            ))}
+          </div>
+          {/* Day cells */}
+          <div className="grid grid-cols-7">
+            {viewDays.map((day, i) => {
+              const dateKey = day.toLocaleDateString('en-CA', { timeZone: 'Asia/Bangkok' })
+              const dayClasses = (classesByDay[dateKey] || []).sort((a, b) => new Date(a.starts_at) - new Date(b.starts_at))
+              const isToday = day.toDateString() === new Date().toDateString()
+              const now = new Date()
+              const currentMonth = new Date(now.getFullYear(), now.getMonth() + monthOffset, 1).getMonth()
+              const isOtherMonth = day.getMonth() !== currentMonth
+              const isPast = day < today
+              const maxShow = 3
+              const overflow = dayClasses.length - maxShow
+
+              return (
+                <button
+                  key={i}
+                  onClick={() => {
+                    const todayDate = new Date(); todayDate.setHours(0, 0, 0, 0)
+                    const diff = Math.round((day - todayDate) / (1000 * 60 * 60 * 24))
+                    setDayOffset(diff)
+                    setViewMode('day')
+                  }}
+                  className={cn(
+                    'min-h-[100px] p-1.5 text-left border-r border-b border-card-border last:border-r-0 transition-colors hover:bg-white/[0.03]',
+                    isOtherMonth && 'opacity-40',
+                    isPast && !isOtherMonth && 'opacity-60',
+                  )}
+                >
+                  <div className={cn(
+                    'w-7 h-7 flex items-center justify-center rounded-full text-xs font-semibold mb-1',
+                    isToday ? 'bg-accent text-background' : 'text-foreground'
+                  )}>
+                    {day.getDate()}
+                  </div>
+                  <div className="space-y-0.5">
+                    {dayClasses.slice(0, maxShow).map((cls) => {
+                      const color = cls.class_types?.color || '#c8a750'
+                      const time = new Date(cls.starts_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Asia/Bangkok' })
+                      const isCancelled = cls.status === 'cancelled'
+                      return (
+                        <div
+                          key={cls.id}
+                          className={cn(
+                            'flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] leading-tight truncate',
+                            isCancelled && 'opacity-40 line-through'
+                          )}
+                          style={{ backgroundColor: `${color}20`, color }}
+                        >
+                          <span className="font-medium truncate">{time} {cls.class_types?.name || 'Class'}</span>
+                        </div>
+                      )
+                    })}
+                    {overflow > 0 && (
+                      <p className="text-[10px] text-muted pl-1.5">+{overflow} more</p>
+                    )}
+                  </div>
+                </button>
+              )
+            })}
+          </div>
         </div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2 sm:gap-3">
-          {weekDays.map((day) => {
-            const dateKey = day.toLocaleDateString('en-CA', { timeZone: 'Asia/Bangkok' })
-            const dayClasses = classesByDay[dateKey] || []
-            const isToday = day.toDateString() === today.toDateString()
-            const isPast = day < today
-
-            return (
-              <div key={dateKey} className={cn('border border-card-border rounded-lg overflow-hidden min-h-[120px] md:min-h-[200px]', isToday ? 'border-accent/40 shadow-[0_0_12px_rgba(200,167,80,0.08)]' : '', isPast ? 'opacity-50' : '')}>
-                <div className={cn('px-3 py-2 text-center border-b border-card-border', isToday ? 'bg-accent/10' : 'bg-card')}>
-                  <p className="text-xs text-muted uppercase tracking-wide">{day.toLocaleDateString('en-US', { weekday: 'short' })}</p>
-                  <p className={cn('text-lg font-bold', isToday ? 'text-accent' : 'text-foreground')}>{day.getDate()}</p>
+        /* ─── Day / Week Time Grid ────────────────────────────────────────────── */
+        <div className="flex-1 min-h-0 flex flex-col border border-card-border rounded-lg overflow-hidden bg-card">
+          {/* Day headers */}
+          <div className="flex border-b border-card-border sticky top-0 z-20 bg-card shrink-0">
+            <div className="w-14 shrink-0 border-r border-card-border" />
+            {gridDays.map((day, i) => {
+              const isToday = day.toDateString() === new Date().toDateString()
+              const isPast = day < today
+              return (
+                <div
+                  key={i}
+                  className={cn(
+                    'flex-1 text-center py-2 border-r border-card-border last:border-r-0',
+                    viewMode === 'day' ? 'min-w-0' : 'min-w-[100px]',
+                    isPast && 'opacity-50',
+                  )}
+                >
+                  <p className="text-[10px] text-muted uppercase tracking-wider">
+                    {day.toLocaleDateString('en-US', { weekday: viewMode === 'day' ? 'long' : 'short' })}
+                  </p>
+                  <p className={cn('text-lg font-bold leading-tight', isToday ? 'text-accent' : 'text-foreground')}>{day.getDate()}</p>
                 </div>
-                <div className="p-1.5 space-y-1.5">
-                  {dayClasses.map((cls) => {
-                    const time = new Date(cls.starts_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Asia/Bangkok' })
-                    const endTime = new Date(cls.ends_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Asia/Bangkok' })
-                    const isCancelled = cls.status === 'cancelled'
-                    const isFull = cls.booked_count >= cls.capacity
-                    const isPrivate = cls.is_private || cls.class_types?.is_private
-                    const isRecurring = !!cls.recurring_id
-                    const fillPct = cls.capacity > 0 ? Math.min((cls.booked_count / cls.capacity) * 100, 100) : 0
+              )
+            })}
+          </div>
 
-                    return (
-                      <button
-                        key={cls.id}
-                        onClick={() => isCancelled ? null : openEditDialog(cls)}
-                        className={cn(
-                          'w-full text-left px-2.5 py-2 rounded-md transition-colors border-l-[3px] relative',
-                          isCancelled ? 'bg-red-500/5 opacity-50 cursor-default border-l-red-500/40' : 'bg-card hover:bg-white/[0.04] cursor-pointer',
-                          !isCancelled && 'border-l-transparent',
-                          !isCancelled && isRecurring && !isPrivate && 'ring-1 ring-purple-400/20 bg-gradient-to-r from-purple-500/[0.06] to-transparent',
-                          !isCancelled && isPrivate && 'ring-1 ring-amber-400/20 bg-gradient-to-r from-amber-500/[0.06] to-transparent',
-                          !isCancelled && !isRecurring && !isPrivate && 'ring-1 ring-sky-400/15 bg-gradient-to-r from-sky-500/[0.04] to-transparent'
-                        )}
-                        style={!isCancelled ? { borderLeftColor: cls.class_types?.color || '#c8a750' } : undefined}
-                      >
-                        <div className="flex items-center justify-between gap-1">
-                          <span className={cn('text-sm font-semibold truncate', isCancelled ? 'line-through text-muted' : 'text-foreground')}>
-                            {cls.class_types?.name || 'Class'}
-                          </span>
-                          <div className="flex items-center gap-1 shrink-0">
-                            {isRecurring && !isCancelled && (
-                              <span className="text-sm text-purple-400/70" title="Recurring class">↻</span>
-                            )}
-                            {isPrivate && <Lock className="w-3 h-3 text-amber-400" />}
+          {/* Time grid */}
+          <div ref={scrollContainerRef} className="flex-1 min-h-0 overflow-y-auto overflow-x-auto">
+            <div ref={gridRef} className="flex relative" style={{ height: TOTAL_HEIGHT }}>
+              {/* Time gutter */}
+              <div className="w-14 shrink-0 border-r border-card-border relative">
+                {Array.from({ length: END_HOUR - START_HOUR }, (_, i) => {
+                  if (i === 0) return null // skip first label — clipped by header
+                  const h = i + START_HOUR
+                  return (
+                    <div key={i} className="absolute right-2 text-[10px] text-muted -translate-y-1/2" style={{ top: i * HOUR_HEIGHT }}>
+                      {h === 0 ? '12 AM' : h < 12 ? `${h} AM` : h === 12 ? '12 PM' : `${h - 12} PM`}
+                    </div>
+                  )
+                })}
+              </div>
+
+              {/* Day columns */}
+              {gridDays.map((day, dayIdx) => {
+                const dateKey = day.toLocaleDateString('en-CA', { timeZone: 'Asia/Bangkok' })
+                const dayClasses = classesByDay[dateKey] || []
+                const layouts = layoutEvents(dayClasses)
+                const isToday = dayIdx === todayIdx
+                const isPast = day < today
+
+                return (
+                  <div
+                    key={dayIdx}
+                    ref={(el) => { columnRefs.current[dayIdx] = el }}
+                    className={cn('flex-1 relative border-r border-card-border last:border-r-0', viewMode !== 'day' && 'min-w-[100px]', isPast && 'opacity-50')}
+                    style={{ height: TOTAL_HEIGHT }}
+                    onPointerDown={(e) => handleGridPointerDown(e, dayIdx)}
+                    onClick={(e) => handleGridClick(e, dayIdx)}
+                    onMouseMove={(e) => {
+                      if (dragState || resizeState || pendingMove || createDrag) return
+                      if (e.target !== e.currentTarget) { setHoverSlot(null); return }
+                      const rect = e.currentTarget.getBoundingClientRect()
+                      const y = e.clientY - rect.top
+                      const snappedY = snapToGrid(y)
+                      setHoverSlot((prev) => (prev?.dayIdx === dayIdx && prev?.top === snappedY) ? prev : { dayIdx, top: snappedY })
+                    }}
+                    onMouseLeave={() => setHoverSlot(null)}
+                  >
+                    {/* Hour lines */}
+                    {Array.from({ length: END_HOUR - START_HOUR }, (_, i) => (
+                      <div key={i} className="absolute left-0 right-0 border-t border-card-border/40 pointer-events-none" style={{ top: i * HOUR_HEIGHT }} />
+                    ))}
+                    {/* Half-hour dashed lines */}
+                    {Array.from({ length: END_HOUR - START_HOUR }, (_, i) => (
+                      <div key={`h-${i}`} className="absolute left-0 right-0 border-t border-dashed border-card-border/20 pointer-events-none" style={{ top: i * HOUR_HEIGHT + 30 }} />
+                    ))}
+
+                    {/* Hover-to-add indicator */}
+                    {hoverSlot?.dayIdx === dayIdx && !dragState && !resizeState && !pendingMove && !createDrag && (() => {
+                      const hoverTime = pxToTime(hoverSlot.top)
+                      const hoverDate = gridDays[dayIdx].toLocaleDateString('en-CA', { timeZone: 'Asia/Bangkok' })
+                      const isInPast = new Date(`${hoverDate}T${hoverTime}:00+07:00`) < new Date()
+                      if (isInPast) return null
+                      return (
+                        <div
+                          className="absolute left-1 right-1 rounded-md border-2 border-dashed border-accent/30 bg-accent/[0.04] pointer-events-none transition-all duration-100 flex items-center justify-center"
+                          style={{ top: `${hoverSlot.top}px`, height: `${HOUR_HEIGHT}px` }}
+                        >
+                          <div className="w-6 h-6 rounded-full bg-accent/15 flex items-center justify-center">
+                            <Plus className="w-3.5 h-3.5 text-accent/60" />
                           </div>
                         </div>
-                        <p className="text-[11px] text-muted mt-0.5">{time} – {endTime}</p>
-                        {cls.instructors?.name && (
-                          <p className="text-[10px] text-muted/70 truncate">{cls.instructors.name}</p>
-                        )}
-                        {!isCancelled && (
-                          <div className="flex items-center justify-between mt-1.5">
-                            <div className="flex items-center gap-1.5 flex-1">
-                              <div className="flex-1 h-1 bg-card-border rounded-full overflow-hidden">
-                                <div
-                                  className={cn('h-full rounded-full', isFull ? 'bg-red-500' : fillPct >= 75 ? 'bg-amber-500' : 'bg-green-500')}
-                                  style={{ width: `${fillPct}%` }}
-                                />
-                              </div>
+                      )
+                    })()}
+
+                    {/* Drag-to-create preview */}
+                    {createDrag?.dayIdx === dayIdx && (
+                      <div
+                        className="absolute left-1 right-1 rounded-md border-2 border-dashed border-accent/50 bg-accent/[0.08] pointer-events-none z-20 flex items-center justify-center"
+                        style={{ top: `${createDrag.startTop}px`, height: `${Math.max(SNAP_PX, createDrag.currentTop - createDrag.startTop)}px` }}
+                      >
+                        <div className="flex items-center gap-1.5 text-accent/70">
+                          <Plus className="w-3.5 h-3.5" />
+                          <span className="text-[11px] font-medium">{pxToTime(createDrag.startTop)} – {pxToTime(createDrag.currentTop)}</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Today highlight */}
+                    {isToday && <div className="absolute inset-0 bg-accent/[0.02] pointer-events-none" />}
+
+                    {/* Current time line */}
+                    {isToday && nowMinutes >= 0 && nowMinutes <= TOTAL_HEIGHT && (
+                      <div className="absolute left-0 right-0 z-10 pointer-events-none" style={{ top: nowMinutes }}>
+                        <div className="relative">
+                          <div className="absolute -left-1 -top-1 w-2.5 h-2.5 rounded-full bg-red-500" />
+                          <div className="h-[2px] bg-red-500 w-full" />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Event blocks */}
+                    {dayClasses.map((cls) => {
+                      const layout = layouts.get(cls.id)
+                      if (!layout) return null
+                      const isDragging = dragState?.cls.id === cls.id
+                      const isResizing = resizeState?.cls.id === cls.id
+
+                      // Use drag/resize/pending position if active
+                      let top = layout.top
+                      let height = layout.height
+                      const hasPending = pendingMove?.classId === cls.id
+
+                      if (isDragging) {
+                        top = dragState.currentTop
+                        height = dragState.height
+                        if (dragState.currentDayIdx !== dayIdx) return null
+                      } else if (hasPending) {
+                        // Keep block at its pending position until confirmed/cancelled
+                        top = pendingMove.top
+                        height = pendingMove.height
+                        if (pendingMove.dayIdx !== dayIdx) return null
+                      }
+                      if (isResizing) {
+                        height = resizeState.currentHeight
+                      }
+
+                      const isCancelled = cls.status === 'cancelled'
+                      const isFull = cls.booked_count >= cls.capacity
+                      const isPrivate = cls.is_private || cls.class_types?.is_private
+                      const isRecurring = !!cls.recurring_id
+                      const fillPct = cls.capacity > 0 ? Math.min((cls.booked_count / cls.capacity) * 100, 100) : 0
+                      const color = cls.class_types?.color || '#c8a750'
+                      const widthPct = 100 / layout.totalLanes
+                      const leftPct = layout.lane * widthPct
+
+                      const time = new Date(cls.starts_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Asia/Bangkok' })
+
+                      return (
+                        <div
+                          key={cls.id}
+                          className={cn(
+                            'absolute rounded-md border-l-[3px] overflow-hidden select-none transition-shadow group/block',
+                            isCancelled ? 'opacity-40 cursor-default' : 'cursor-grab active:cursor-grabbing',
+                            isDragging && 'z-50 shadow-lg ring-2 ring-accent/40 opacity-90',
+                            isResizing && 'z-50 shadow-lg',
+                            !isCancelled && !isDragging && 'hover:shadow-md hover:z-10',
+                          )}
+                          style={{
+                            top: `${top}px`,
+                            height: `${Math.max(height, 15)}px`,
+                            left: `calc(${leftPct}% + 2px)`,
+                            width: `calc(${widthPct}% - 4px)`,
+                            borderLeftColor: isCancelled ? '#ef4444' : color,
+                            backgroundColor: isCancelled ? 'rgba(239,68,68,0.05)' : `${color}15`,
+                          }}
+                          onPointerDown={(e) => {
+                            if (isCancelled || hasPending) return
+                            handleDragStart(e, cls, dayIdx)
+                          }}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            if (justDragged.current) return
+                            if (pendingMove) return
+                            if (!dragState) openEditDialog(cls)
+                          }}
+                        >
+                          <div className="px-1.5 py-1 h-full flex flex-col overflow-hidden">
+                            <div className="flex items-center gap-1">
+                              <span className={cn('text-[11px] font-semibold truncate leading-tight', isCancelled ? 'line-through text-muted' : 'text-foreground')}>
+                                {cls.class_types?.name || 'Class'}
+                              </span>
+                              {isRecurring && !isCancelled && <span className="text-[10px] text-purple-400/70 shrink-0">↻</span>}
+                              {isPrivate && <Lock className="w-2.5 h-2.5 text-amber-400 shrink-0" />}
                             </div>
-                            <button
-                              onClick={(e) => { e.stopPropagation(); setRosterDialog(cls) }}
-                              className={cn('text-[11px] font-semibold hover:text-accent transition-colors ml-1.5 shrink-0', isFull ? 'text-red-400' : fillPct >= 75 ? 'text-amber-400' : 'text-muted')}
+                            <p className="text-[10px] text-muted leading-tight">{time}</p>
+                            {height >= 45 && cls.instructors?.name && (
+                              <p className="text-[9px] text-muted/60 truncate">{cls.instructors.name}</p>
+                            )}
+                            {height >= 35 && !isCancelled && (
+                              <div className="mt-auto">
+                                <span className={cn('text-[9px] font-semibold', isFull ? 'text-red-400' : fillPct >= 75 ? 'text-amber-400' : 'text-muted')}>
+                                  {cls.booked_count}/{cls.capacity}
+                                </span>
+                              </div>
+                            )}
+                            {isCancelled && (
+                              <div className="flex items-center justify-between mt-auto">
+                                <span className="text-[9px] text-red-400 font-medium">Cancelled</span>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); setDeleteDialog(cls) }}
+                                  className="text-red-400/60 hover:text-red-400 transition-colors"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </button>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Resize handle */}
+                          {!isCancelled && !pendingMove?.classId && (
+                            <div
+                              className="absolute bottom-0 left-0 right-0 h-2 cursor-ns-resize opacity-0 group-hover/block:opacity-100 transition-opacity"
+                              onPointerDown={(e) => handleResizeStart(e, cls, dayIdx)}
                             >
-                              {cls.booked_count}/{cls.capacity}
+                              <div className="mx-auto w-8 h-1 rounded-full bg-foreground/30 mt-0.5" />
+                            </div>
+                          )}
+
+                          {/* Pending move confirm/cancel */}
+                          {pendingMove?.classId === cls.id && (
+                            <div className="absolute inset-0 flex items-center justify-center gap-1.5 bg-background/80 backdrop-blur-[2px] rounded-md z-10" onPointerDown={(e) => e.stopPropagation()}>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); confirmPendingMove() }}
+                                className="w-7 h-7 rounded-full bg-green-500/20 text-green-400 hover:bg-green-500/30 flex items-center justify-center transition-colors"
+                                title="Confirm"
+                              >
+                                <Check className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); cancelPendingMove() }}
+                                className="w-7 h-7 rounded-full bg-red-500/20 text-red-400 hover:bg-red-500/30 flex items-center justify-center transition-colors"
+                                title="Cancel"
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+
+                    {/* Render dragged block from another column into this one */}
+                    {dragState && dragState.currentDayIdx === dayIdx && dragState.dayIdx !== dayIdx && (() => {
+                      const cls = dragState.cls
+                      const color = cls.class_types?.color || '#c8a750'
+                      return (
+                        <div
+                          className="absolute rounded-md border-l-[3px] overflow-hidden select-none z-50 shadow-lg ring-2 ring-accent/40 opacity-90"
+                          style={{
+                            top: `${dragState.currentTop}px`,
+                            height: `${dragState.height}px`,
+                            left: '2px',
+                            width: 'calc(100% - 4px)',
+                            borderLeftColor: color,
+                            backgroundColor: `${color}15`,
+                          }}
+                        >
+                          <div className="px-1.5 py-1">
+                            <span className="text-[11px] font-semibold text-foreground truncate">{cls.class_types?.name || 'Class'}</span>
+                          </div>
+                        </div>
+                      )
+                    })()}
+
+                    {/* Render pending-move block from another column into this one */}
+                    {pendingMove && pendingMove.dayIdx === dayIdx && !dayClasses.some(c => c.id === pendingMove.classId) && (() => {
+                      const cls = pendingMove.cls
+                      const color = cls.class_types?.color || '#c8a750'
+                      return (
+                        <div
+                          className="absolute rounded-md border-l-[3px] overflow-hidden select-none"
+                          style={{
+                            top: `${pendingMove.top}px`,
+                            height: `${Math.max(pendingMove.height, 15)}px`,
+                            left: '2px',
+                            width: 'calc(100% - 4px)',
+                            borderLeftColor: color,
+                            backgroundColor: `${color}15`,
+                          }}
+                        >
+                          <div className="px-1.5 py-1 h-full flex flex-col overflow-hidden">
+                            <span className="text-[11px] font-semibold text-foreground truncate">{cls.class_types?.name || 'Class'}</span>
+                          </div>
+                          <div className="absolute inset-0 flex items-center justify-center gap-1.5 bg-background/80 backdrop-blur-[2px] rounded-md z-10" onPointerDown={(e) => e.stopPropagation()}>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); confirmPendingMove() }}
+                              className="w-7 h-7 rounded-full bg-green-500/20 text-green-400 hover:bg-green-500/30 flex items-center justify-center transition-colors"
+                              title="Confirm"
+                            >
+                              <Check className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); cancelPendingMove() }}
+                              className="w-7 h-7 rounded-full bg-red-500/20 text-red-400 hover:bg-red-500/30 flex items-center justify-center transition-colors"
+                              title="Cancel"
+                            >
+                              <X className="w-4 h-4" />
                             </button>
                           </div>
-                        )}
-                        {isCancelled && (
-                          <div className="flex items-center justify-between mt-1">
-                            <p className="text-[10px] text-red-400 font-medium">Cancelled</p>
-                            <button
-                              onClick={(e) => { e.stopPropagation(); setDeleteDialog(cls) }}
-                              className="text-red-400/60 hover:text-red-400 transition-colors p-0.5"
-                              title="Permanently delete"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        )}
-                      </button>
-                    )
-                  })}
-                  {!isPast && (
-                    <button onClick={() => openAddDialog(dateKey)} className="w-full text-center text-sm text-muted hover:text-accent transition-colors py-2 rounded-md border border-dashed border-card-border hover:border-accent/30">+</button>
-                  )}
-                </div>
-              </div>
-            )
-          })}
+                        </div>
+                      )
+                    })()}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
         </div>
       )}
+
+      {/* ─── Dialogs (preserved from original) ─────────────────────────────────── */}
 
       {/* Add Class Dialog */}
       <Dialog open={addDialog} onOpenChange={(open) => !open && setAddDialog(false)}>
         <DialogContent className="sm:max-w-md p-0 gap-0" hideClose onOpenAutoFocus={(e) => e.preventDefault()}>
-          {/* Color bar — class color into category hue */}
           {(() => {
             const ct = classTypes.find((c) => c.id === form.classTypeId)
             const addColor = ct?.color || '#c8a750'
@@ -602,12 +1368,10 @@ export default function AdminSchedulePage() {
       {/* Edit Class Dialog */}
       <Dialog open={!!editDialog} onOpenChange={(open) => !open && setEditDialog(null)}>
         <DialogContent className="sm:max-w-3xl p-0 gap-0" hideClose onOpenAutoFocus={(e) => e.preventDefault()}>
-          {/* Color banner header */}
           {editDialog && (() => {
             const color = editDialog.class_types?.color || '#c8a750'
             const isRecurring = !!editDialog.recurring_id
             const isPrivate = editDialog.class_types?.is_private
-            // Category hue: purple=recurring, amber=private, sky=singular
             const categoryHue = isRecurring ? '#a78bfa' : isPrivate ? '#fbbf24' : '#38bdf8'
             const fillPct = editDialog.capacity > 0 ? Math.min(((editDialog.booked_count || 0) / editDialog.capacity) * 100, 100) : 0
             const isFull = (editDialog.booked_count || 0) >= editDialog.capacity
@@ -619,12 +1383,8 @@ export default function AdminSchedulePage() {
 
             return (
               <>
-                {/* Accent top bar — class color fading into category hue */}
                 <div className="h-1.5 w-full rounded-t-lg" style={{ background: `linear-gradient(90deg, ${color}, ${categoryHue}88)` }} />
-
-                {/* Header section */}
                 <div className="px-4 sm:px-6 pt-4 pb-4">
-                  {/* Top row: title + close */}
                   <div className="flex items-start justify-between gap-3 mb-1">
                     <div className="flex items-center gap-2.5 flex-wrap min-w-0">
                       <h2 className="text-lg sm:text-xl font-bold text-foreground">{editDialog.class_types?.name || 'Class'}</h2>
@@ -645,7 +1405,6 @@ export default function AdminSchedulePage() {
                     </button>
                   </div>
 
-                  {/* Info row: date/time/instructor + capacity ring */}
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted min-w-0">
                       <span className="flex items-center gap-1.5">
@@ -663,8 +1422,6 @@ export default function AdminSchedulePage() {
                         </span>
                       )}
                     </div>
-
-                    {/* Capacity ring */}
                     <div className="shrink-0 text-center">
                       <div className="relative w-14 h-14">
                         <svg className="w-14 h-14 -rotate-90" viewBox="0 0 56 56">
@@ -684,7 +1441,6 @@ export default function AdminSchedulePage() {
                     </div>
                   </div>
 
-                  {/* Roster pills — "Who's coming" */}
                   {(editDialog.roster?.length > 0 || editDialog.waitlist?.length > 0) && (
                     <div className="mt-4 space-y-3">
                       {editDialog.roster?.length > 0 && (
@@ -746,10 +1502,8 @@ export default function AdminSchedulePage() {
                   )}
                 </div>
 
-                {/* Divider */}
                 <div className="border-t border-card-border" />
 
-                {/* Edit form section — tinted by category hue */}
                 <div className="px-4 sm:px-6 py-5 relative">
                   <div className="absolute inset-0 opacity-[0.04] pointer-events-none" style={{ background: `linear-gradient(135deg, ${categoryHue}, transparent 60%)` }} />
                   <div className="relative">
@@ -763,7 +1517,6 @@ export default function AdminSchedulePage() {
                   </div>
                 </div>
 
-                {/* Footer actions */}
                 <div className="border-t border-card-border px-4 sm:px-6 py-4 flex flex-col sm:flex-row gap-2">
                   <Button variant="outline" className="text-red-400 border-red-400/30 hover:bg-red-400/10 w-full sm:w-auto" onClick={() => { setEditDialog(null); setCancelDialog(editDialog) }}>
                     {isRecurring ? 'Cancel...' : 'Cancel Class'}
@@ -772,13 +1525,7 @@ export default function AdminSchedulePage() {
                     <Button variant="outline" className="w-full sm:w-auto" onClick={() => setEditDialog(null)}>Close</Button>
                     {isRecurring ? (
                       <>
-                        <Button
-                          variant="outline"
-                          className="w-full sm:w-auto"
-                          onClick={() => handleUpdate('this')}
-                          disabled={submitting}
-                          title="Save changes to this class only and remove it from the recurring set"
-                        >
+                        <Button variant="outline" className="w-full sm:w-auto" onClick={() => handleUpdate('this')} disabled={submitting} title="Save changes to this class only and remove it from the recurring set">
                           {submitting ? 'Saving...' : 'Save This Only'}
                         </Button>
                         <Button className="w-full sm:w-auto" onClick={() => handleUpdate('all')} disabled={submitting}>
@@ -830,11 +1577,7 @@ export default function AdminSchedulePage() {
             <Button variant="outline" onClick={() => setCancelDialog(null)}>Keep Class</Button>
             <div className="flex gap-2 sm:ml-auto">
               {cancelDialog?.recurring_id && (
-                <Button
-                  className="bg-red-600/80 hover:bg-red-700 text-white text-xs"
-                  onClick={() => handleCancel(true)}
-                  disabled={submitting}
-                >
+                <Button className="bg-red-600/80 hover:bg-red-700 text-white text-xs" onClick={() => handleCancel(true)} disabled={submitting}>
                   {submitting ? 'Cancelling...' : 'Cancel All Recurring'}
                 </Button>
               )}
@@ -1036,7 +1779,7 @@ function RosterDialog({ cls, onClose, onUpdate, setToast }) {
   const [searchResults, setSearchResults] = useState([])
   const [searching, setSearching] = useState(false)
   const [actionLoading, setActionLoading] = useState(null)
-  const [confirmRemove, setConfirmRemove] = useState(null) // { userId, type: 'roster' | 'waitlist', name }
+  const [confirmRemove, setConfirmRemove] = useState(null)
   const [activeTab, setActiveTab] = useState('attendees')
 
   const rosterUserIds = new Set(roster.map((m) => m.id))
@@ -1072,7 +1815,6 @@ function RosterDialog({ cls, onClose, onUpdate, setToast }) {
       const member = searchResults.find((m) => m.id === userId)
       if (member) {
         setRoster((r) => [...r, { id: member.id, name: member.name, email: member.email, avatar_url: member.avatar_url, status: 'confirmed' }])
-        // Remove from waitlist if they were on it
         setWaitlist((w) => w.filter((m) => m.id !== userId))
       }
       setToast({ message: `${member?.name || 'Member'} added`, type: 'success' })
@@ -1125,7 +1867,6 @@ function RosterDialog({ cls, onClose, onUpdate, setToast }) {
   }
 
   async function promoteFromWaitlist(userId) {
-    // Add to roster directly (bypasses capacity — admin override)
     await addMember(userId)
   }
 
@@ -1140,18 +1881,11 @@ function RosterDialog({ cls, onClose, onUpdate, setToast }) {
           </DialogDescription>
         </DialogHeader>
 
-        {/* Add member search */}
         <div className="space-y-2">
           <Label>Add Member</Label>
           <form onSubmit={(e) => { e.preventDefault(); searchMembers() }} className="flex gap-2">
-            <Input
-              placeholder="Search by name or email..."
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-            />
-            <Button type="submit" variant="outline" disabled={searching}>
-              {searching ? '...' : 'Search'}
-            </Button>
+            <Input placeholder="Search by name or email..." value={searchInput} onChange={(e) => setSearchInput(e.target.value)} />
+            <Button type="submit" variant="outline" disabled={searching}>{searching ? '...' : 'Search'}</Button>
           </form>
           {searchResults.length > 0 && (
             <div className="border border-card-border rounded-lg max-h-[150px] overflow-y-auto">
@@ -1170,12 +1904,7 @@ function RosterDialog({ cls, onClose, onUpdate, setToast }) {
                       <p className="text-[10px] text-muted truncate">{m.email}</p>
                     </div>
                   </div>
-                  <Button
-                    size="sm"
-                    className="text-xs h-7 px-2"
-                    onClick={() => addMember(m.id)}
-                    disabled={actionLoading === m.id}
-                  >
+                  <Button size="sm" className="text-xs h-7 px-2" onClick={() => addMember(m.id)} disabled={actionLoading === m.id}>
                     {actionLoading === m.id ? '...' : '+ Add'}
                   </Button>
                 </div>
@@ -1187,23 +1916,15 @@ function RosterDialog({ cls, onClose, onUpdate, setToast }) {
           )}
         </div>
 
-        {/* Tab switcher */}
         <div className="flex border-b border-card-border">
-          <button
-            onClick={() => setActiveTab('attendees')}
-            className={cn('flex-1 text-sm py-2 transition-colors border-b-2 -mb-px', activeTab === 'attendees' ? 'border-accent text-accent' : 'border-transparent text-muted hover:text-foreground')}
-          >
+          <button onClick={() => setActiveTab('attendees')} className={cn('flex-1 text-sm py-2 transition-colors border-b-2 -mb-px', activeTab === 'attendees' ? 'border-accent text-accent' : 'border-transparent text-muted hover:text-foreground')}>
             Attendees ({roster.length})
           </button>
-          <button
-            onClick={() => setActiveTab('waitlist')}
-            className={cn('flex-1 text-sm py-2 transition-colors border-b-2 -mb-px', activeTab === 'waitlist' ? 'border-accent text-accent' : 'border-transparent text-muted hover:text-foreground')}
-          >
+          <button onClick={() => setActiveTab('waitlist')} className={cn('flex-1 text-sm py-2 transition-colors border-b-2 -mb-px', activeTab === 'waitlist' ? 'border-accent text-accent' : 'border-transparent text-muted hover:text-foreground')}>
             Waitlist ({waitlist.length})
           </button>
         </div>
 
-        {/* Attendees tab */}
         {activeTab === 'attendees' && (
           <div className="space-y-1 max-h-[250px] overflow-y-auto">
             {roster.length > 0 ? roster.map((m, i) => (
@@ -1225,30 +1946,15 @@ function RosterDialog({ cls, onClose, onUpdate, setToast }) {
                   {confirmRemove?.userId === m.id && confirmRemove?.type === 'roster' ? (
                     <div className="flex items-center gap-1.5">
                       <span className="text-[10px] text-red-400">Remove?</span>
-                      <button
-                        onClick={() => { setConfirmRemove(null); removeMember(m.id) }}
-                        disabled={actionLoading === m.id}
-                        className="text-[10px] font-medium text-red-400 hover:text-red-300 px-1.5 py-0.5 border border-red-400/30 rounded transition-colors"
-                      >
+                      <button onClick={() => { setConfirmRemove(null); removeMember(m.id) }} disabled={actionLoading === m.id} className="text-[10px] font-medium text-red-400 hover:text-red-300 px-1.5 py-0.5 border border-red-400/30 rounded transition-colors">
                         {actionLoading === m.id ? '...' : 'Yes'}
                       </button>
-                      <button
-                        onClick={() => setConfirmRemove(null)}
-                        className="text-[10px] font-medium text-muted hover:text-foreground px-1.5 py-0.5 border border-card-border rounded transition-colors"
-                      >
-                        No
-                      </button>
+                      <button onClick={() => setConfirmRemove(null)} className="text-[10px] font-medium text-muted hover:text-foreground px-1.5 py-0.5 border border-card-border rounded transition-colors">No</button>
                     </div>
                   ) : (
                     <>
-                      <Badge variant="success" className="text-[10px] capitalize">
-                        {m.status}
-                      </Badge>
-                      <button
-                        onClick={() => setConfirmRemove({ userId: m.id, type: 'roster', name: m.name })}
-                        className="text-red-400 hover:text-red-300 text-xs transition-colors"
-                        title="Remove from class"
-                      >
+                      <Badge variant="success" className="text-[10px] capitalize">{m.status}</Badge>
+                      <button onClick={() => setConfirmRemove({ userId: m.id, type: 'roster', name: m.name })} className="text-red-400 hover:text-red-300 text-xs transition-colors" title="Remove from class">
                         <X className="w-3 h-3" />
                       </button>
                     </>
@@ -1261,7 +1967,6 @@ function RosterDialog({ cls, onClose, onUpdate, setToast }) {
           </div>
         )}
 
-        {/* Waitlist tab */}
         {activeTab === 'waitlist' && (
           <div className="space-y-1 max-h-[250px] overflow-y-auto">
             {waitlist.length > 0 ? waitlist.map((m, i) => (
@@ -1286,35 +1991,17 @@ function RosterDialog({ cls, onClose, onUpdate, setToast }) {
                   {confirmRemove?.userId === m.id && confirmRemove?.type === 'waitlist' ? (
                     <>
                       <span className="text-[10px] text-red-400">Remove?</span>
-                      <button
-                        onClick={() => { setConfirmRemove(null); removeFromWaitlist(m.id) }}
-                        disabled={actionLoading === `wl-${m.id}`}
-                        className="text-[10px] font-medium text-red-400 hover:text-red-300 px-1.5 py-0.5 border border-red-400/30 rounded transition-colors"
-                      >
+                      <button onClick={() => { setConfirmRemove(null); removeFromWaitlist(m.id) }} disabled={actionLoading === `wl-${m.id}`} className="text-[10px] font-medium text-red-400 hover:text-red-300 px-1.5 py-0.5 border border-red-400/30 rounded transition-colors">
                         {actionLoading === `wl-${m.id}` ? '...' : 'Yes'}
                       </button>
-                      <button
-                        onClick={() => setConfirmRemove(null)}
-                        className="text-[10px] font-medium text-muted hover:text-foreground px-1.5 py-0.5 border border-card-border rounded transition-colors"
-                      >
-                        No
-                      </button>
+                      <button onClick={() => setConfirmRemove(null)} className="text-[10px] font-medium text-muted hover:text-foreground px-1.5 py-0.5 border border-card-border rounded transition-colors">No</button>
                     </>
                   ) : (
                     <>
-                      <button
-                        onClick={() => promoteFromWaitlist(m.id)}
-                        disabled={actionLoading === m.id}
-                        className="text-green-400 hover:text-green-300 text-[10px] font-medium transition-colors disabled:opacity-50 px-1.5 py-0.5 border border-green-400/20 rounded"
-                        title="Move to attendees"
-                      >
+                      <button onClick={() => promoteFromWaitlist(m.id)} disabled={actionLoading === m.id} className="text-green-400 hover:text-green-300 text-[10px] font-medium transition-colors disabled:opacity-50 px-1.5 py-0.5 border border-green-400/20 rounded" title="Move to attendees">
                         {actionLoading === m.id ? '...' : 'Promote'}
                       </button>
-                      <button
-                        onClick={() => setConfirmRemove({ userId: m.id, type: 'waitlist', name: m.name })}
-                        className="text-red-400 hover:text-red-300 text-xs transition-colors"
-                        title="Remove from waitlist"
-                      >
+                      <button onClick={() => setConfirmRemove({ userId: m.id, type: 'waitlist', name: m.name })} className="text-red-400 hover:text-red-300 text-xs transition-colors" title="Remove from waitlist">
                         <X className="w-3 h-3" />
                       </button>
                     </>
