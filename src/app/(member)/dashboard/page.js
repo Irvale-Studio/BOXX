@@ -118,6 +118,7 @@ function DashboardContent() {
           upcoming={data.upcomingBookings}
           past={data.pastBookings}
           waitlist={data.waitlist || []}
+          credits={data.credits || []}
           onUpdate={fetchDashboard}
           isGoogleUser={isGoogleUser}
         />
@@ -1723,7 +1724,7 @@ function ScheduleSection({ credits, onUpdate, sharedClassId, view, onViewChange,
 /* ─────────────────────────────────────────────────────────
    BOOKINGS SECTION
    ───────────────────────────────────────────────────────── */
-function BookingsSection({ upcoming, past, waitlist = [], onUpdate, isGoogleUser }) {
+function BookingsSection({ upcoming, past, waitlist = [], credits = [], onUpdate, isGoogleUser }) {
   const [showPast, setShowPast] = useState(false)
   const [cancelling, setCancelling] = useState(null)
   const [expandedId, setExpandedId] = useState(null)
@@ -1939,11 +1940,11 @@ function BookingsSection({ upcoming, past, waitlist = [], onUpdate, isGoogleUser
                     {isUpcoming && isInvited && (
                       <div className="flex items-center justify-between gap-3">
                         <span className="text-[10px] text-muted flex-1">
-                          {data?.credits?.some((c) => c.status === 'active' && (c.credits_remaining > 0 || c.credits_remaining === null) && new Date(c.expires_at) > new Date())
+                          {credits.some((c) => c.status === 'active' && (c.credits_remaining > 0 || c.credits_remaining === null) && new Date(c.expires_at) > new Date())
                             ? 'You have credits available — accept to confirm your spot'
                             : 'Purchase credits to confirm your spot'}
                         </span>
-                        {data?.credits?.some((c) => c.status === 'active' && (c.credits_remaining > 0 || c.credits_remaining === null) && new Date(c.expires_at) > new Date()) ? (
+                        {credits.some((c) => c.status === 'active' && (c.credits_remaining > 0 || c.credits_remaining === null) && new Date(c.expires_at) > new Date()) ? (
                           <Button
                             size="sm"
                             onClick={async (e) => {
