@@ -13,7 +13,7 @@ export default function AdminInstructorsPage() {
   const [loading, setLoading] = useState(true)
   const [toast, setToast] = useState(null)
   const [dialog, setDialog] = useState(null) // 'create' | instructor object
-  const [form, setForm] = useState({ name: '', bio: '', instagram_url: '' })
+  const [form, setForm] = useState({ name: '', bio: '' })
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
@@ -39,7 +39,7 @@ export default function AdminInstructorsPage() {
   useEffect(() => { fetchInstructors() }, [])
 
   function openCreate() {
-    setForm({ name: '', bio: '', instagram_url: '' })
+    setForm({ name: '', bio: '' })
     setDialog('create')
   }
 
@@ -47,7 +47,6 @@ export default function AdminInstructorsPage() {
     setForm({
       name: inst.name,
       bio: inst.bio || '',
-      instagram_url: inst.instagram_url || '',
     })
     setDialog(inst)
   }
@@ -64,7 +63,6 @@ export default function AdminInstructorsPage() {
           ...(!isCreate && { id: dialog.id }),
           name: form.name,
           bio: form.bio || null,
-          instagram_url: form.instagram_url || null,
         }),
       })
       const data = await res.json()
@@ -163,9 +161,6 @@ export default function AdminInstructorsPage() {
                     )}
                   </div>
                   {inst.bio && <p className="text-xs text-muted truncate mt-0.5">{inst.bio}</p>}
-                  {inst.instagram_url && (
-                    <p className="text-[11px] text-accent mt-0.5">Instagram linked</p>
-                  )}
                 </div>
 
                 {/* Toggle — stop propagation so tapping switch doesn't open dialog */}
@@ -206,15 +201,6 @@ export default function AdminInstructorsPage() {
                 value={form.bio}
                 onChange={(e) => setForm((f) => ({ ...f, bio: e.target.value }))}
                 placeholder="Short bio..."
-                className="mt-1"
-              />
-            </div>
-            <div>
-              <Label>Instagram URL</Label>
-              <Input
-                value={form.instagram_url}
-                onChange={(e) => setForm((f) => ({ ...f, instagram_url: e.target.value }))}
-                placeholder="https://instagram.com/..."
                 className="mt-1"
               />
             </div>

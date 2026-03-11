@@ -124,6 +124,34 @@ export const AGENT_TOOLS = [
     },
   },
 
+  // ── Instructors ─────────────────────────────────────
+  {
+    name: 'create_instructor',
+    description: 'Add a new instructor to the studio.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', description: 'Instructor name' },
+        bio: { type: 'string', description: 'Short bio (optional)' },
+      },
+      required: ['name'],
+    },
+  },
+  {
+    name: 'update_instructor',
+    description: 'Update an existing instructor (name, bio, or active status).',
+    input_schema: {
+      type: 'object',
+      properties: {
+        instructor: { type: 'string', description: 'Instructor name to find' },
+        name: { type: 'string', description: 'New name (optional)' },
+        bio: { type: 'string', description: 'New bio (optional)' },
+        active: { type: 'boolean', description: 'Set active/inactive (optional)' },
+      },
+      required: ['instructor'],
+    },
+  },
+
   // ── Communications ────────────────────────────────
   {
     name: 'send_email',

@@ -21,6 +21,8 @@ export async function executeTool(toolName, input, context) {
       case 'search_members': return await searchMembers(input)
       case 'get_member_detail': return await getMemberDetail(input)
       case 'grant_credits': return await grantCredits(input, context)
+      case 'create_instructor': return await createInstructor(input, context)
+      case 'update_instructor': return await updateInstructor(input, context)
       case 'send_email': return await sendEmail(input, context)
       case 'get_dashboard': return await getDashboard()
       default:
@@ -552,6 +554,96 @@ async function grantCredits(input, context) {
     data: {
       message: `Granted "${pack.name}" (${pack.credits || 'unlimited'} credits, ${pack.validity_days} days) to ${member.name}.`,
     },
+  }
+}
+
+async function createInstructor(input, context) {
+  // Check if name already exists
+  const { data: existing } = await supabaseAdmin
+    .from('instructors')
+    .select('id, name')
+    .ilike('name', input.name)
+    .limit(1)
+
+  if (existing?.length) {
+    throw new Error(`Instructor "${existing[0].name}" already exists.`)
+  }
+
+  // Check platform limit
+  const { checkInstructorLimit } = await import('@/lib/platform-limits')
+  const { allowed, reason } = await checkInstructorLimit()
+  if (!allowed) throw new Error(reason)
+
+  const { data: instructor, error } = await supabaseAdmin
+    .from('instructors')
+    .insert({
+      name: input.name,
+      bio: input.bio || null,
+      active: true,
+    })
+    .select('id, name')
+    .single()
+
+  if (error) throw new Error(`Failed to create instructor: ${error.message}`)
+
+  await supabaseAdmin.from('admin_audit_log').insert({
+    admin_id: context.adminId,
+    action: 'create_instructor',
+    target_type: 'instructors',
+    target_id: instructor.id,
+    details: { via: 'agent', name: instructor.name },
+  })
+
+  return {
+    success: true,
+    data: { message: `Created instructor "${instructor.name}".` },
+  }
+}
+
+async function updateInstructor(input, context) {
+  const instructor = await resolveInstructor(input.instructor)
+
+  const updates = {}
+  if (input.name !== undefined) updates.name = input.name
+  if (input.bio !== undefined) updates.bio = input.bio || null
+  if (input.active !== undefined) updates.active = input.active
+
+  if (!Object.keys(updates).length) {
+    throw new Error('No updates provided. Specify name, bio, or active.')
+  }
+
+  // Prevent deactivating with future classes
+  if (updates.active === false) {
+    const { count } = await supabaseAdmin
+      .from('class_schedule')
+      .select('id', { count: 'exact', head: true })
+      .eq('instructor_id', instructor.id)
+      .eq('status', 'active')
+      .gt('starts_at', new Date().toISOString())
+
+    if (count > 0) {
+      throw new Error(`Cannot deactivate: ${count} upcoming class(es) assigned to ${instructor.name}. Reassign them first.`)
+    }
+  }
+
+  const { error } = await supabaseAdmin
+    .from('instructors')
+    .update(updates)
+    .eq('id', instructor.id)
+
+  if (error) throw new Error(`Failed to update instructor: ${error.message}`)
+
+  await supabaseAdmin.from('admin_audit_log').insert({
+    admin_id: context.adminId,
+    action: 'update_instructor',
+    target_type: 'instructors',
+    target_id: instructor.id,
+    details: { via: 'agent', updates },
+  })
+
+  return {
+    success: true,
+    data: { message: `Updated instructor "${instructor.name}".${updates.active === false ? ' (deactivated)' : ''}` },
   }
 }
 

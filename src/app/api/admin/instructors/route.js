@@ -36,8 +36,7 @@ export async function GET() {
 
 const createSchema = z.object({
   name: z.string().min(1),
-  bio: z.string().optional(),
-  instagram_url: z.string().optional(),
+  bio: z.string().nullable().optional(),
 })
 
 /**
@@ -72,7 +71,6 @@ export async function POST(request) {
       .insert({
         name: parsed.data.name,
         bio: parsed.data.bio || null,
-        instagram_url: parsed.data.instagram_url || null,
         active: true,
       })
       .select()
@@ -94,7 +92,6 @@ const updateSchema = z.object({
   id: z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i, 'Invalid ID'),
   name: z.string().min(1).optional(),
   bio: z.string().nullable().optional(),
-  instagram_url: z.string().nullable().optional(),
   active: z.boolean().optional(),
 })
 
