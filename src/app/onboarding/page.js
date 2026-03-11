@@ -627,20 +627,134 @@ function ColorPicker({ label, value, onChange }) {
   )
 }
 
-// ─── Launch / Success screen ──────────────────────────────
+// ─── Building messages ────────────────────────────────────
 
-function LaunchScreen({ result, form, effectiveTheme }) {
-  const [showButton, setShowButton] = useState(false)
-  const [showChecklist, setShowChecklist] = useState(false)
+const BUILDING_MESSAGES = [
+  'Setting up your studio...',
+  'Laying the foundation...',
+  'Installing the mirrors...',
+  'Rolling out the mats...',
+  'Hanging the heavy bags...',
+  'Tuning the playlist...',
+  'Polishing the floors...',
+  'Testing the lighting...',
+  'Stocking the towels...',
+  'Brewing the protein shakes...',
+  'Warming up the sauna...',
+  'Calibrating the vibe...',
+  'Almost there...',
+]
+
+// ─── Launch / Building screen ─────────────────────────────
+
+function LaunchScreen({ form, effectiveTheme, googleAuth, session, updateSession, signIn, logoFile }) {
+  const [phase, setPhase] = useState('building') // 'building' | 'complete'
+  const [fillPercent, setFillPercent] = useState(0)
+  const [msgIndex, setMsgIndex] = useState(0)
+  const [error, setError] = useState('')
   const canvasRef = useRef(null)
+  const hasStarted = useRef(false)
 
-  // Confetti effect
+  const isDark = isColorDark(effectiveTheme.background)
+  const primaryColor = effectiveTheme.primary
+
+  // Cycle messages
   useEffect(() => {
+    if (phase !== 'building') return
+    const interval = setInterval(() => {
+      setMsgIndex(i => (i + 1) % BUILDING_MESSAGES.length)
+    }, 1800)
+    return () => clearInterval(interval)
+  }, [phase])
+
+  // Animate fill during building
+  useEffect(() => {
+    if (phase !== 'building') return
+    // Fill to 85% over ~6 seconds, then slow crawl
+    const interval = setInterval(() => {
+      setFillPercent(prev => {
+        if (prev >= 85) return Math.min(prev + 0.15, 92)
+        return prev + 2.5
+      })
+    }, 150)
+    return () => clearInterval(interval)
+  }, [phase])
+
+  // Run the actual creation
+  useEffect(() => {
+    if (hasStarted.current) return
+    hasStarted.current = true
+
+    async function createTenant() {
+      try {
+        const payload = { ...form }
+
+        if (googleAuth && session?.user?.id) {
+          payload.googleUserId = session.user.id
+          delete payload.password
+        }
+
+        const isUploadedFile = logoFile && form.logoUrl?.startsWith('blob:')
+        if (isUploadedFile) payload.logoUrl = null
+
+        const res = await fetch('/api/onboarding/create-tenant', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        })
+
+        const data = await res.json()
+
+        if (!res.ok) {
+          setError(data.error || 'Something went wrong')
+          return
+        }
+
+        // Upload logo if needed
+        if (isUploadedFile && data.tenant?.id) {
+          try {
+            const fd = new FormData()
+            fd.append('file', logoFile)
+            fd.append('tenantId', data.tenant.id)
+            await fetch('/api/onboarding/upload-logo', { method: 'POST', body: fd })
+          } catch { /* non-critical */ }
+        }
+
+        // Auth
+        if (googleAuth) {
+          await updateSession()
+        } else {
+          await signIn('credentials', {
+            email: form.ownerEmail,
+            password: form.password,
+            tenantId: data.tenant.id,
+            redirect: false,
+          })
+        }
+
+        // Complete! Fill to 100%
+        setFillPercent(100)
+        await new Promise(r => setTimeout(r, 800))
+        setPhase('complete')
+
+      } catch {
+        setError('Something went wrong. Please try again.')
+      }
+    }
+
+    createTenant()
+  }, [form, googleAuth, session, updateSession, signIn, logoFile])
+
+  // Confetti on complete
+  useEffect(() => {
+    if (phase !== 'complete') return
     const canvas = canvasRef.current
     if (!canvas) return
     const ctx = canvas.getContext('2d')
-    canvas.width = canvas.offsetWidth * 2
-    canvas.height = canvas.offsetHeight * 2
+    const w = canvas.offsetWidth
+    const h = canvas.offsetHeight
+    canvas.width = w * 2
+    canvas.height = h * 2
     ctx.scale(2, 2)
 
     const colors = [
@@ -650,163 +764,145 @@ function LaunchScreen({ result, form, effectiveTheme }) {
       '#fbbf24', '#34d399', '#818cf8', '#f472b6',
     ]
 
-    const particles = Array.from({ length: 80 }, () => ({
-      x: canvas.offsetWidth / 2 + (Math.random() - 0.5) * 100,
-      y: canvas.offsetHeight / 2,
-      vx: (Math.random() - 0.5) * 14,
-      vy: -Math.random() * 12 - 4,
-      size: Math.random() * 6 + 3,
+    const particles = Array.from({ length: 100 }, () => ({
+      x: w / 2 + (Math.random() - 0.5) * 120,
+      y: h * 0.35,
+      vx: (Math.random() - 0.5) * 16,
+      vy: -Math.random() * 14 - 5,
+      size: Math.random() * 7 + 3,
       color: colors[Math.floor(Math.random() * colors.length)],
       rotation: Math.random() * 360,
-      rotationSpeed: (Math.random() - 0.5) * 12,
+      rs: (Math.random() - 0.5) * 14,
       opacity: 1,
-      shape: Math.random() > 0.5 ? 'rect' : 'circle',
+      shape: Math.random() > 0.4 ? 'rect' : 'circle',
     }))
 
     let frame = 0
-    const maxFrames = 120
-
     function animate() {
-      if (frame > maxFrames) {
-        ctx.clearRect(0, 0, canvas.offsetWidth, canvas.offsetHeight)
-        return
-      }
-      ctx.clearRect(0, 0, canvas.offsetWidth, canvas.offsetHeight)
-
+      if (frame > 140) { ctx.clearRect(0, 0, w, h); return }
+      ctx.clearRect(0, 0, w, h)
       for (const p of particles) {
-        p.x += p.vx
-        p.vy += 0.25
-        p.y += p.vy
-        p.vx *= 0.99
-        p.rotation += p.rotationSpeed
-        p.opacity = Math.max(0, 1 - frame / maxFrames)
-
-        ctx.save()
-        ctx.translate(p.x, p.y)
+        p.x += p.vx; p.vy += 0.28; p.y += p.vy; p.vx *= 0.99
+        p.rotation += p.rs; p.opacity = Math.max(0, 1 - frame / 140)
+        ctx.save(); ctx.translate(p.x, p.y)
         ctx.rotate((p.rotation * Math.PI) / 180)
-        ctx.globalAlpha = p.opacity
-        ctx.fillStyle = p.color
-
-        if (p.shape === 'rect') {
-          ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.6)
-        } else {
-          ctx.beginPath()
-          ctx.arc(0, 0, p.size / 2, 0, Math.PI * 2)
-          ctx.fill()
-        }
+        ctx.globalAlpha = p.opacity; ctx.fillStyle = p.color
+        if (p.shape === 'rect') ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.6)
+        else { ctx.beginPath(); ctx.arc(0, 0, p.size / 2, 0, Math.PI * 2); ctx.fill() }
         ctx.restore()
       }
-
       frame++
       requestAnimationFrame(animate)
     }
     requestAnimationFrame(animate)
-  }, [effectiveTheme])
 
-  // Staggered reveals
-  useEffect(() => {
-    const t1 = setTimeout(() => setShowChecklist(true), 800)
-    const t2 = setTimeout(() => setShowButton(true), 2000)
-    return () => { clearTimeout(t1); clearTimeout(t2) }
-  }, [])
+    // Auto-redirect after 2.5 seconds
+    const redirect = setTimeout(() => { window.location.href = '/admin' }, 2500)
+    return () => clearTimeout(redirect)
+  }, [phase, effectiveTheme])
 
-  const slug = result?.tenant?.slug || form.slug
-  const name = result?.tenant?.name || form.studioName
-  const isDark = isColorDark(effectiveTheme.background)
+  if (error) {
+    return (
+      <div className="text-center py-12">
+        <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-4">
+          <X className="w-8 h-8 text-red-400" />
+        </div>
+        <h2 className="text-xl font-bold text-foreground mb-2">Something went wrong</h2>
+        <p className="text-muted text-sm mb-6">{error}</p>
+        <button
+          onClick={() => window.location.reload()}
+          className="px-6 py-2.5 rounded-lg bg-accent text-background font-semibold hover:bg-accent-dim transition-colors"
+        >
+          Try Again
+        </button>
+      </div>
+    )
+  }
 
   return (
-    <div className="relative text-center py-6 overflow-hidden">
+    <div className="relative text-center py-8 overflow-hidden">
       {/* Confetti canvas */}
-      <canvas
-        ref={canvasRef}
-        className="absolute inset-0 w-full h-full pointer-events-none z-10"
-      />
+      <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none z-10" />
 
-      {/* Animated check icon */}
-      <div className="relative mx-auto mb-5 w-20 h-20">
-        {/* Glow ring */}
-        <div className="absolute inset-0 rounded-full animate-success-glow" style={{ backgroundColor: effectiveTheme.primary, opacity: 0.15 }} />
-        {/* Pulse ring */}
-        <div className="absolute inset-[-8px] rounded-full animate-success-pulse" style={{ border: `2px solid ${effectiveTheme.primary}` }} />
-        {/* Circle fill */}
-        <div className="absolute inset-0 rounded-full animate-success-fill flex items-center justify-center" style={{ backgroundColor: effectiveTheme.primary }}>
-          <Check className="w-10 h-10 animate-success-check" style={{ color: isDark ? '#ffffff' : effectiveTheme.background }} />
+      {/* Liquid fill circle */}
+      <div className="relative mx-auto mb-8 w-28 h-28">
+        {/* Outer glow */}
+        <div
+          className="absolute inset-[-4px] rounded-full transition-all duration-1000"
+          style={{
+            boxShadow: phase === 'complete'
+              ? `0 0 30px 8px ${primaryColor}40, 0 0 60px 16px ${primaryColor}20`
+              : `0 0 15px 4px ${primaryColor}15`,
+          }}
+        />
+        {/* Background circle */}
+        <div
+          className="absolute inset-0 rounded-full border-2 overflow-hidden"
+          style={{
+            borderColor: phase === 'complete' ? primaryColor : `${primaryColor}30`,
+            backgroundColor: `${primaryColor}08`,
+          }}
+        >
+          {/* Liquid fill */}
+          <div
+            className="absolute bottom-0 left-0 right-0 transition-all"
+            style={{
+              height: `${fillPercent}%`,
+              transitionDuration: fillPercent === 100 ? '800ms' : '150ms',
+              transitionTimingFunction: fillPercent === 100 ? 'cubic-bezier(0.34, 1.56, 0.64, 1)' : 'linear',
+              background: `linear-gradient(to top, ${primaryColor}, ${effectiveTheme.secondary || primaryColor}90)`,
+              borderRadius: fillPercent < 100 ? '0 0 0 0' : '0',
+            }}
+          >
+            {/* Wave effect on top of liquid */}
+            {phase === 'building' && (
+              <div
+                className="absolute top-0 left-0 right-0 h-3 animate-liquid-wave"
+                style={{
+                  background: `radial-gradient(ellipse at 50% 100%, ${primaryColor} 0%, transparent 70%)`,
+                  opacity: 0.6,
+                }}
+              />
+            )}
+          </div>
+        </div>
+
+        {/* Icon overlay */}
+        <div className="absolute inset-0 flex items-center justify-center z-10">
+          {phase === 'complete' ? (
+            <Check className="w-12 h-12 animate-success-check" style={{ color: isDark ? '#ffffff' : effectiveTheme.background }} />
+          ) : (
+            <span className="text-2xl font-bold tabular-nums" style={{ color: fillPercent > 50 ? (isDark ? '#ffffff' : effectiveTheme.background) : primaryColor }}>
+              {Math.round(fillPercent)}%
+            </span>
+          )}
         </div>
       </div>
 
-      <h2 className="text-2xl font-bold text-foreground mb-1 animate-success-fade-in">You&apos;re all set!</h2>
-      <p className="text-muted mb-8 animate-success-fade-in" style={{ animationDelay: '0.2s' }}>
-        <strong className="text-foreground">{name}</strong> is ready to go.
-      </p>
-
-      {/* Themed URL card */}
-      <div
-        className="relative rounded-xl p-5 mb-8 overflow-hidden animate-success-fade-in"
-        style={{
-          animationDelay: '0.4s',
-          backgroundColor: effectiveTheme.surface,
-          border: `1px solid ${effectiveTheme.border}`,
-        }}
-      >
-        {/* Gradient accent bar */}
-        <div
-          className="absolute top-0 left-0 right-0 h-1"
-          style={{ background: `linear-gradient(to right, ${effectiveTheme.primary}, ${effectiveTheme.secondary || effectiveTheme.primary}, ${effectiveTheme.accent || effectiveTheme.primary})` }}
-        />
-        <p className="text-xs font-medium mb-2" style={{ color: effectiveTheme.muted }}>Your booking page is live at</p>
-        <div className="flex items-center justify-center gap-2">
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: effectiveTheme.primary }}>
-            <Globe className="w-4 h-4" style={{ color: isDark ? '#ffffff' : effectiveTheme.background }} />
-          </div>
-          <p className="text-lg font-semibold font-mono" style={{ color: effectiveTheme.foreground }}>
-            {slug}<span style={{ color: effectiveTheme.muted }}>.zatrovo.com</span>
+      {/* Messages */}
+      {phase === 'building' ? (
+        <div className="space-y-2">
+          <h2 className="text-xl font-bold text-foreground">Building your studio</h2>
+          <p
+            key={msgIndex}
+            className="text-sm text-muted h-5 animate-tagline"
+          >
+            {BUILDING_MESSAGES[msgIndex]}
           </p>
         </div>
-      </div>
-
-      {/* Checklist — staggered in */}
-      <div className={`space-y-3 mb-8 transition-all duration-700 ${showChecklist ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-        <h3 className="text-sm font-semibold text-foreground">What to do next</h3>
-        <div className="text-left space-y-2">
-          {[
-            { icon: Zap, text: 'Add your first class type' },
-            { icon: Target, text: 'Create an instructor profile' },
-            { icon: Building2, text: 'Schedule your first class' },
-            { icon: Sparkles, text: 'Set up a class pack' },
-            { icon: Globe, text: 'Connect Stripe for payments' },
-            { icon: MapPin, text: 'Invite your first client' },
-          ].map((item, i) => (
-            <div
-              key={i}
-              className="flex items-center gap-3 text-sm text-muted transition-all duration-500"
-              style={{
-                opacity: showChecklist ? 1 : 0,
-                transform: showChecklist ? 'translateX(0)' : 'translateX(-12px)',
-                transitionDelay: `${i * 100}ms`,
-              }}
-            >
-              <div className="w-6 h-6 rounded-lg border border-card-border bg-card flex items-center justify-center">
-                <item.icon className="w-3 h-3" />
-              </div>
-              {item.text}
-            </div>
-          ))}
+      ) : (
+        <div className="space-y-3 animate-success-fade-in">
+          <h2 className="text-2xl font-bold text-foreground">
+            Congratulations! 🎉
+          </h2>
+          <p className="text-muted">
+            <strong className="text-foreground">{form.studioName}</strong> is ready to go!
+          </p>
+          <p className="text-sm text-muted/60 animate-subtle-pulse">
+            Taking you to the dashboard now...
+          </p>
         </div>
-      </div>
-
-      {/* Dashboard button — delayed entrance with pulse prompt */}
-      <div className={`transition-all duration-700 ${showButton ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}>
-        <button
-          onClick={() => window.location.href = '/admin'}
-          className={`w-full py-3.5 rounded-xl font-semibold text-background bg-accent hover:bg-accent-dim transition-all flex items-center justify-center gap-2 ${showButton ? 'animate-button-glow' : ''}`}
-        >
-          Go to Dashboard
-          <ChevronRight className="w-4 h-4" />
-        </button>
-        <p className={`text-xs text-muted/50 mt-2 transition-opacity duration-500 ${showButton ? 'animate-subtle-pulse' : 'opacity-0'}`} style={{ animationDelay: '1s' }}>
-          Your dashboard is waiting
-        </p>
-      </div>
+      )}
     </div>
   )
 }
@@ -825,7 +921,6 @@ const ANALYZE_STEPS = [
 export default function OnboardingPage() {
   const { data: session, update: updateSession } = useSession()
   const [step, setStep] = useState(0)
-  const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [fieldErrors, setFieldErrors] = useState({})
   const [showPassword, setShowPassword] = useState(false)
@@ -865,9 +960,6 @@ export default function OnboardingPage() {
 
   // Tagline rotation
   const [taglineIndex, setTaglineIndex] = useState(0)
-
-  // Result
-  const [result, setResult] = useState(null)
 
   // Effective theme (merged from selection + custom overrides)
   const effectiveTheme = useMemo(() => {
@@ -1088,84 +1180,10 @@ export default function OnboardingPage() {
     setLogoFile(file)
   }
 
-  // ─── Submit ─────────────────────────────────────────────
-  const handleSubmit = async () => {
+  // ─── Submit (validate and go to launch screen) ──────────
+  const handleSubmit = () => {
     if (!validateStep()) return
-    setLoading(true)
-    setError('')
-
-    try {
-      const payload = { ...form }
-
-      // For Google-authed users, pass their existing user ID
-      if (googleAuth && session?.user?.id) {
-        payload.googleUserId = session.user.id
-        delete payload.password
-      }
-
-      // If logoUrl is a blob (user upload), clear it — we'll upload after tenant creation
-      const isUploadedFile = logoFile && form.logoUrl?.startsWith('blob:')
-      if (isUploadedFile) {
-        payload.logoUrl = null
-      }
-
-      const res = await fetch('/api/onboarding/create-tenant', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
-
-      const data = await res.json()
-
-      if (!res.ok) {
-        setError(data.error || 'Something went wrong')
-        if (data.field) {
-          setFieldErrors(prev => ({ ...prev, [data.field]: data.error }))
-          if (['ownerName', 'ownerEmail', 'password'].includes(data.field)) setStep(0)
-          else if (['studioName', 'slug'].includes(data.field)) setStep(1)
-        }
-        setLoading(false)
-        return
-      }
-
-      setResult(data)
-
-      // Upload logo file if needed
-      if (isUploadedFile && data.tenant?.id) {
-        try {
-          const formData = new FormData()
-          formData.append('file', logoFile)
-          formData.append('tenantId', data.tenant.id)
-          const uploadRes = await fetch('/api/onboarding/upload-logo', { method: 'POST', body: formData })
-          const uploadData = await uploadRes.json()
-          if (uploadData.url) {
-            setForm(prev => ({ ...prev, logoUrl: uploadData.url }))
-          }
-        } catch {
-          // Non-critical — logo can be uploaded later
-        }
-      }
-
-      if (googleAuth) {
-        await updateSession()
-      } else {
-        // Pass tenantId so credentials auth scopes to the new tenant
-        const loginResult = await signIn('credentials', {
-          email: form.ownerEmail,
-          password: form.password,
-          tenantId: data.tenant.id,
-          redirect: false,
-        })
-        if (loginResult?.error) {
-          setError('Account created but auto-login failed. Please log in manually.')
-        }
-      }
-
-      setStep(STEPS.length - 1)
-    } catch {
-      setError('Something went wrong. Please try again.')
-    }
-    setLoading(false)
+    setStep(STEPS.length - 1) // Go to launch screen which handles creation
   }
 
   // ─── Step rendering ─────────────────────────────────────
@@ -1572,7 +1590,17 @@ export default function OnboardingPage() {
 
       // ── STEP 3: Launch ──────────────────────────────────
       case 3:
-        return <LaunchScreen result={result} form={form} effectiveTheme={effectiveTheme} />
+        return (
+          <LaunchScreen
+            form={form}
+            effectiveTheme={effectiveTheme}
+            googleAuth={googleAuth}
+            session={session}
+            updateSession={updateSession}
+            signIn={signIn}
+            logoFile={logoFile}
+          />
+        )
     }
   }
 
@@ -1659,6 +1687,13 @@ export default function OnboardingPage() {
           50% { opacity: 0.7; }
         }
         .animate-subtle-pulse { animation: subtle-pulse 3s ease-in-out infinite; }
+
+        @keyframes liquid-wave {
+          0% { transform: translateX(-25%) scaleY(1); }
+          50% { transform: translateX(25%) scaleY(1.4); }
+          100% { transform: translateX(-25%) scaleY(1); }
+        }
+        .animate-liquid-wave { animation: liquid-wave 2s ease-in-out infinite; }
       `}</style>
 
       <div className="min-h-screen bg-background flex items-center justify-center px-4 py-12">
@@ -1710,11 +1745,10 @@ export default function OnboardingPage() {
                   {isLastFormStep ? (
                     <button
                       onClick={handleSubmit}
-                      disabled={loading}
-                      className="flex items-center gap-2 px-6 py-2.5 rounded-lg bg-accent text-background font-semibold hover:bg-accent-dim transition-colors disabled:opacity-50"
+                      className="flex items-center gap-2 px-6 py-2.5 rounded-lg bg-accent text-background font-semibold hover:bg-accent-dim transition-colors"
                     >
-                      {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-                      {loading ? 'Creating...' : 'Launch'}
+                      <Sparkles className="w-4 h-4" />
+                      Launch
                     </button>
                   ) : (
                     <button
