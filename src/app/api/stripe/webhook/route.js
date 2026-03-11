@@ -1,6 +1,7 @@
 import { getStripeAsync, getWebhookSecret } from '@/lib/stripe'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { sendPackPurchaseConfirmation } from '@/lib/email'
+import { confirmPendingInvitations } from '@/lib/confirm-pending-invitations'
 import { NextResponse } from 'next/server'
 
 /**
@@ -147,6 +148,11 @@ async function handleCheckoutCompleted(session) {
       }),
     }).catch((err) => console.error('[stripe/webhook] Purchase email failed:', err))
   }
+
+  // Auto-confirm any pending class invitations
+  confirmPendingInvitations(userId).catch((err) =>
+    console.error('[stripe/webhook] Auto-confirm invitations failed:', err)
+  )
 }
 
 /**

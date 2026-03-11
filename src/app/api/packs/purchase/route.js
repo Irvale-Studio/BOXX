@@ -1,6 +1,7 @@
 import { auth } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { sendPackPurchaseConfirmation } from '@/lib/email'
+import { confirmPendingInvitations } from '@/lib/confirm-pending-invitations'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 
@@ -107,9 +108,12 @@ export async function POST(request) {
       }).catch((err) => console.error('[packs/purchase] Email failed:', err))
     }
 
+    // Auto-confirm any pending class invitations
+    const autoConfirmed = await confirmPendingInvitations(session.user.id)
+
     return NextResponse.json({
       credit,
-      message: `${pack.name} purchased! ${pack.credits || 'Unlimited'} credits added.`,
+      message: `${pack.name} purchased! ${pack.credits || 'Unlimited'} credits added.${autoConfirmed ? ` ${autoConfirmed} pending invitation(s) confirmed.` : ''}`,
     })
   } catch (error) {
     console.error('[packs/purchase] Error:', error)

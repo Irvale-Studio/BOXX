@@ -57,16 +57,19 @@ export async function POST(request) {
       return NextResponse.json({ error: 'This class has already started' }, { status: 400 })
     }
 
-    // 2. Check not already booked
+    // 2. Check not already booked or invited
     const { data: existingBooking } = await supabaseAdmin
       .from('bookings')
-      .select('id')
+      .select('id, status')
       .eq('user_id', userId)
       .eq('class_schedule_id', classScheduleId)
-      .eq('status', 'confirmed')
+      .in('status', ['confirmed', 'invited'])
       .limit(1)
 
     if (existingBooking && existingBooking.length > 0) {
+      if (existingBooking[0].status === 'invited') {
+        return NextResponse.json({ error: 'You have a pending invitation for this class. Accept it from your bookings.' }, { status: 400 })
+      }
       return NextResponse.json({ error: 'You are already booked for this class' }, { status: 400 })
     }
 

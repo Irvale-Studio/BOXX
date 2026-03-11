@@ -336,17 +336,17 @@ async function cancelClass(input, context) {
   // Cancel the class
   await supabaseAdmin.from('class_schedule').update({ status: 'cancelled' }).eq('id', classId)
 
-  // Cancel bookings and refund credits
+  // Cancel bookings (confirmed + invited) and refund credits for confirmed
   const { data: bookings } = await supabaseAdmin
     .from('bookings')
-    .select('id, user_id, credit_id')
+    .select('id, user_id, credit_id, status')
     .eq('class_schedule_id', classId)
-    .eq('status', 'confirmed')
+    .in('status', ['confirmed', 'invited'])
 
   let creditsRefunded = 0
   for (const booking of (bookings || [])) {
     await supabaseAdmin.from('bookings').update({ status: 'cancelled', cancelled_at: new Date().toISOString() }).eq('id', booking.id)
-    if (booking.credit_id) {
+    if (booking.credit_id && booking.status === 'confirmed') {
       await supabaseAdmin.rpc('restore_credit', { credit_id: booking.credit_id })
       creditsRefunded++
     }
@@ -426,40 +426,90 @@ async function addMemberToClass(input, context) {
   const member = await resolveMember(input.member)
   const { classId, cls, classType } = await resolveClass(input.class_type, input.date, input.start_time)
 
-  // Check not already booked
+  // Check not already booked or invited
   const { data: existing } = await supabaseAdmin
     .from('bookings')
-    .select('id')
+    .select('id, status')
     .eq('user_id', member.id)
     .eq('class_schedule_id', classId)
-    .eq('status', 'confirmed')
+    .in('status', ['confirmed', 'invited'])
     .limit(1)
 
   if (existing?.length) {
-    throw new Error(`${member.name} is already booked for this class.`)
+    throw new Error(`${member.name} ${existing[0].status === 'invited' ? 'already has a pending invitation' : 'is already booked'} for this class.`)
   }
+
+  // Check if member has available credits
+  const { data: credits } = await supabaseAdmin
+    .from('user_credits')
+    .select('id, credits_remaining')
+    .eq('user_id', member.id)
+    .eq('status', 'active')
+    .gt('expires_at', new Date().toISOString())
+    .or('credits_remaining.gt.0,credits_remaining.is.null')
+    .order('expires_at', { ascending: true })
+    .limit(1)
+
+  let creditId = null
+  if (credits?.length) {
+    const credit = credits[0]
+    if (credit.credits_remaining !== null) {
+      const { data: ok } = await supabaseAdmin.rpc('deduct_credit', { credit_id: credit.id })
+      if (ok) creditId = credit.id
+    } else {
+      creditId = credit.id
+    }
+  }
+
+  const bookingStatus = creditId ? 'confirmed' : 'invited'
 
   const { error } = await supabaseAdmin
     .from('bookings')
-    .insert({ user_id: member.id, class_schedule_id: classId, status: 'confirmed' })
+    .insert({ user_id: member.id, class_schedule_id: classId, credit_id: creditId, status: bookingStatus })
 
-  if (error) throw new Error(`Failed to add to roster: ${error.message}`)
+  if (error) {
+    if (creditId && credits[0].credits_remaining !== null) {
+      await supabaseAdmin.rpc('restore_credit', { credit_id: creditId }).catch(() => {})
+    }
+    throw new Error(`Failed to add to roster: ${error.message}`)
+  }
 
   // Remove from waitlist if present
   await supabaseAdmin.from('waitlist').delete().eq('user_id', member.id).eq('class_schedule_id', classId)
+
+  // Send appropriate email
+  const { data: emailUser } = await supabaseAdmin.from('users').select('email, name').eq('id', member.id).single()
+  if (emailUser?.email) {
+    const { sendBookingConfirmation, sendClassInvitationNeedsCredits } = await import('@/lib/email')
+    const startDate = new Date(cls.starts_at)
+    const emailData = {
+      to: emailUser.email,
+      name: emailUser.name,
+      className: classType.name,
+      instructor: cls.instructors?.name,
+      date: startDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'Asia/Bangkok' }),
+      time: startDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Bangkok' }),
+    }
+    if (creditId) {
+      sendBookingConfirmation(emailData).catch(() => {})
+    } else {
+      sendClassInvitationNeedsCredits(emailData).catch(() => {})
+    }
+  }
 
   await supabaseAdmin.from('admin_audit_log').insert({
     admin_id: context.adminId,
     action: 'add_to_roster',
     target_type: 'bookings',
-    details: { via: 'agent', member: member.name, class_type: classType.name },
+    details: { via: 'agent', member: member.name, class_type: classType.name, status: bookingStatus },
   })
 
-  const time = new Date(cls.starts_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Bangkok' })
-  return {
-    success: true,
-    data: { message: `Added ${member.name} to "${classType.name}" on ${input.date} at ${time}.` },
-  }
+  const displayTime = new Date(cls.starts_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Bangkok' })
+  const statusMsg = creditId
+    ? `Added ${member.name} to "${classType.name}" on ${input.date} at ${displayTime} (confirmed, credit deducted).`
+    : `Invited ${member.name} to "${classType.name}" on ${input.date} at ${displayTime}. They need to purchase credits to confirm their spot — an email has been sent.`
+
+  return { success: true, data: { message: statusMsg } }
 }
 
 async function searchMembers(input) {

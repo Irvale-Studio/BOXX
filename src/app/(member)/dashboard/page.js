@@ -1789,6 +1789,7 @@ function BookingsSection({ upcoming, past, waitlist = [], onUpdate, isGoogleUser
     const isClassCancelled = cls.status === 'cancelled'
     const isCancelled = !isWaitlist && (b.status === 'cancelled' || isClassCancelled)
     const isConfirmed = !isWaitlist && b.status === 'confirmed' && !isClassCancelled
+    const isInvited = !isWaitlist && b.status === 'invited' && !isClassCancelled
 
     // Build Google Calendar URL safely
     let googleCalUrl = null
@@ -1805,13 +1806,15 @@ function BookingsSection({ upcoming, past, waitlist = [], onUpdate, isGoogleUser
     // Status pill config
     const statusPill = isWaitlist
       ? { label: `Waitlist #${b.position}`, className: 'bg-amber-400/10 text-amber-400 border-amber-400/20' }
-      : isClassCancelled
-        ? { label: 'Class Cancelled', className: 'bg-red-400/10 text-red-400 border-red-400/20' }
-        : b.status === 'cancelled'
-          ? { label: b.late_cancel ? 'Cancelled (late)' : 'Cancelled', className: 'bg-red-400/10 text-red-400 border-red-400/20' }
-          : isUpcoming
-            ? { label: 'Confirmed', className: 'bg-green-400/10 text-green-400 border-green-400/20' }
-            : { label: 'Attended', className: 'bg-zinc-400/10 text-zinc-400 border-zinc-400/20' }
+      : isInvited
+        ? { label: 'Invited', className: 'bg-accent/10 text-accent border-accent/20' }
+        : isClassCancelled
+          ? { label: 'Class Cancelled', className: 'bg-red-400/10 text-red-400 border-red-400/20' }
+          : b.status === 'cancelled'
+            ? { label: b.late_cancel ? 'Cancelled (late)' : 'Cancelled', className: 'bg-red-400/10 text-red-400 border-red-400/20' }
+            : isUpcoming
+              ? { label: 'Confirmed', className: 'bg-green-400/10 text-green-400 border-green-400/20' }
+              : { label: 'Attended', className: 'bg-zinc-400/10 text-zinc-400 border-zinc-400/20' }
 
     return (
       <Card
@@ -1933,6 +1936,44 @@ function BookingsSection({ upcoming, past, waitlist = [], onUpdate, isGoogleUser
                         </a>
                       )}
                     </div>
+                    {isUpcoming && isInvited && (
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-[10px] text-muted flex-1">
+                          {data?.credits?.some((c) => c.status === 'active' && (c.credits_remaining > 0 || c.credits_remaining === null) && new Date(c.expires_at) > new Date())
+                            ? 'You have credits available — accept to confirm your spot'
+                            : 'Purchase credits to confirm your spot'}
+                        </span>
+                        {data?.credits?.some((c) => c.status === 'active' && (c.credits_remaining > 0 || c.credits_remaining === null) && new Date(c.expires_at) > new Date()) ? (
+                          <Button
+                            size="sm"
+                            onClick={async (e) => {
+                              e.stopPropagation()
+                              try {
+                                const res = await fetch('/api/bookings/accept-invitation', {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ bookingId: b.id }),
+                                })
+                                const result = await res.json()
+                                if (res.ok) onUpdate()
+                                else alert(result.error || 'Failed to accept')
+                              } catch { alert('Something went wrong') }
+                            }}
+                            className="shrink-0"
+                          >
+                            Accept
+                          </Button>
+                        ) : (
+                          <Button
+                            size="sm"
+                            onClick={(e) => { e.stopPropagation(); window.location.href = '/buy-classes' }}
+                            className="shrink-0"
+                          >
+                            Buy Credits
+                          </Button>
+                        )}
+                      </div>
+                    )}
                     {isUpcoming && isConfirmed && (
                       <div className="flex items-center justify-between">
                         <span className="text-[10px] text-muted">
@@ -2019,6 +2060,14 @@ function BookingsSection({ upcoming, past, waitlist = [], onUpdate, isGoogleUser
         </Card>
       ) : (
         <div className="space-y-2">
+          {/* Pending invitations */}
+          {upcoming.filter((b) => b.status === 'invited' && b.class_schedule?.status !== 'cancelled').length > 0 && (
+            <>
+              <p className="text-xs font-medium text-accent">Pending Invitations</p>
+              {upcoming.filter((b) => b.status === 'invited' && b.class_schedule?.status !== 'cancelled').map((b) => renderBookingCard(b, { isUpcoming: true }))}
+            </>
+          )}
+
           {/* Live (confirmed) upcoming bookings */}
           {upcoming.filter((b) => b.status === 'confirmed' && b.class_schedule?.status !== 'cancelled').map((b) => renderBookingCard(b, { isUpcoming: true }))}
 

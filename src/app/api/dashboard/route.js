@@ -76,7 +76,7 @@ export async function GET() {
           )
         `)
         .eq('user_id', userId)
-        .in('status', ['confirmed', 'cancelled'])
+        .in('status', ['confirmed', 'cancelled', 'invited'])
         .order('created_at', { ascending: false })
         .limit(30),
     ])

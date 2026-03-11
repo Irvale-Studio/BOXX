@@ -750,3 +750,31 @@ export async function sendPrivateClassInvitation({ to, name, className, instruct
     }),
   })
 }
+
+// ─── 11. Class Invitation (needs credits) ────────────────────────────────────
+
+export async function sendClassInvitationNeedsCredits({ to, name, className, instructor, date, time }) {
+  if (!(await isEmailEnabled('private_class_invitation'))) return
+  const subject = `You're Invited — ${className}`
+  await sendAndLog({
+    emailType: 'class_invitation_needs_credits',
+    to,
+    subject,
+    html: emailTemplate({
+      heading: "You're Invited",
+      body: `
+        <p>Hey ${name || 'there'},</p>
+        <p>You've been invited to a class! Purchase a class pack to confirm your spot:</p>
+        ${detailTable([
+          ['Class', className],
+          ['Coach', instructor || 'TBA'],
+          ['Date', date],
+          ['Time', time],
+        ])}
+        <p style="color:#888;font-size:14px;">Your spot will be confirmed automatically when you purchase credits.</p>
+      `,
+      ctaUrl: 'https://boxxthailand.com/buy-classes',
+      ctaText: 'Buy Credits to Confirm',
+    }),
+  })
+}

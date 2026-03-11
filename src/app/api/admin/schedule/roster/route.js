@@ -1,7 +1,7 @@
 import { auth } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { promoteFromWaitlist } from '@/lib/waitlist'
-import { sendRemovedFromClass, sendPrivateClassInvitation } from '@/lib/email'
+import { sendRemovedFromClass, sendPrivateClassInvitation, sendClassInvitationNeedsCredits, sendBookingConfirmation } from '@/lib/email'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 
@@ -38,32 +38,68 @@ export async function POST(request) {
 
     const { classId, userId } = parsed.data
 
-    // Check if already booked
+    // Check if already booked or invited
     const { data: existing } = await supabaseAdmin
       .from('bookings')
-      .select('id')
+      .select('id, status')
       .eq('class_schedule_id', classId)
       .eq('user_id', userId)
-      .eq('status', 'confirmed')
+      .in('status', ['confirmed', 'invited'])
       .maybeSingle()
 
     if (existing) {
-      return NextResponse.json({ error: 'Member already booked into this class' }, { status: 400 })
+      return NextResponse.json({ error: existing.status === 'invited' ? 'Member already has a pending invitation' : 'Member already booked into this class' }, { status: 400 })
     }
 
-    // Create booking without requiring credits (admin override)
+    // Look up class and member info
+    const [{ data: rosterClass }, { data: addedUser }] = await Promise.all([
+      supabaseAdmin.from('class_schedule').select('starts_at, is_private, class_types(name), instructors(name)').eq('id', classId).single(),
+      supabaseAdmin.from('users').select('id, email, name').eq('id', userId).single(),
+    ])
+
+    // Check if member has available credits
+    const { data: credits } = await supabaseAdmin
+      .from('user_credits')
+      .select('id, credits_remaining')
+      .eq('user_id', userId)
+      .eq('status', 'active')
+      .gt('expires_at', new Date().toISOString())
+      .or('credits_remaining.gt.0,credits_remaining.is.null')
+      .order('expires_at', { ascending: true })
+      .limit(1)
+
+    const hasCredits = credits?.length > 0
+    let creditId = null
+
+    // Deduct credit if available
+    if (hasCredits) {
+      const credit = credits[0]
+      if (credit.credits_remaining !== null) {
+        const { data: ok } = await supabaseAdmin.rpc('deduct_credit', { credit_id: credit.id })
+        if (ok) creditId = credit.id
+      } else {
+        creditId = credit.id // unlimited
+      }
+    }
+
+    const bookingStatus = creditId ? 'confirmed' : 'invited'
+
     const { data: booking, error } = await supabaseAdmin
       .from('bookings')
       .insert({
         user_id: userId,
         class_schedule_id: classId,
-        credit_id: null, // admin override — no credit deducted
-        status: 'confirmed',
+        credit_id: creditId,
+        status: bookingStatus,
       })
       .select('id')
       .single()
 
     if (error) {
+      // Restore credit if we deducted one
+      if (creditId && credits[0].credits_remaining !== null) {
+        await supabaseAdmin.rpc('restore_credit', { credit_id: creditId }).catch(() => {})
+      }
       console.error('[admin/roster] Add error:', error)
       return NextResponse.json({ error: 'Failed to add member' }, { status: 500 })
     }
@@ -75,22 +111,10 @@ export async function POST(request) {
       .eq('class_schedule_id', classId)
       .eq('user_id', userId)
 
-    // Send private class invitation email if class is private (non-blocking)
-    const { data: rosterClass } = await supabaseAdmin
-      .from('class_schedule')
-      .select('starts_at, is_private, class_types(name), instructors(name)')
-      .eq('id', classId)
-      .single()
-
-    const { data: addedUser } = await supabaseAdmin
-      .from('users')
-      .select('email, name')
-      .eq('id', userId)
-      .single()
-
-    if (addedUser?.email) {
+    // Send appropriate email
+    if (addedUser?.email && rosterClass) {
       const startDate = new Date(rosterClass.starts_at)
-      sendPrivateClassInvitation({
+      const emailData = {
         to: addedUser.email,
         name: addedUser.name,
         className: rosterClass.class_types?.name || 'BOXX Class',
@@ -101,7 +125,13 @@ export async function POST(request) {
         time: startDate.toLocaleTimeString('en-US', {
           hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Bangkok',
         }),
-      }).catch((err) => console.error('[admin/roster] Invitation email failed:', err))
+      }
+
+      if (creditId) {
+        sendBookingConfirmation(emailData).catch((err) => console.error('[admin/roster] Confirmation email failed:', err))
+      } else {
+        sendClassInvitationNeedsCredits(emailData).catch((err) => console.error('[admin/roster] Invitation email failed:', err))
+      }
     }
 
     // Look up member + class info for audit details (reuse rosterClass if available)
@@ -194,13 +224,13 @@ export async function DELETE(request) {
       return NextResponse.json({ success: true })
     }
 
-    // Find the booking
+    // Find the booking (confirmed or invited)
     const { data: booking } = await supabaseAdmin
       .from('bookings')
-      .select('id, credit_id')
+      .select('id, credit_id, status')
       .eq('class_schedule_id', classId)
       .eq('user_id', userId)
-      .eq('status', 'confirmed')
+      .in('status', ['confirmed', 'invited'])
       .maybeSingle()
 
     if (!booking) {

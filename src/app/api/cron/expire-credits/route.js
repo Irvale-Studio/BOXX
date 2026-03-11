@@ -70,7 +70,21 @@ export async function GET(request) {
       }
     }
 
-    return NextResponse.json({ expired: expiredCount, warned })
+    // 3. Cancel expired class invitations (class already started)
+    const { data: expiredInvitations } = await supabaseAdmin
+      .from('bookings')
+      .select('id, class_schedule!inner(starts_at)')
+      .eq('status', 'invited')
+      .lt('class_schedule.starts_at', now.toISOString())
+
+    if (expiredInvitations?.length) {
+      await supabaseAdmin
+        .from('bookings')
+        .update({ status: 'cancelled', cancelled_at: now.toISOString() })
+        .in('id', expiredInvitations.map((b) => b.id))
+    }
+
+    return NextResponse.json({ expired: expiredCount, warned, expiredInvitations: expiredInvitations?.length || 0 })
   } catch (error) {
     console.error('[cron/expire-credits] Error:', error)
     return NextResponse.json({ error: 'Cron failed' }, { status: 500 })
