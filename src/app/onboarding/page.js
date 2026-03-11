@@ -759,8 +759,9 @@ function LaunchScreen({ form, effectiveTheme, googleAuth, session, updateSession
         await new Promise(r => setTimeout(r, 800))
         setPhase('complete')
 
-      } catch {
-        setError('Something went wrong. Please try again.')
+      } catch (err) {
+        console.error('[onboarding] Launch error:', err)
+        setError(err?.message || 'Something went wrong. Please try again.')
       }
     }
 
