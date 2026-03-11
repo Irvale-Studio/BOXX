@@ -8,6 +8,26 @@ import { supabaseAdmin } from '@/lib/supabase/admin'
 const DAY_MAP = { sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6 }
 
 /**
+ * Normalise time strings to HH:MM 24h format.
+ * Handles: "9:00", "09:00", "9:00 AM", "2:30 PM", "14:30", etc.
+ */
+function normaliseTime(raw) {
+  if (!raw) throw new Error('No time provided.')
+  const s = raw.trim().toUpperCase()
+  const m = s.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/)
+  if (!m) throw new Error(`Cannot parse time "${raw}". Use HH:MM format.`)
+
+  let h = parseInt(m[1], 10)
+  const min = m[2]
+  const ampm = m[3]
+
+  if (ampm === 'PM' && h < 12) h += 12
+  if (ampm === 'AM' && h === 12) h = 0
+
+  return `${String(h).padStart(2, '0')}:${min}`
+}
+
+/**
  * Execute a single tool call. Returns { success, data } or { success: false, error }.
  */
 export async function executeTool(toolName, input, context) {
@@ -166,8 +186,13 @@ async function createClass(input, context) {
   const duration = input.duration_mins || ct.duration_mins || 60
   const capacity = input.capacity || 6
 
-  const startsAt = `${input.date}T${input.start_time}:00+07:00`
+  // Normalise time to HH:MM (handle "9:00", "9:00 AM", "09:00", etc.)
+  const time = normaliseTime(input.start_time)
+  const startsAt = `${input.date}T${time}:00+07:00`
   const endsAtDate = new Date(startsAt)
+  if (isNaN(endsAtDate.getTime())) {
+    throw new Error(`Invalid date/time: "${input.date}" / "${input.start_time}"`)
+  }
   endsAtDate.setMinutes(endsAtDate.getMinutes() + duration)
   const endsAt = endsAtDate.toISOString()
 
@@ -229,7 +254,8 @@ async function createRecurringClasses(input, context) {
 
   const startDate = input.start_date || new Date().toISOString().split('T')[0]
 
-  const [startH, startM] = input.start_time.split(':').map(Number)
+  const normTime = normaliseTime(input.start_time)
+  const [startH, startM] = normTime.split(':').map(Number)
   const endTotalMins = startH * 60 + startM + duration
   const endTime = `${String(Math.floor(endTotalMins / 60)).padStart(2, '0')}:${String(endTotalMins % 60).padStart(2, '0')}`
 
@@ -244,7 +270,7 @@ async function createRecurringClasses(input, context) {
       if (d < new Date() && w === 0) continue // skip past dates
 
       const dateStr = d.toISOString().split('T')[0]
-      const startsAt = `${dateStr}T${input.start_time}:00+07:00`
+      const startsAt = `${dateStr}T${normTime}:00+07:00`
       const endsAtD = new Date(startsAt)
       endsAtD.setMinutes(endsAtD.getMinutes() + duration)
 
