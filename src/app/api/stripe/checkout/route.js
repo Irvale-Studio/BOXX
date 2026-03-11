@@ -1,5 +1,5 @@
 import { auth } from '@/lib/auth'
-import { getStripe } from '@/lib/stripe'
+import { getStripeAsync } from '@/lib/stripe'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
@@ -69,7 +69,7 @@ export async function POST(request) {
     }
 
     // Get Stripe instance
-    const stripe = getStripe()
+    const stripe = await getStripeAsync()
     if (!stripe) {
       return NextResponse.json(
         { error: 'Payments are not set up yet. Please contact the studio.' },

@@ -26,9 +26,17 @@ export async function GET() {
       return NextResponse.json({ error: 'Failed to load settings' }, { status: 500 })
     }
 
-    const sensitiveKeys = ['stripe_access_token']
+    const hiddenKeys = ['stripe_access_token']
+    const maskedKeys = ['stripe_secret_key', 'stripe_webhook_secret']
     const settings = Object.fromEntries(
-      (data || []).filter((r) => !sensitiveKeys.includes(r.key)).map((r) => [r.key, r.value])
+      (data || [])
+        .filter((r) => !hiddenKeys.includes(r.key))
+        .map((r) => {
+          if (maskedKeys.includes(r.key) && r.value) {
+            return [r.key, '••••••••'] // mask but indicate it's set
+          }
+          return [r.key, r.value]
+        })
     )
     return NextResponse.json({ settings })
   } catch (error) {
@@ -59,7 +67,7 @@ export async function PUT(request) {
       return NextResponse.json({ error: 'Database unavailable' }, { status: 500 })
     }
 
-    // Prevent updating sensitive Stripe settings via this endpoint
+    // Prevent updating legacy Stripe Connect settings
     const protectedKeys = ['stripe_account_id', 'stripe_access_token']
     const updates = Object.entries(parsed.data)
       .filter(([key]) => !protectedKeys.includes(key))

@@ -1,4 +1,5 @@
 import { auth } from '@/lib/auth'
+import { isStripeConfigured } from '@/lib/stripe'
 import { NextResponse } from 'next/server'
 
 /**
@@ -11,7 +12,7 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const configured = !!process.env.STRIPE_SECRET_KEY
+    const configured = await isStripeConfigured()
 
     return NextResponse.json({ configured })
   } catch (error) {

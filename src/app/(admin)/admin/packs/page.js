@@ -19,6 +19,7 @@ const emptyForm = {
   is_intro: false,
   badge_text: '',
   display_order: 0,
+  stripe_price_id: '',
 }
 
 export default function AdminPacksPage() {
@@ -67,6 +68,7 @@ export default function AdminPacksPage() {
       is_intro: pack.is_intro,
       badge_text: pack.badge_text || '',
       display_order: pack.display_order || 0,
+      stripe_price_id: pack.stripe_price_id || '',
     })
     setDialog(pack)
   }
@@ -88,6 +90,7 @@ export default function AdminPacksPage() {
       is_intro: form.is_intro,
       badge_text: form.badge_text || null,
       display_order: parseInt(form.display_order) || 0,
+      stripe_price_id: form.stripe_price_id || null,
     }
 
     try {
@@ -199,6 +202,11 @@ export default function AdminPacksPage() {
                 <p className="text-xs text-muted mt-0.5">
                   {pack.credits === null ? 'Unlimited' : `${pack.credits} credit${pack.credits !== 1 ? 's' : ''}`} · {pack.validity_days} days · ฿{pack.price_thb.toLocaleString()}
                 </p>
+                {pack.stripe_price_id ? (
+                  <p className="text-[10px] text-green-400/70 mt-0.5 font-mono">{pack.stripe_price_id}</p>
+                ) : (
+                  <p className="text-[10px] text-red-400/70 mt-0.5">No Stripe Price ID</p>
+                )}
               </div>
 
               {/* Actions */}
@@ -292,6 +300,18 @@ export default function AdminPacksPage() {
                 placeholder="e.g. Best Value, Most Popular"
                 className="mt-1"
               />
+            </div>
+            <div>
+              <Label>Stripe Price ID</Label>
+              <Input
+                value={form.stripe_price_id}
+                onChange={(e) => setForm((f) => ({ ...f, stripe_price_id: e.target.value }))}
+                placeholder="price_xxxxxxxxxxxx"
+                className="mt-1 font-mono text-xs"
+              />
+              <p className="text-[10px] text-muted mt-1">
+                From Stripe Dashboard → Products → select product → copy Price ID
+              </p>
             </div>
             <div className="flex items-center gap-6">
               <div className="flex items-center gap-2">

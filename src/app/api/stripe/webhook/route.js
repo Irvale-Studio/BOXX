@@ -1,4 +1,4 @@
-import { getStripe } from '@/lib/stripe'
+import { getStripeAsync, getWebhookSecret } from '@/lib/stripe'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { sendPackPurchaseConfirmation } from '@/lib/email'
 import { NextResponse } from 'next/server'
@@ -17,13 +17,15 @@ export async function POST(request) {
     }
 
     // Verify webhook signature
+    const stripe = await getStripeAsync()
+    const webhookSecret = await getWebhookSecret()
+    if (!stripe || !webhookSecret) {
+      return NextResponse.json({ error: 'Stripe not configured' }, { status: 500 })
+    }
+
     let event
     try {
-      event = getStripe().webhooks.constructEvent(
-        body,
-        sig,
-        process.env.STRIPE_WEBHOOK_SECRET || ''
-      )
+      event = stripe.webhooks.constructEvent(body, sig, webhookSecret)
     } catch (err) {
       console.error('[stripe/webhook] Signature verification failed:', err.message)
       return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })

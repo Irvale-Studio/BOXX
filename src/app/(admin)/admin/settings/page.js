@@ -763,13 +763,13 @@ function RemindersTab() {
 // ─── Payments Tab (existing) ─────────────────────────────────────────────────
 
 function PaymentsTab() {
-  const [packs, setPacks] = useState([])
-  const [priceIds, setPriceIds] = useState({})
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saveMessage, setSaveMessage] = useState(null)
   const [stripeConfigured, setStripeConfigured] = useState(false)
-  const [checkingStripe, setCheckingStripe] = useState(true)
+  const [secretKey, setSecretKey] = useState('')
+  const [webhookSecret, setWebhookSecret] = useState('')
+  const [keysLoaded, setKeysLoaded] = useState(false)
 
   useEffect(() => {
     fetchData()
@@ -777,19 +777,17 @@ function PaymentsTab() {
 
   async function fetchData() {
     try {
-      const [packsRes, stripeRes] = await Promise.all([
-        fetch('/api/admin/packs'),
+      const [settingsRes, stripeRes] = await Promise.all([
+        fetch('/api/admin/settings'),
         fetch('/api/settings/stripe-status'),
       ])
 
-      if (packsRes.ok) {
-        const { packs: packData } = await packsRes.json()
-        setPacks(packData)
-        const ids = {}
-        packData.forEach((p) => {
-          ids[p.id] = p.stripe_price_id || ''
-        })
-        setPriceIds(ids)
+      if (settingsRes.ok) {
+        const { settings } = await settingsRes.json()
+        // Show placeholder if keys are set (API returns masked values)
+        if (settings.stripe_secret_key) setSecretKey('sk_•••••••••••••••••')
+        if (settings.stripe_webhook_secret) setWebhookSecret('whsec_•••••••••••••••••')
+        setKeysLoaded(true)
       }
 
       if (stripeRes.ok) {
@@ -800,27 +798,71 @@ function PaymentsTab() {
       console.error('Failed to load settings:', err)
     } finally {
       setLoading(false)
-      setCheckingStripe(false)
     }
   }
 
-  async function handleSavePriceIds() {
+  async function handleSaveKeys() {
     setSaving(true)
     setSaveMessage(null)
 
     try {
-      const promises = Object.entries(priceIds).map(([packId, priceId]) =>
-        fetch('/api/admin/packs', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id: packId, stripe_price_id: priceId }),
-        })
-      )
+      const updates = []
 
-      await Promise.all(promises)
-      setSaveMessage({ type: 'success', text: 'Price IDs saved successfully.' })
+      // Only save if the user typed a real key (not the masked placeholder)
+      if (secretKey && !secretKey.includes('•')) {
+        updates.push(
+          fetch('/api/admin/settings', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ stripe_secret_key: secretKey.trim() }),
+          })
+        )
+      }
+      if (webhookSecret && !webhookSecret.includes('•')) {
+        updates.push(
+          fetch('/api/admin/settings', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ stripe_webhook_secret: webhookSecret.trim() }),
+          })
+        )
+      }
+
+      if (updates.length === 0) {
+        setSaveMessage({ type: 'error', text: 'Enter new keys to save.' })
+        setSaving(false)
+        return
+      }
+
+      await Promise.all(updates)
+      setSaveMessage({ type: 'success', text: 'Stripe keys saved.' })
+      setStripeConfigured(true)
+
+      // Re-mask the keys
+      if (secretKey && !secretKey.includes('•')) setSecretKey('sk_•••••••••••••••••')
+      if (webhookSecret && !webhookSecret.includes('•')) setWebhookSecret('whsec_•••••••••••••••••')
     } catch (err) {
-      setSaveMessage({ type: 'error', text: 'Failed to save Price IDs.' })
+      setSaveMessage({ type: 'error', text: 'Failed to save keys.' })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleClearKeys() {
+    if (!confirm('Remove Stripe keys? Payments will stop working until new keys are added.')) return
+    setSaving(true)
+    try {
+      await fetch('/api/admin/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stripe_secret_key: '', stripe_webhook_secret: '' }),
+      })
+      setSecretKey('')
+      setWebhookSecret('')
+      setStripeConfigured(false)
+      setSaveMessage({ type: 'success', text: 'Stripe keys removed.' })
+    } catch {
+      setSaveMessage({ type: 'error', text: 'Failed to remove keys.' })
     } finally {
       setSaving(false)
     }
@@ -841,71 +883,54 @@ function PaymentsTab() {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      {/* Stripe Status Card */}
+      {/* Stripe Keys Card */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
             <span>💳</span> Stripe Payments
           </CardTitle>
           <CardDescription>
-            Stripe processes all payments directly to your account.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {stripeConfigured ? (
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <Badge variant="success">Configured</Badge>
-              </div>
-              <p className="text-xs text-muted">
-                Stripe API keys are set. Payments are active.
-              </p>
-              <Button variant="outline" size="sm" className="w-full sm:w-auto" asChild>
-                <a href="https://dashboard.stripe.com" target="_blank" rel="noopener noreferrer">
-                  Stripe Dashboard ↗
-                </a>
-              </Button>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <Badge variant="destructive">Not Configured</Badge>
-              </div>
-              <p className="text-sm text-muted">
-                Stripe API keys need to be added to the environment variables to enable payments.
-              </p>
-              <div className="px-3 py-2 bg-card border border-card-border rounded text-xs text-muted space-y-1">
-                <p className="font-medium text-foreground">Required env vars:</p>
-                <p><code className="text-accent">STRIPE_SECRET_KEY</code> — your Stripe secret key</p>
-                <p><code className="text-accent">STRIPE_WEBHOOK_SECRET</code> — webhook signing secret</p>
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Price IDs Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Stripe Price IDs</CardTitle>
-          <CardDescription>
-            Create products in your Stripe dashboard, then paste the Price IDs here to link them to your packs.
+            Add your Stripe API keys to enable payments. Get them from your{' '}
+            <a href="https://dashboard.stripe.com/apikeys" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">
+              Stripe Dashboard
+            </a>.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {packs.map((pack) => (
-            <div key={pack.id} className="space-y-1.5">
-              <Label htmlFor={`price-${pack.id}`}>{pack.name}</Label>
-              <Input
-                id={`price-${pack.id}`}
-                placeholder="price_xxxxxxxxxxxx"
-                value={priceIds[pack.id] || ''}
-                onChange={(e) =>
-                  setPriceIds((prev) => ({ ...prev, [pack.id]: e.target.value }))
-                }
-              />
-            </div>
-          ))}
+          <div className="flex items-center gap-2 mb-2">
+            {stripeConfigured ? (
+              <Badge variant="success">Active</Badge>
+            ) : (
+              <Badge variant="destructive">Not Configured</Badge>
+            )}
+          </div>
+
+          <div>
+            <Label htmlFor="stripe-sk">Secret Key</Label>
+            <Input
+              id="stripe-sk"
+              type="password"
+              placeholder="sk_test_... or sk_live_..."
+              value={secretKey}
+              onFocus={() => { if (secretKey.includes('•')) setSecretKey('') }}
+              onChange={(e) => setSecretKey(e.target.value)}
+              className="mt-1 font-mono text-xs"
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="stripe-wh">Webhook Secret</Label>
+            <Input
+              id="stripe-wh"
+              type="password"
+              placeholder="whsec_..."
+              value={webhookSecret}
+              onFocus={() => { if (webhookSecret.includes('•')) setWebhookSecret('') }}
+              onChange={(e) => setWebhookSecret(e.target.value)}
+              className="mt-1 font-mono text-xs"
+            />
+            <p className="text-[11px] text-muted mt-1">From Stripe Dashboard → Developers → Webhooks. Point webhook to <code className="text-accent">/api/stripe/webhook</code></p>
+          </div>
 
           {saveMessage && (
             <p className={cn('text-sm', saveMessage.type === 'success' ? 'text-green-400' : 'text-red-400')}>
@@ -913,21 +938,50 @@ function PaymentsTab() {
             </p>
           )}
 
-          <div className="space-y-2 pt-2">
-            <Button onClick={handleSavePriceIds} disabled={saving} className="w-full sm:w-auto">
-              {saving ? 'Saving...' : 'Save Price IDs'}
+          <div className="flex flex-col sm:flex-row gap-2 pt-1">
+            <Button onClick={handleSaveKeys} disabled={saving} className="w-full sm:w-auto">
+              {saving ? 'Saving...' : 'Save Keys'}
             </Button>
-            <a
-              href="https://docs.stripe.com/products-prices/how-products-and-prices-work#what-is-a-price"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block text-xs text-accent hover:underline"
-            >
-              How to find your Price IDs →
-            </a>
+            {stripeConfigured && (
+              <Button variant="outline" size="sm" className="w-full sm:w-auto" asChild>
+                <a href="https://dashboard.stripe.com" target="_blank" rel="noopener noreferrer">
+                  Stripe Dashboard ↗
+                </a>
+              </Button>
+            )}
+            {stripeConfigured && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full sm:w-auto text-red-400 border-red-400/30 hover:bg-red-400/10"
+                onClick={handleClearKeys}
+                disabled={saving}
+              >
+                Remove Keys
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>
+
+      {/* Setup instructions */}
+      {!stripeConfigured && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Setup Guide</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ol className="space-y-2 text-sm text-muted list-decimal list-inside">
+              <li>Create a <a href="https://dashboard.stripe.com/register" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">Stripe account</a></li>
+              <li>Go to <strong>Developers → API Keys</strong> and copy your Secret Key</li>
+              <li>Go to <strong>Developers → Webhooks</strong>, add an endpoint pointing to your site&apos;s <code className="text-accent">/api/stripe/webhook</code></li>
+              <li>Copy the Webhook Signing Secret</li>
+              <li>Paste both keys above and save</li>
+              <li>Create Products in Stripe for each class pack, then add the Price IDs on the <a href="/admin/packs" className="text-accent hover:underline">Packs page</a></li>
+            </ol>
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }
