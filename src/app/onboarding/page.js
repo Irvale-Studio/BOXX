@@ -6,7 +6,7 @@ import Link from 'next/link'
 import {
   Check, ChevronRight, ChevronLeft, Loader2, Eye, EyeOff,
   Upload, X, Globe, Zap, Leaf, Dumbbell, Music, Target,
-  Sparkles, MapPin, SkipForward, Palette, Monitor, Sun, Moon,
+  Sparkles, MapPin, Palette, Monitor, Sun, Moon,
   Crown, Trees, Waves, Flame, Wand2, ExternalLink, Building2,
 } from 'lucide-react'
 
@@ -206,22 +206,30 @@ const CURRENCIES = [
   { value: 'BRL', label: 'BRL (R$)' },
 ]
 
-const STEPS = ['Account', 'Business', 'Location', 'Brand', 'Launch']
+const STEPS = ['Account', 'Business', 'Brand', 'Launch']
 
 // ─── Sub-components ───────────────────────────────────────
 
 function StepIndicator({ current, steps }) {
+  // Don't show the Launch step in the indicator — it's a confirmation screen
+  const visibleSteps = steps.filter(s => s !== 'Launch')
   return (
     <div className="flex items-center justify-center gap-2 mb-8">
-      {steps.map((step, i) => (
+      {visibleSteps.map((step, i) => (
         <div key={step} className="flex items-center gap-2">
-          <div className={`
-            w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-all
-            ${i < current ? 'bg-accent text-background' : i === current ? 'bg-accent/20 text-accent border border-accent' : 'bg-card border border-card-border text-muted'}
-          `}>
+          <div
+            className={`
+              w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-all
+              ${i < current ? 'bg-accent text-background' : i === current ? 'text-accent border border-accent' : 'bg-card border border-card-border text-muted'}
+            `}
+            style={i === current ? {
+              background: 'linear-gradient(to top, var(--accent) 50%, transparent 50%)',
+              WebkitBackgroundClip: 'padding-box',
+            } : undefined}
+          >
             {i < current ? <Check className="w-4 h-4" /> : i + 1}
           </div>
-          {i < steps.length - 1 && (
+          {i < visibleSteps.length - 1 && (
             <div className={`w-8 h-px transition-colors ${i < current ? 'bg-accent' : 'bg-card-border'}`} />
           )}
         </div>
@@ -420,11 +428,6 @@ export default function OnboardingPage() {
     vertical: 'fitness',
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
     currency: 'USD',
-    locationName: '',
-    address: '',
-    city: '',
-    country: '',
-    phone: '',
     primaryColor: '#6366f1',
     logoUrl: null,
   })
@@ -438,7 +441,6 @@ export default function OnboardingPage() {
   const [analyzing, setAnalyzing] = useState(false)
   const [analyzeStep, setAnalyzeStep] = useState(0)
   const [extractedBrand, setExtractedBrand] = useState(null)
-  const [hasLocation, setHasLocation] = useState(true)
   const [logoFile, setLogoFile] = useState(null)
   const [showCustomize, setShowCustomize] = useState(false)
   const [showThemes, setShowThemes] = useState(true)
@@ -587,11 +589,6 @@ export default function OnboardingPage() {
 
   const prev = () => {
     setStep(s => Math.max(s - 1, 0))
-    setError('')
-  }
-
-  const skip = () => {
-    setStep(s => Math.min(s + 1, STEPS.length - 1))
     setError('')
   }
 
@@ -818,7 +815,6 @@ export default function OnboardingPage() {
           <div className="space-y-5">
             <div>
               <h2 className="text-xl font-bold text-foreground">Tell us about your business</h2>
-              <p className="text-muted text-sm mt-1">We&apos;ll set things up based on your type.</p>
             </div>
 
             <InputField
@@ -828,7 +824,8 @@ export default function OnboardingPage() {
             />
 
             <div>
-              <label htmlFor="slug" className="block text-sm text-muted mb-1.5">Your URL</label>
+              <label htmlFor="slug" className="block text-sm text-muted mb-0.5">Your URL</label>
+              <p className="text-xs text-muted/60 mb-1.5">Where members can book</p>
               <div className="flex items-center gap-0">
                 <span className="px-3 py-3 rounded-l-lg bg-card border border-r-0 border-card-border text-muted text-sm whitespace-nowrap">
                   <Globe className="w-4 h-4 inline -mt-0.5 mr-1" />
@@ -890,72 +887,8 @@ export default function OnboardingPage() {
           </div>
         )
 
-      // ── STEP 2: Location ────────────────────────────────
+      // ── STEP 2: Brand ──────────────────────────────────
       case 2:
-        return (
-          <div className="space-y-5">
-            <div>
-              <h2 className="text-xl font-bold text-foreground">Your location</h2>
-              <p className="text-muted text-sm mt-1">Where do your clients come to you?</p>
-            </div>
-
-            {/* Toggle */}
-            <button
-              type="button"
-              onClick={() => setHasLocation(!hasLocation)}
-              className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-lg border text-left transition-all ${
-                hasLocation
-                  ? 'border-accent bg-accent/5 text-foreground'
-                  : 'border-card-border bg-card text-muted'
-              }`}
-            >
-              <div className={`w-10 h-5 rounded-full transition-colors relative ${hasLocation ? 'bg-accent' : 'bg-card-border'}`}>
-                <div className={`w-4 h-4 rounded-full bg-white absolute top-0.5 transition-all ${hasLocation ? 'left-5.5' : 'left-0.5'}`}
-                  style={{ left: hasLocation ? '22px' : '2px' }}
-                />
-              </div>
-              <div>
-                <span className="text-sm font-medium">I have a physical location</span>
-                <p className="text-xs text-muted mt-0.5">Uncheck if you operate online only</p>
-              </div>
-            </button>
-
-            {hasLocation ? (
-              <div className="space-y-4">
-                <InputField
-                  label="Location name" id="locationName" placeholder={form.studioName || 'Main Location'}
-                  value={form.locationName} onChange={e => set('locationName', e.target.value)}
-                />
-                <InputField
-                  label="Address" id="address" placeholder="123 Main Street"
-                  value={form.address} onChange={e => set('address', e.target.value)}
-                />
-                <div className="grid grid-cols-2 gap-3">
-                  <InputField
-                    label="City" id="city" placeholder="New York"
-                    value={form.city} onChange={e => set('city', e.target.value)}
-                  />
-                  <InputField
-                    label="Country" id="country" placeholder="USA"
-                    value={form.country} onChange={e => set('country', e.target.value)}
-                  />
-                </div>
-                <InputField
-                  label="Phone" id="phone" type="tel" placeholder="+1 555 123 4567"
-                  value={form.phone} onChange={e => set('phone', e.target.value)}
-                />
-              </div>
-            ) : (
-              <div className="text-center py-8">
-                <Globe className="w-10 h-10 text-muted/30 mx-auto mb-3" />
-                <p className="text-sm text-muted">No worries! You can add locations anytime in Settings.</p>
-              </div>
-            )}
-          </div>
-        )
-
-      // ── STEP 3: Brand ──────────────────────────────────
-      case 3:
         return (
           <div className="space-y-6">
             <div>
@@ -1259,8 +1192,8 @@ export default function OnboardingPage() {
           </div>
         )
 
-      // ── STEP 4: Launch ──────────────────────────────────
-      case 4:
+      // ── STEP 3: Launch ──────────────────────────────────
+      case 3:
         return (
           <div className="text-center py-6">
             <div className="w-16 h-16 rounded-full bg-accent/10 flex items-center justify-center mx-auto mb-4">
@@ -1320,9 +1253,8 @@ export default function OnboardingPage() {
     }
   }
 
-  const isLastFormStep = step === 3
-  const isComplete = step === 4
-  const isOptionalStep = step === 2 // Location is optional
+  const isLastFormStep = step === 2
+  const isComplete = step === 3
 
   return (
     <>
@@ -1341,7 +1273,7 @@ export default function OnboardingPage() {
       `}</style>
 
       <div className="min-h-screen bg-background flex items-center justify-center px-4 py-12">
-        <div className={`w-full transition-all duration-300 ${step === 3 ? 'max-w-2xl' : 'max-w-lg'}`}>
+        <div className={`w-full transition-all duration-300 ${step === 2 ? 'max-w-2xl' : 'max-w-lg'}`}>
           {/* Header */}
           {!isComplete && (
             <div className="text-center mb-6">
@@ -1386,16 +1318,6 @@ export default function OnboardingPage() {
                 )}
 
                 <div className="flex items-center gap-3">
-                  {isOptionalStep && (
-                    <button
-                      type="button"
-                      onClick={skip}
-                      className="flex items-center gap-1 text-sm text-muted hover:text-foreground transition-colors"
-                    >
-                      <SkipForward className="w-4 h-4" /> Skip
-                    </button>
-                  )}
-
                   {isLastFormStep ? (
                     <button
                       onClick={handleSubmit}
