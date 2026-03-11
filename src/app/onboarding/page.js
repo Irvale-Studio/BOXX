@@ -236,16 +236,10 @@ function StepIndicator({ current, steps }) {
     <div className="flex items-center justify-center gap-2 mb-8">
       {visibleSteps.map((step, i) => (
         <div key={step} className="flex items-center gap-2">
-          <div
-            className={`
-              w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-all
-              ${i < current ? 'bg-accent text-background' : i === current ? 'text-accent border border-accent' : 'bg-card border border-card-border text-muted'}
-            `}
-            style={i === current ? {
-              background: 'linear-gradient(to top, var(--accent) 50%, transparent 50%)',
-              WebkitBackgroundClip: 'padding-box',
-            } : undefined}
-          >
+          <div className={`
+            w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-all
+            ${i < current ? 'bg-accent text-background' : i === current ? 'bg-accent/20 text-accent border border-accent' : 'bg-card border border-card-border text-muted'}
+          `}>
             {i < current ? <Check className="w-4 h-4" /> : i + 1}
           </div>
           {i < visibleSteps.length - 1 && (
