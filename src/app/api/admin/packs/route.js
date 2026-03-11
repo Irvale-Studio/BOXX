@@ -151,6 +151,62 @@ export async function POST(request) {
   }
 }
 
+const deletePackSchema = z.object({
+  id: z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i, 'Invalid ID'),
+})
+
+/**
+ * DELETE /api/admin/packs — Permanently delete a class pack
+ */
+export async function DELETE(request) {
+  try {
+    const session = await auth()
+    if (!session || (session.user.role !== 'admin' && session.user.role !== 'owner')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    if (!supabaseAdmin) {
+      return NextResponse.json({ error: 'Database unavailable' }, { status: 500 })
+    }
+
+    const body = await request.json()
+    const parsed = deletePackSchema.safeParse(body)
+    if (!parsed.success) {
+      return NextResponse.json({ error: 'Invalid input' }, { status: 400 })
+    }
+
+    const { id } = parsed.data
+
+    // Block if any user credits (active or expired) reference this pack
+    const { count } = await supabaseAdmin
+      .from('user_credits')
+      .select('id', { count: 'exact', head: true })
+      .eq('class_pack_id', id)
+
+    if (count > 0) {
+      return NextResponse.json(
+        { error: `Cannot delete: ${count} credit record${count !== 1 ? 's' : ''} reference this pack. Deactivate it instead.` },
+        { status: 409 }
+      )
+    }
+
+    const { error } = await supabaseAdmin
+      .from('class_packs')
+      .delete()
+      .eq('id', id)
+
+    if (error) {
+      console.error('[admin/packs] Delete error:', error)
+      return NextResponse.json({ error: 'Failed to delete pack' }, { status: 500 })
+    }
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('[admin/packs] Error:', error)
+    return NextResponse.json({ error: 'Something went wrong.' }, { status: 500 })
+  }
+}
+
 const updatePackSchema = z.object({
   id: z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i, 'Invalid ID'),
   name: z.string().min(1).optional(),

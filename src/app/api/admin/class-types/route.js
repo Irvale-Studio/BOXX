@@ -102,6 +102,68 @@ export async function POST(request) {
   }
 }
 
+const deleteSchema = z.object({
+  id: z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i, 'Invalid ID'),
+})
+
+/**
+ * DELETE /api/admin/class-types — Permanently delete a class type
+ */
+export async function DELETE(request) {
+  try {
+    const session = await auth()
+    if (!session || (session.user.role !== 'owner' && session.user.role !== 'admin')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    if (!supabaseAdmin) {
+      return NextResponse.json({ error: 'Database unavailable' }, { status: 500 })
+    }
+
+    const body = await request.json()
+    const parsed = deleteSchema.safeParse(body)
+    if (!parsed.success) {
+      return NextResponse.json({ error: 'Invalid input' }, { status: 400 })
+    }
+
+    const { id } = parsed.data
+
+    // Block if any scheduled classes (past or future) reference this type
+    const { count } = await supabaseAdmin
+      .from('class_schedule')
+      .select('id', { count: 'exact', head: true })
+      .eq('class_type_id', id)
+
+    if (count > 0) {
+      return NextResponse.json(
+        { error: `Cannot delete: ${count} scheduled class${count !== 1 ? 'es' : ''} use this type. Delete those classes first, or deactivate this type instead.` },
+        { status: 409 }
+      )
+    }
+
+    const { error } = await supabaseAdmin
+      .from('class_types')
+      .delete()
+      .eq('id', id)
+
+    if (error) {
+      console.error('[admin/class-types] Delete error:', error)
+      return NextResponse.json({ error: 'Failed to delete class type' }, { status: 500 })
+    }
+
+    await supabaseAdmin.from('admin_audit_log').insert({
+      admin_id: session.user.id,
+      action: 'delete_class_type',
+      target_type: 'class_types',
+      target_id: id,
+    })
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('[admin/class-types] Error:', error)
+    return NextResponse.json({ error: 'Something went wrong.' }, { status: 500 })
+  }
+}
+
 const updateSchema = z.object({
   id: z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i, 'Invalid ID'),
   name: z.string().min(1).max(100).optional(),

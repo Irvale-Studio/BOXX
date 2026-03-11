@@ -28,6 +28,7 @@ export default function ClassTypesPage() {
   const [editDialog, setEditDialog] = useState(null)
   const [submitting, setSubmitting] = useState(false)
   const [form, setForm] = useState({ name: '', description: '', duration_mins: 60, color: '#c8a750', icon: '', is_private: false })
+  const [deleteDialog, setDeleteDialog] = useState(null)
 
   useEffect(() => {
     if (!toast) return
@@ -122,6 +123,26 @@ export default function ClassTypesPage() {
       setToast({ message: 'Something went wrong', type: 'error' })
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  async function handleDelete(ct) {
+    setDeleteDialog(null)
+    try {
+      const res = await fetch('/api/admin/class-types', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: ct.id }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setToast({ message: data.error || 'Failed to delete', type: 'error' })
+        return
+      }
+      setToast({ message: `"${ct.name}" deleted`, type: 'success' })
+      fetchClassTypes()
+    } catch {
+      setToast({ message: 'Something went wrong', type: 'error' })
     }
   }
 
@@ -220,6 +241,27 @@ export default function ClassTypesPage() {
         </DialogContent>
       </Dialog>
 
+      {/* Delete Confirmation */}
+      <Dialog open={!!deleteDialog} onOpenChange={(open) => !open && setDeleteDialog(null)}>
+        <DialogContent className="sm:max-w-sm" onOpenAutoFocus={(e) => e.preventDefault()}>
+          <DialogHeader>
+            <DialogTitle>Delete Class Type</DialogTitle>
+            <DialogDescription>
+              Permanently delete &quot;{deleteDialog?.name}&quot;? This cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setDeleteDialog(null)}>Cancel</Button>
+            <Button
+              className="bg-red-600 hover:bg-red-700 text-white"
+              onClick={() => handleDelete(deleteDialog)}
+            >
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Edit Dialog */}
       <Dialog open={!!editDialog} onOpenChange={(open) => !open && setEditDialog(null)}>
         <DialogContent className="sm:max-w-md" onOpenAutoFocus={(e) => e.preventDefault()}>
@@ -230,13 +272,22 @@ export default function ClassTypesPage() {
           <ClassTypeForm form={form} setForm={setForm} />
           <DialogFooter className="flex-col sm:flex-row gap-2">
             {editDialog && (
-              <Button
-                variant="outline"
-                className={editDialog.active ? 'text-red-400 border-red-400/30 hover:bg-red-400/10' : 'text-green-400 border-green-400/30 hover:bg-green-400/10'}
-                onClick={() => { toggleActive(editDialog); setEditDialog(null) }}
-              >
-                {editDialog.active ? 'Deactivate' : 'Activate'}
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  className={editDialog.active ? 'text-red-400 border-red-400/30 hover:bg-red-400/10' : 'text-green-400 border-green-400/30 hover:bg-green-400/10'}
+                  onClick={() => { toggleActive(editDialog); setEditDialog(null) }}
+                >
+                  {editDialog.active ? 'Deactivate' : 'Activate'}
+                </Button>
+                <Button
+                  variant="outline"
+                  className="text-red-400 border-red-400/30 hover:bg-red-400/10"
+                  onClick={() => { setEditDialog(null); setDeleteDialog(editDialog) }}
+                >
+                  Delete
+                </Button>
+              </div>
             )}
             <div className="flex gap-2 sm:ml-auto">
               <Button variant="outline" onClick={() => setEditDialog(null)}>Cancel</Button>

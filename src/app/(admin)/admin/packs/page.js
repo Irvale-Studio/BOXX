@@ -29,6 +29,7 @@ export default function AdminPacksPage() {
   const [dialog, setDialog] = useState(null) // 'create' | pack object for edit
   const [form, setForm] = useState(emptyForm)
   const [submitting, setSubmitting] = useState(false)
+  const [deleteDialog, setDeleteDialog] = useState(null)
 
   useEffect(() => {
     if (!toast) return
@@ -111,6 +112,26 @@ export default function AdminPacksPage() {
       setToast({ message: 'Something went wrong', type: 'error' })
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  async function handleDelete(pack) {
+    setDeleteDialog(null)
+    try {
+      const res = await fetch('/api/admin/packs', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: pack.id }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setToast({ message: data.error || 'Failed to delete', type: 'error' })
+        return
+      }
+      setToast({ message: `"${pack.name}" deleted`, type: 'success' })
+      fetchPacks()
+    } catch {
+      setToast({ message: 'Something went wrong', type: 'error' })
     }
   }
 
@@ -230,11 +251,41 @@ export default function AdminPacksPage() {
                 <Button variant="outline" className="text-xs h-7 px-2" onClick={() => openEdit(pack)}>
                   Edit
                 </Button>
+                <button
+                  onClick={() => setDeleteDialog(pack)}
+                  className="text-muted hover:text-red-400 transition-colors p-1"
+                  title="Delete pack"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </button>
               </div>
             </div>
           ))}
         </div>
       )}
+
+      {/* Delete Confirmation */}
+      <Dialog open={!!deleteDialog} onOpenChange={(open) => !open && setDeleteDialog(null)}>
+        <DialogContent className="sm:max-w-sm" onOpenAutoFocus={(e) => e.preventDefault()}>
+          <DialogHeader>
+            <DialogTitle>Delete Pack</DialogTitle>
+            <DialogDescription>
+              Permanently delete &quot;{deleteDialog?.name}&quot;? This cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setDeleteDialog(null)}>Cancel</Button>
+            <Button
+              className="bg-red-600 hover:bg-red-700 text-white"
+              onClick={() => handleDelete(deleteDialog)}
+            >
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Create/Edit Dialog */}
       <Dialog open={!!dialog} onOpenChange={(open) => !open && setDialog(null)}>
