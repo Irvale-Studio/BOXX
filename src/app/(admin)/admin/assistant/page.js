@@ -43,6 +43,26 @@ export default function AssistantPage() {
   const messagesEndRef = useRef(null)
   const inputRef = useRef(null)
 
+  // Lock page scroll — prevents browser from scrolling the page
+  // when the keyboard opens to "reveal" the focused input
+  useEffect(() => {
+    const html = document.documentElement
+    const body = document.body
+    html.style.overflow = 'hidden'
+    body.style.overflow = 'hidden'
+    body.style.position = 'fixed'
+    body.style.width = '100%'
+    body.style.top = '0'
+
+    return () => {
+      html.style.overflow = ''
+      body.style.overflow = ''
+      body.style.position = ''
+      body.style.width = ''
+      body.style.top = ''
+    }
+  }, [])
+
   // Track mobile keyboard via visualViewport
   useEffect(() => {
     const vv = window.visualViewport
