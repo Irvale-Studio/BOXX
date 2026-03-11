@@ -10,12 +10,13 @@ function toDateStr(d) {
   return d.toLocaleDateString('en-CA') // YYYY-MM-DD
 }
 
-function TrendIndicator({ current, previous, label }) {
+function TrendIndicator({ current, previous, period }) {
   if (previous === 0 && current === 0) return null
   const diff = current - previous
   const pct = previous > 0 ? Math.round((diff / previous) * 100) : current > 0 ? 100 : 0
   const isUp = diff > 0
   const isFlat = diff === 0
+  const periodLabel = period === 'month' ? 'vs last mo' : 'vs last wk'
 
   return (
     <span className={cn(
@@ -23,7 +24,7 @@ function TrendIndicator({ current, previous, label }) {
       isFlat ? 'text-muted' : isUp ? 'text-green-400' : 'text-red-400'
     )}>
       {isFlat ? '—' : isUp ? `+${pct}%` : `${pct}%`}
-      {label && <span className="text-muted ml-0.5">vs last wk</span>}
+      <span className="text-muted ml-0.5">{periodLabel}</span>
     </span>
   )
 }
@@ -131,48 +132,58 @@ export default function AdminDashboard() {
   }
 
   const statCards = [
-    ...(isAdmin ? [{
-      title: 'Revenue (Month)',
-      value: `${(stats.revenueThisMonth || 0).toLocaleString()}`,
-      prefix: '฿',
-      icon: '💰',
-    }] : []),
+    // Row 1: Activity
     {
-      title: 'Total Members',
-      value: stats.totalMembers,
-      icon: '👥',
-      href: '/admin/members',
-      trend: trends.signups,
+      title: 'Active This Week',
+      value: stats.weeklyActiveMembers || 0,
+      sub: 'unique members booked',
+      trend: trends.weeklyActive ? { current: trends.weeklyActive.thisWeek, previous: trends.weeklyActive.lastWeek } : null,
+      period: 'week',
     },
+    {
+      title: 'Active This Month',
+      value: stats.monthlyActiveMembers || 0,
+      sub: 'unique members booked',
+      trend: trends.monthlyActive ? { current: trends.monthlyActive.thisMonth, previous: trends.monthlyActive.lastMonth } : null,
+      period: 'month',
+    },
+    // Row 1 cont: Bookings
     {
       title: 'Bookings (7d)',
-      value: trends.bookings?.thisWeek || stats.todayBookings,
-      icon: '📋',
+      value: trends.bookings?.thisWeek || 0,
       href: '/admin/bookings',
-      trend: trends.bookings,
-    },
-    {
-      title: 'Classes Today',
-      value: activeClasses.length,
-      icon: '📅',
-      sub: `${activeClasses.filter((c) => c.status !== 'cancelled').length} active`,
-    },
-    {
-      title: 'Active (Week)',
-      value: stats.weeklyActiveMembers || 0,
-      icon: '🔥',
-      sub: 'members who booked',
-    },
-    {
-      title: 'Active (Month)',
-      value: stats.monthlyActiveMembers || 0,
-      icon: '📊',
-      sub: 'members who booked',
+      trend: trends.bookings ? { current: trends.bookings.thisWeek, previous: trends.bookings.lastWeek } : null,
+      period: 'week',
     },
     {
       title: 'Bookings (Month)',
       value: stats.bookingsThisMonth || 0,
-      icon: '🎯',
+      href: '/admin/bookings',
+      trend: trends.monthlyBookings ? { current: trends.monthlyBookings.thisMonth, previous: trends.monthlyBookings.lastMonth } : null,
+      period: 'month',
+    },
+    // Row 2: Revenue + Members + Classes
+    ...(isAdmin ? [{
+      title: 'Revenue (Month)',
+      value: (stats.revenueThisMonth || 0).toLocaleString(),
+      prefix: '฿',
+      trend: trends.revenue ? { current: trends.revenue.thisMonth, previous: trends.revenue.lastMonth } : null,
+      period: 'month',
+    }] : []),
+    {
+      title: 'Total Members',
+      value: stats.totalMembers,
+      href: '/admin/members',
+      trend: trends.signups ? { current: trends.signups.thisWeek, previous: trends.signups.lastWeek } : null,
+      period: 'week',
+      sub: trends.signups?.thisWeek ? `+${trends.signups.thisWeek} this week` : null,
+    },
+    {
+      title: 'Classes Today',
+      value: activeClasses.filter((c) => c.status !== 'cancelled').length,
+      sub: activeClasses.length > activeClasses.filter((c) => c.status !== 'cancelled').length
+        ? `${activeClasses.length - activeClasses.filter((c) => c.status !== 'cancelled').length} cancelled`
+        : null,
     },
   ]
 
@@ -215,27 +226,22 @@ export default function AdminDashboard() {
       )}
 
       {/* Stat cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-8">
+      <div className="grid gap-3 grid-cols-2 lg:grid-cols-4 mb-8">
         {statCards.map((stat) => {
           const Inner = (
-            <Card key={stat.title} className={cn(stat.href && 'hover:border-accent/30 transition-colors cursor-pointer')}>
-              <CardContent className="pt-5 pb-4">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-xs text-muted font-medium uppercase tracking-wide">{stat.title}</p>
-                    <p className="text-2xl font-bold text-foreground mt-1">
-                      {stat.prefix && <span className="text-lg text-muted font-normal">{stat.prefix}</span>}
-                      {stat.value}
-                    </p>
-                    {stat.trend && (
-                      <div className="mt-1">
-                        <TrendIndicator current={stat.trend.thisWeek} previous={stat.trend.lastWeek} label />
-                      </div>
-                    )}
-                    {stat.sub && <p className="text-xs text-muted mt-1">{stat.sub}</p>}
+            <Card key={stat.title} className={cn('h-full', stat.href && 'hover:border-accent/30 transition-colors cursor-pointer')}>
+              <CardContent className="pt-4 pb-3 px-4">
+                <p className="text-[11px] text-muted font-medium uppercase tracking-wide leading-tight">{stat.title}</p>
+                <p className="text-2xl font-bold text-foreground mt-1.5">
+                  {stat.prefix && <span className="text-base text-muted font-normal mr-0.5">{stat.prefix}</span>}
+                  {stat.value}
+                </p>
+                {stat.trend && (
+                  <div className="mt-1">
+                    <TrendIndicator current={stat.trend.current} previous={stat.trend.previous} period={stat.period} />
                   </div>
-                  <span className="text-2xl">{stat.icon}</span>
-                </div>
+                )}
+                {stat.sub && !stat.trend && <p className="text-[11px] text-muted mt-1">{stat.sub}</p>}
               </CardContent>
             </Card>
           )

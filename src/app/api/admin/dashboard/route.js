@@ -36,6 +36,8 @@ export async function GET(request) {
     fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14)
 
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+    const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+    const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999)
 
     // Last week boundaries for week-over-week
     const lastWeekStart = new Date(now)
@@ -177,14 +179,27 @@ export async function GET(request) {
         .order('starts_at', { ascending: true }),
     ])
 
-    // Additional activity queries: WAM, MAM, bookings this month
-    const [weeklyActiveRes, monthlyActiveRes, monthBookingsRes] = await Promise.all([
+    // Additional activity queries: WAM, MAM, bookings this month + previous periods
+    const [
+      weeklyActiveRes, prevWeeklyActiveRes,
+      monthlyActiveRes, prevMonthlyActiveRes,
+      monthBookingsRes, prevMonthBookingsRes,
+      prevMonthRevenueRes,
+    ] = await Promise.all([
       // Weekly active members: unique users with a confirmed booking in last 7 days
       supabaseAdmin
         .from('bookings')
         .select('user_id')
         .eq('status', 'confirmed')
         .gte('created_at', sevenDaysAgo.toISOString()),
+
+      // Previous week active members (7-14 days ago)
+      supabaseAdmin
+        .from('bookings')
+        .select('user_id')
+        .eq('status', 'confirmed')
+        .gte('created_at', fourteenDaysAgo.toISOString())
+        .lt('created_at', sevenDaysAgo.toISOString()),
 
       // Monthly active members: unique users with a confirmed booking this month
       supabaseAdmin
@@ -193,17 +208,44 @@ export async function GET(request) {
         .eq('status', 'confirmed')
         .gte('created_at', monthStart.toISOString()),
 
+      // Previous month active members
+      supabaseAdmin
+        .from('bookings')
+        .select('user_id')
+        .eq('status', 'confirmed')
+        .gte('created_at', lastMonthStart.toISOString())
+        .lte('created_at', lastMonthEnd.toISOString()),
+
       // Total bookings this month
       supabaseAdmin
         .from('bookings')
         .select('id', { count: 'exact', head: true })
         .eq('status', 'confirmed')
         .gte('created_at', monthStart.toISOString()),
+
+      // Total bookings last month
+      supabaseAdmin
+        .from('bookings')
+        .select('id', { count: 'exact', head: true })
+        .eq('status', 'confirmed')
+        .gte('created_at', lastMonthStart.toISOString())
+        .lte('created_at', lastMonthEnd.toISOString()),
+
+      // Revenue last month
+      supabaseAdmin
+        .from('user_credits')
+        .select('id, class_packs(price_thb)')
+        .gte('purchased_at', lastMonthStart.toISOString())
+        .lte('purchased_at', lastMonthEnd.toISOString()),
     ])
 
     const weeklyActiveMembers = new Set((weeklyActiveRes.data || []).map((b) => b.user_id)).size
+    const prevWeeklyActiveMembers = new Set((prevWeeklyActiveRes.data || []).map((b) => b.user_id)).size
     const monthlyActiveMembers = new Set((monthlyActiveRes.data || []).map((b) => b.user_id)).size
+    const prevMonthlyActiveMembers = new Set((prevMonthlyActiveRes.data || []).map((b) => b.user_id)).size
     const bookingsThisMonth = monthBookingsRes.count || 0
+    const bookingsLastMonth = prevMonthBookingsRes.count || 0
+    const revenueLastMonth = (prevMonthRevenueRes.data || []).reduce((sum, uc) => sum + (uc.class_packs?.price_thb || 0), 0)
 
     // ── Member Engagement ──────────────────────────────────────
     const thirtyDaysAgo = new Date(now)
@@ -440,6 +482,10 @@ export async function GET(request) {
       trends: {
         bookings: { thisWeek: thisWeekBookings, lastWeek: lastWeekBookings },
         signups: { thisWeek: thisWeekSignups, lastWeek: lastWeekSignups },
+        weeklyActive: { thisWeek: weeklyActiveMembers, lastWeek: prevWeeklyActiveMembers },
+        monthlyActive: { thisMonth: monthlyActiveMembers, lastMonth: prevMonthlyActiveMembers },
+        monthlyBookings: { thisMonth: bookingsThisMonth, lastMonth: bookingsLastMonth },
+        revenue: { thisMonth: revenue, lastMonth: revenueLastMonth },
       },
       todayClasses,
       recentSignups: recentSignupsRes.data || [],
