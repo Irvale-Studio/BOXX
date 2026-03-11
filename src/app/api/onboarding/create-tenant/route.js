@@ -253,7 +253,12 @@ export async function POST(request) {
     // 7. Send welcome email (non-blocking)
     try {
       const { sendWelcomeEmail } = await import('@/lib/email')
-      sendWelcomeEmail({ to: data.ownerEmail, name: data.ownerName }).catch(() => {})
+      sendWelcomeEmail({
+        to: data.ownerEmail,
+        name: data.ownerName,
+        studioName: data.studioName,
+        dashboardUrl: `https://${data.slug}.zatrovo.com/admin`,
+      }).catch(() => {})
     } catch {
       // Non-critical
     }

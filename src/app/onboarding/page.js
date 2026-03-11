@@ -1149,9 +1149,11 @@ export default function OnboardingPage() {
       if (googleAuth) {
         await updateSession()
       } else {
+        // Pass tenantId so credentials auth scopes to the new tenant
         const loginResult = await signIn('credentials', {
           email: form.ownerEmail,
           password: form.password,
+          tenantId: data.tenant.id,
           redirect: false,
         })
         if (loginResult?.error) {

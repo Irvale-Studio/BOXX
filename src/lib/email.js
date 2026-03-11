@@ -207,7 +207,7 @@ const EMAIL_DEFAULTS = {
   class_reminder: { subject: 'Reminder: {{class}} in 1 hour', heading: 'Class in 1 Hour' },
   waitlist_promotion: { subject: 'Spot Available — {{class}}', heading: "You're Off the Waitlist" },
   credit_expiry_warning: { subject: 'Credits Expiring Soon — {{pack}}', heading: 'Credits Expiring' },
-  welcome: { subject: 'Welcome to BOXX', heading: 'Welcome to BOXX' },
+  welcome: { subject: 'Welcome!', heading: 'Welcome!' },
   cancellation_confirmation: { subject: 'Booking Cancelled — {{class}}', heading: 'Booking Cancelled' },
   class_cancelled_admin: { subject: 'Class Cancelled — {{class}}', heading: 'Class Cancelled' },
   pack_purchase_confirmation: { subject: 'Pack Purchased — {{pack}}', heading: 'Pack Purchased' },
@@ -463,30 +463,31 @@ export async function sendCreditExpiryWarning({ to, name, packName, creditsRemai
 
 // ─── 5. Welcome Email ────────────────────────────────────────────────────────
 
-export async function sendWelcomeEmail({ to, name }) {
+export async function sendWelcomeEmail({ to, name, studioName, dashboardUrl }) {
   if (!(await isEmailEnabled('welcome'))) return
   const custom = await getCustomMessage('welcome')
-  const subject = custom.subject || 'Welcome to BOXX'
+  const studio = studioName || 'BOXX'
+  const subject = custom.subject || `Welcome to ${studio}`
+  const url = dashboardUrl || 'https://boxxthailand.com/dashboard'
   await sendAndLog({
     emailType: 'welcome',
     to,
     subject,
     html: emailTemplate({
-      heading: 'Welcome to BOXX',
+      heading: `Welcome to ${studio}`,
       body: custom.body
         ? `<p>${custom.body.replace(/\n/g, '</p><p>')}</p>`
         : `
         <p>Hey ${name || 'there'},</p>
-        <p>Thanks for joining BOXX Boxing Studio — Chiang Mai's first luxury boutique boxing and personal training studio.</p>
+        <p>Thanks for joining ${studio}! Your account is all set up and ready to go.</p>
         <p>Here's how to get started:</p>
         <table style="margin:20px 0;border-collapse:collapse;">
           <tr><td style="padding:8px 12px 8px 0;color:#c8a750;font-weight:700;font-size:18px;vertical-align:top;">1</td><td style="padding:8px 0;color:#e0e0e0;">Browse available classes on your dashboard</td></tr>
           <tr><td style="padding:8px 12px 8px 0;color:#c8a750;font-weight:700;font-size:18px;vertical-align:top;">2</td><td style="padding:8px 0;color:#e0e0e0;">Purchase a class pack to get credits</td></tr>
           <tr><td style="padding:8px 12px 8px 0;color:#c8a750;font-weight:700;font-size:18px;vertical-align:top;">3</td><td style="padding:8px 0;color:#e0e0e0;">Book your first class and show up ready</td></tr>
         </table>
-        <p style="color:#888;font-size:14px;">Questions? Reply to this email or reach us at hello@boxxthailand.com.</p>
       `,
-      ctaUrl: 'https://boxxthailand.com/dashboard',
+      ctaUrl: url,
       ctaText: 'Go to Dashboard',
     }),
   })
