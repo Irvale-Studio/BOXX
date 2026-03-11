@@ -18,29 +18,32 @@ const WARN_THRESHOLD = 0.8 // Warn at 80%
 
 const PLATFORM_ALERT_EMAIL = 'jacobmhorgan@gmail.com'
 
-// ─── Counter helpers (stored in studio_settings) ─────────────────────────────
+const DEFAULT_TENANT_ID = process.env.DEFAULT_TENANT_ID || 'a0000000-0000-0000-0000-000000000001'
 
-async function getCounter(key) {
+// ─── Counter helpers (stored in studio_settings, keyed by tenant_id) ─────────
+
+async function getCounter(key, tenantId = DEFAULT_TENANT_ID) {
   if (!supabaseAdmin) return 0
   const { data } = await supabaseAdmin
     .from('studio_settings')
     .select('value')
+    .eq('tenant_id', tenantId)
     .eq('key', key)
     .single()
   return parseInt(data?.value || '0', 10)
 }
 
-async function setCounter(key, value) {
+async function setCounter(key, value, tenantId = DEFAULT_TENANT_ID) {
   if (!supabaseAdmin) return
   await supabaseAdmin
     .from('studio_settings')
-    .upsert({ key, value: String(value) })
+    .upsert({ tenant_id: tenantId, key, value: String(value) })
 }
 
-async function incrementCounter(key) {
+async function incrementCounter(key, tenantId = DEFAULT_TENANT_ID) {
   if (!supabaseAdmin) return
-  const current = await getCounter(key)
-  await setCounter(key, current + 1)
+  const current = await getCounter(key, tenantId)
+  await setCounter(key, current + 1, tenantId)
   return current + 1
 }
 
@@ -56,32 +59,32 @@ function getDayKey() {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
 }
 
-async function ensureCounterPeriod() {
+async function ensureCounterPeriod(tenantId = DEFAULT_TENANT_ID) {
   if (!supabaseAdmin) return
 
   const currentMonth = getMonthKey()
   const currentDay = getDayKey()
 
-  const storedMonth = await getCounter('limit_month_key').then(String)
-  const storedDay = await getCounter('limit_day_key').then(String)
+  const storedMonth = await getCounter('limit_month_key', tenantId).then(String)
+  const storedDay = await getCounter('limit_day_key', tenantId).then(String)
 
   if (storedMonth !== currentMonth) {
-    await setCounter('limit_month_key', currentMonth)
-    await setCounter('emails_sent_month', 0)
+    await setCounter('limit_month_key', currentMonth, tenantId)
+    await setCounter('emails_sent_month', 0, tenantId)
   }
 
   if (storedDay !== currentDay) {
-    await setCounter('limit_day_key', currentDay)
-    await setCounter('emails_sent_day', 0)
+    await setCounter('limit_day_key', currentDay, tenantId)
+    await setCounter('emails_sent_day', 0, tenantId)
   }
 }
 
 // ─── Email tracking ──────────────────────────────────────────────────────────
 
-export async function trackEmailSent() {
-  await ensureCounterPeriod()
-  const dailyCount = await incrementCounter('emails_sent_day')
-  const monthlyCount = await incrementCounter('emails_sent_month')
+export async function trackEmailSent(tenantId = DEFAULT_TENANT_ID) {
+  await ensureCounterPeriod(tenantId)
+  const dailyCount = await incrementCounter('emails_sent_day', tenantId)
+  const monthlyCount = await incrementCounter('emails_sent_month', tenantId)
 
   // Check if we just hit a threshold and should alert
   if (dailyCount === LIMITS.emails_per_day ||
@@ -99,10 +102,10 @@ export async function trackEmailSent() {
   return { dailyCount, monthlyCount }
 }
 
-export async function checkEmailLimit() {
-  await ensureCounterPeriod()
-  const daily = await getCounter('emails_sent_day')
-  const monthly = await getCounter('emails_sent_month')
+export async function checkEmailLimit(tenantId = DEFAULT_TENANT_ID) {
+  await ensureCounterPeriod(tenantId)
+  const daily = await getCounter('emails_sent_day', tenantId)
+  const monthly = await getCounter('emails_sent_month', tenantId)
 
   if (daily >= LIMITS.emails_per_day) {
     return { allowed: false, reason: `Daily email limit reached (${LIMITS.emails_per_day}/day)` }
@@ -115,11 +118,12 @@ export async function checkEmailLimit() {
 
 // ─── Resource limit checks ───────────────────────────────────────────────────
 
-export async function checkMemberLimit() {
+export async function checkMemberLimit(tenantId = DEFAULT_TENANT_ID) {
   if (!supabaseAdmin) return { allowed: true }
   const { count } = await supabaseAdmin
     .from('users')
     .select('id', { count: 'exact', head: true })
+    .eq('tenant_id', tenantId)
     .in('role', ['member', 'admin', 'employee', 'owner'])
 
   if (count >= LIMITS.active_members) {
@@ -129,7 +133,7 @@ export async function checkMemberLimit() {
   return { allowed: true, count }
 }
 
-export async function checkClassLimit() {
+export async function checkClassLimit(tenantId = DEFAULT_TENANT_ID) {
   if (!supabaseAdmin) return { allowed: true }
   const now = new Date()
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
@@ -138,6 +142,7 @@ export async function checkClassLimit() {
   const { count } = await supabaseAdmin
     .from('class_schedule')
     .select('id', { count: 'exact', head: true })
+    .eq('tenant_id', tenantId)
     .gte('starts_at', monthStart.toISOString())
     .lte('starts_at', monthEnd.toISOString())
 
@@ -148,11 +153,12 @@ export async function checkClassLimit() {
   return { allowed: true, count }
 }
 
-export async function checkInstructorLimit() {
+export async function checkInstructorLimit(tenantId = DEFAULT_TENANT_ID) {
   if (!supabaseAdmin) return { allowed: true }
   const { count } = await supabaseAdmin
     .from('instructors')
     .select('id', { count: 'exact', head: true })
+    .eq('tenant_id', tenantId)
     .eq('active', true)
 
   if (count >= LIMITS.active_instructors) {
@@ -161,11 +167,12 @@ export async function checkInstructorLimit() {
   return { allowed: true, count }
 }
 
-export async function checkClassTypeLimit() {
+export async function checkClassTypeLimit(tenantId = DEFAULT_TENANT_ID) {
   if (!supabaseAdmin) return { allowed: true }
   const { count } = await supabaseAdmin
     .from('class_types')
     .select('id', { count: 'exact', head: true })
+    .eq('tenant_id', tenantId)
     .eq('active', true)
 
   if (count >= LIMITS.active_class_types) {
@@ -174,11 +181,12 @@ export async function checkClassTypeLimit() {
   return { allowed: true, count }
 }
 
-export async function checkPackLimit() {
+export async function checkPackLimit(tenantId = DEFAULT_TENANT_ID) {
   if (!supabaseAdmin) return { allowed: true }
   const { count } = await supabaseAdmin
     .from('class_packs')
     .select('id', { count: 'exact', head: true })
+    .eq('tenant_id', tenantId)
     .eq('active', true)
 
   if (count >= LIMITS.active_packs) {
@@ -189,10 +197,10 @@ export async function checkPackLimit() {
 
 // ─── Get all usage for dashboard ─────────────────────────────────────────────
 
-export async function getUsageSummary() {
+export async function getUsageSummary(tenantId = DEFAULT_TENANT_ID) {
   if (!supabaseAdmin) return null
 
-  await ensureCounterPeriod()
+  await ensureCounterPeriod(tenantId)
 
   const now = new Date()
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
@@ -207,13 +215,13 @@ export async function getUsageSummary() {
     classTypesRes,
     packsRes,
   ] = await Promise.all([
-    getCounter('emails_sent_day'),
-    getCounter('emails_sent_month'),
-    supabaseAdmin.from('users').select('id', { count: 'exact', head: true }).in('role', ['member', 'admin', 'employee', 'owner']),
-    supabaseAdmin.from('class_schedule').select('id', { count: 'exact', head: true }).gte('starts_at', monthStart.toISOString()).lte('starts_at', monthEnd.toISOString()),
-    supabaseAdmin.from('instructors').select('id', { count: 'exact', head: true }).eq('active', true),
-    supabaseAdmin.from('class_types').select('id', { count: 'exact', head: true }).eq('active', true),
-    supabaseAdmin.from('class_packs').select('id', { count: 'exact', head: true }).eq('active', true),
+    getCounter('emails_sent_day', tenantId),
+    getCounter('emails_sent_month', tenantId),
+    supabaseAdmin.from('users').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId).in('role', ['member', 'admin', 'employee', 'owner']),
+    supabaseAdmin.from('class_schedule').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId).gte('starts_at', monthStart.toISOString()).lte('starts_at', monthEnd.toISOString()),
+    supabaseAdmin.from('instructors').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId).eq('active', true),
+    supabaseAdmin.from('class_types').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId).eq('active', true),
+    supabaseAdmin.from('class_packs').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId).eq('active', true),
   ])
 
   const usage = [
@@ -269,6 +277,70 @@ async function sendPlatformAlert(type, details) {
     })
   } catch (err) {
     console.error('[platform-limits] Alert email failed:', err)
+  }
+}
+
+/**
+ * Check a plan-level limit for a tenant.
+ * Plan limits come from the plan_limits table and are business-tier caps.
+ * Platform limits (LIMITS object above) are infrastructure caps.
+ * The effective limit is the LOWER of the two.
+ */
+export async function checkTenantPlanLimit(tenantId, limitKey) {
+  if (!supabaseAdmin || !tenantId) return { allowed: true }
+
+  // Get tenant's plan
+  const { data: tenant } = await supabaseAdmin
+    .from('tenants')
+    .select('plan')
+    .eq('id', tenantId)
+    .single()
+
+  if (!tenant) return { allowed: true }
+
+  // Get plan limits
+  const { data: planLimit } = await supabaseAdmin
+    .from('plan_limits')
+    .select('*')
+    .eq('plan', tenant.plan)
+    .single()
+
+  if (!planLimit || !planLimit[limitKey]) return { allowed: true }
+
+  const limit = planLimit[limitKey]
+
+  // Get current count based on limit key
+  let count = 0
+  if (limitKey === 'max_members') {
+    const res = await supabaseAdmin.from('users').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId).in('role', ['member', 'admin', 'employee', 'owner'])
+    count = res.count || 0
+  } else if (limitKey === 'max_classes_month') {
+    const now = new Date()
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59)
+    const res = await supabaseAdmin.from('class_schedule').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId).gte('starts_at', monthStart.toISOString()).lte('starts_at', monthEnd.toISOString())
+    count = res.count || 0
+  } else if (limitKey === 'max_instructors') {
+    const res = await supabaseAdmin.from('instructors').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId).eq('active', true)
+    count = res.count || 0
+  } else if (limitKey === 'max_class_types') {
+    const res = await supabaseAdmin.from('class_types').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId).eq('active', true)
+    count = res.count || 0
+  } else if (limitKey === 'max_packs') {
+    const res = await supabaseAdmin.from('class_packs').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId).eq('active', true)
+    count = res.count || 0
+  } else if (limitKey === 'max_ai_queries') {
+    const now = new Date()
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+    const res = await supabaseAdmin.from('agent_usage').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId).gte('created_at', monthStart.toISOString())
+    count = res.count || 0
+  }
+
+  return {
+    allowed: count < limit,
+    limit,
+    current: count,
+    plan: tenant.plan,
   }
 }
 

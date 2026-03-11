@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth'
+import { requireAuth } from '@/lib/api-helpers'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { sendBookingConfirmation } from '@/lib/email'
 import { NextResponse } from 'next/server'
@@ -13,10 +13,9 @@ const schema = z.object({
  */
 export async function POST(request) {
   try {
-    const session = await auth()
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const authResult = await requireAuth()
+    if (authResult.response) return authResult.response
+    const { session, tenantId } = authResult
 
     const body = await request.json()
     const parsed = schema.safeParse(body)
@@ -35,6 +34,7 @@ export async function POST(request) {
     const { data: booking, error: bookingErr } = await supabaseAdmin
       .from('bookings')
       .select('id, class_schedule_id, class_schedule(starts_at, status, class_types(name), instructors(name))')
+      .eq('tenant_id', tenantId)
       .eq('id', bookingId)
       .eq('user_id', userId)
       .eq('status', 'invited')
@@ -58,6 +58,7 @@ export async function POST(request) {
     const { data: allCredits, error: creditsErr } = await supabaseAdmin
       .from('user_credits')
       .select('id, credits_remaining, credits_total, status, expires_at')
+      .eq('tenant_id', tenantId)
       .eq('user_id', userId)
       .order('expires_at', { ascending: true })
 
@@ -105,6 +106,7 @@ export async function POST(request) {
     const { error } = await supabaseAdmin
       .from('bookings')
       .update({ status: 'confirmed', credit_id: credit.id })
+      .eq('tenant_id', tenantId)
       .eq('id', bookingId)
 
     if (error) {
@@ -119,6 +121,7 @@ export async function POST(request) {
     const { data: user } = await supabaseAdmin
       .from('users')
       .select('email, name')
+      .eq('tenant_id', tenantId)
       .eq('id', userId)
       .single()
 

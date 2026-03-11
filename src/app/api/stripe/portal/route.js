@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth'
+import { requireAuth } from '@/lib/api-helpers'
 import { getStripeAsync } from '@/lib/stripe'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
@@ -11,10 +11,9 @@ const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
  */
 export async function POST(request) {
   try {
-    const session = await auth()
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const authResult = await requireAuth()
+    if (authResult.response) return authResult.response
+    const { session, tenantId } = authResult
 
     if (!supabaseAdmin) {
       return NextResponse.json({ error: 'Database unavailable' }, { status: 500 })
@@ -24,6 +23,7 @@ export async function POST(request) {
     const { data: user } = await supabaseAdmin
       .from('users')
       .select('stripe_customer_id')
+      .eq('tenant_id', tenantId)
       .eq('id', session.user.id)
       .single()
 

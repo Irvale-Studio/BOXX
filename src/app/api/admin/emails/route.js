@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth'
+import { requireStaff } from '@/lib/api-helpers'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { sendAdminDirectEmail } from '@/lib/email'
 import { NextResponse } from 'next/server'
@@ -15,10 +15,9 @@ const composeSchema = z.object({
  */
 export async function POST(request) {
   try {
-    const session = await auth()
-    if (!session || (session.user.role !== 'owner' && session.user.role !== 'admin' && session.user.role !== 'employee')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const result = await requireStaff(request)
+    if (result.response) return result.response
+    const { session, tenantId } = result
 
     const body = await request.json()
     const parsed = composeSchema.safeParse(body)
@@ -33,6 +32,7 @@ export async function POST(request) {
       const { data: targetUser } = await supabaseAdmin
         .from('users')
         .select('id')
+        .eq('tenant_id', tenantId)
         .eq('email', to)
         .single()
 
@@ -46,6 +46,7 @@ export async function POST(request) {
     // Audit log
     if (supabaseAdmin) {
       await supabaseAdmin.from('admin_audit_log').insert({
+        tenant_id: tenantId,
         admin_id: session.user.id,
         action: 'send_direct_email',
         target_type: 'user',

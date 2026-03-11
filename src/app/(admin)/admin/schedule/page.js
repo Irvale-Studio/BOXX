@@ -1152,6 +1152,18 @@ export default function AdminSchedulePage() {
                             )}
                           </div>
 
+                          {/* Cancel button — top-right on hover */}
+                          {!isCancelled && !hasPending && !isDragging && !isResizing && (
+                            <button
+                              className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-red-500/10 text-red-400/50 hover:bg-red-500/25 hover:text-red-400 flex items-center justify-center transition-all opacity-0 group-hover/block:opacity-100 z-10"
+                              title="Cancel class"
+                              onClick={(e) => { e.stopPropagation(); setCancelDialog(cls) }}
+                              onPointerDown={(e) => e.stopPropagation()}
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          )}
+
                           {/* Resize handle */}
                           {!isCancelled && !pendingMove?.classId && (
                             <div

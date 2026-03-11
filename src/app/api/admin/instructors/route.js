@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth'
+import { requireStaff } from '@/lib/api-helpers'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
@@ -6,12 +6,11 @@ import { z } from 'zod'
 /**
  * GET /api/admin/instructors — Get all instructors
  */
-export async function GET() {
+export async function GET(request) {
   try {
-    const session = await auth()
-    if (!session || (session.user.role !== 'owner' && session.user.role !== 'admin' && session.user.role !== 'employee')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const result = await requireStaff(request)
+    if (result.response) return result.response
+    const { session, tenantId } = result
 
     if (!supabaseAdmin) {
       return NextResponse.json({ error: 'Database unavailable' }, { status: 500 })
@@ -20,6 +19,7 @@ export async function GET() {
     const { data, error } = await supabaseAdmin
       .from('instructors')
       .select('*')
+      .eq('tenant_id', tenantId)
       .order('name')
 
     if (error) {
@@ -44,10 +44,9 @@ const createSchema = z.object({
  */
 export async function POST(request) {
   try {
-    const session = await auth()
-    if (!session || (session.user.role !== 'owner' && session.user.role !== 'admin' && session.user.role !== 'employee')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const result = await requireStaff(request)
+    if (result.response) return result.response
+    const { session, tenantId } = result
 
     if (!supabaseAdmin) {
       return NextResponse.json({ error: 'Database unavailable' }, { status: 500 })
@@ -60,15 +59,22 @@ export async function POST(request) {
     }
 
     // Check platform instructor limit
-    const { checkInstructorLimit } = await import('@/lib/platform-limits')
+    const { checkInstructorLimit, checkTenantPlanLimit } = await import('@/lib/platform-limits')
     const { allowed: instrAllowed, reason: instrReason } = await checkInstructorLimit()
     if (!instrAllowed) {
       return NextResponse.json({ error: instrReason }, { status: 403 })
     }
 
+    // Check plan-level instructor limit
+    const instructorLimit = await checkTenantPlanLimit(tenantId, 'max_instructors')
+    if (!instructorLimit.allowed) {
+      return NextResponse.json({ error: `Instructor limit reached (${instructorLimit.current}/${instructorLimit.limit} on ${instructorLimit.plan} plan)` }, { status: 403 })
+    }
+
     const { data: instructor, error } = await supabaseAdmin
       .from('instructors')
       .insert({
+        tenant_id: tenantId,
         name: parsed.data.name,
         bio: parsed.data.bio || null,
         active: true,
@@ -100,10 +106,9 @@ const updateSchema = z.object({
  */
 export async function PUT(request) {
   try {
-    const session = await auth()
-    if (!session || (session.user.role !== 'owner' && session.user.role !== 'admin' && session.user.role !== 'employee')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const result = await requireStaff(request)
+    if (result.response) return result.response
+    const { session, tenantId } = result
 
     if (!supabaseAdmin) {
       return NextResponse.json({ error: 'Database unavailable' }, { status: 500 })
@@ -122,6 +127,7 @@ export async function PUT(request) {
       const { count } = await supabaseAdmin
         .from('class_schedule')
         .select('id', { count: 'exact', head: true })
+        .eq('tenant_id', tenantId)
         .eq('instructor_id', id)
         .eq('status', 'active')
         .gt('starts_at', new Date().toISOString())
@@ -137,6 +143,7 @@ export async function PUT(request) {
     const { data: instructor, error } = await supabaseAdmin
       .from('instructors')
       .update(updates)
+      .eq('tenant_id', tenantId)
       .eq('id', id)
       .select()
       .single()

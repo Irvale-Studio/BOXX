@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth'
+import { requireAdmin, requireFeature } from '@/lib/api-helpers'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
 
@@ -7,16 +7,20 @@ import { NextResponse } from 'next/server'
  */
 export async function GET(request, { params }) {
   try {
-    const session = await auth()
-    if (!session || (session.user.role !== 'admin' && session.user.role !== 'owner')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const result = await requireAdmin(request)
+    if (result.response) return result.response
+    const { session, tenantId } = result
+
+    // Feature flag: AI assistant
+    const featureCheck = await requireFeature(tenantId, 'ai_assistant')
+    if (featureCheck.response) return featureCheck.response
 
     const { id } = await params
 
     const { data: conversation } = await supabaseAdmin
       .from('agent_conversations')
       .select('id, title, created_at, updated_at')
+      .eq('tenant_id', tenantId)
       .eq('id', id)
       .eq('user_id', session.user.id)
       .single()
@@ -28,6 +32,7 @@ export async function GET(request, { params }) {
     const { data: messages } = await supabaseAdmin
       .from('agent_messages')
       .select('id, role, content, tool_results, created_at')
+      .eq('tenant_id', tenantId)
       .eq('conversation_id', id)
       .order('created_at', { ascending: true })
 
@@ -43,10 +48,13 @@ export async function GET(request, { params }) {
  */
 export async function PATCH(request, { params }) {
   try {
-    const session = await auth()
-    if (!session || (session.user.role !== 'admin' && session.user.role !== 'owner')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const result = await requireAdmin(request)
+    if (result.response) return result.response
+    const { session, tenantId } = result
+
+    // Feature flag: AI assistant
+    const featureCheck = await requireFeature(tenantId, 'ai_assistant')
+    if (featureCheck.response) return featureCheck.response
 
     const { id } = await params
     const body = await request.json()
@@ -54,6 +62,7 @@ export async function PATCH(request, { params }) {
     const { error } = await supabaseAdmin
       .from('agent_conversations')
       .update({ title: body.title, updated_at: new Date().toISOString() })
+      .eq('tenant_id', tenantId)
       .eq('id', id)
       .eq('user_id', session.user.id)
 
@@ -73,10 +82,13 @@ export async function PATCH(request, { params }) {
  */
 export async function DELETE(request, { params }) {
   try {
-    const session = await auth()
-    if (!session || (session.user.role !== 'admin' && session.user.role !== 'owner')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const result = await requireAdmin(request)
+    if (result.response) return result.response
+    const { session, tenantId } = result
+
+    // Feature flag: AI assistant
+    const featureCheck = await requireFeature(tenantId, 'ai_assistant')
+    if (featureCheck.response) return featureCheck.response
 
     const { id } = await params
 
@@ -84,6 +96,7 @@ export async function DELETE(request, { params }) {
     const { data: convo } = await supabaseAdmin
       .from('agent_conversations')
       .select('id')
+      .eq('tenant_id', tenantId)
       .eq('id', id)
       .eq('user_id', session.user.id)
       .single()
@@ -95,6 +108,7 @@ export async function DELETE(request, { params }) {
     await supabaseAdmin
       .from('agent_conversations')
       .delete()
+      .eq('tenant_id', tenantId)
       .eq('id', id)
 
     return NextResponse.json({ success: true })

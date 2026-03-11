@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth'
+import { requireStaff } from '@/lib/api-helpers'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
 
@@ -9,10 +9,9 @@ import { NextResponse } from 'next/server'
  */
 export async function GET(request) {
   try {
-    const session = await auth()
-    if (!session || (session.user.role !== 'owner' && session.user.role !== 'admin' && session.user.role !== 'employee')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const result = await requireStaff(request)
+    if (result.response) return result.response
+    const { session, tenantId } = result
 
     if (!supabaseAdmin) {
       return NextResponse.json({ error: 'Database unavailable' }, { status: 500 })
@@ -34,6 +33,7 @@ export async function GET(request) {
       const { data: matchedUsers } = await supabaseAdmin
         .from('users')
         .select('id')
+        .eq('tenant_id', tenantId)
         .or(`name.ilike.%${escaped}%,email.ilike.%${escaped}%`)
       searchUserIds = (matchedUsers || []).map((u) => u.id)
       if (searchUserIds.length === 0) {
@@ -52,6 +52,7 @@ export async function GET(request) {
           users(id, name, email, avatar_url),
           class_schedule(id, starts_at, class_types(name, color))
         `)
+        .eq('tenant_id', tenantId)
         .eq('status', 'confirmed')
 
       if (searchUserIds) q = q.in('user_id', searchUserIds)
@@ -89,6 +90,7 @@ export async function GET(request) {
           users(id, name, email, avatar_url),
           class_schedule(id, starts_at, class_types(name, color))
         `)
+        .eq('tenant_id', tenantId)
         .eq('status', 'cancelled')
 
       if (searchUserIds) q = q.in('user_id', searchUserIds)
@@ -123,6 +125,7 @@ export async function GET(request) {
       let q = supabaseAdmin
         .from('users')
         .select('id, name, email, avatar_url, created_at')
+        .eq('tenant_id', tenantId)
         .eq('role', 'member')
 
       if (searchUserIds) q = q.in('id', searchUserIds)
@@ -151,6 +154,7 @@ export async function GET(request) {
       let q = supabaseAdmin
         .from('admin_audit_log')
         .select('id, admin_id, action, target_type, target_id, details, created_at, users:admin_id(name, email, avatar_url)')
+        .eq('tenant_id', tenantId)
 
       if (dateFrom) q = q.gte('created_at', new Date(dateFrom).toISOString())
       if (dateTo) {
@@ -194,16 +198,16 @@ export async function GET(request) {
       // Batch lookups (only if needed)
       const [resolvedBookings, resolvedUsers, resolvedClasses, resolvedClassTypes] = await Promise.all([
         bookingIdsToResolve.size > 0
-          ? supabaseAdmin.from('bookings').select('id, user_id, class_schedule_id, users(name, email), class_schedule(starts_at, class_types(name))').in('id', [...bookingIdsToResolve]).then(r => r.data || [])
+          ? supabaseAdmin.from('bookings').select('id, user_id, class_schedule_id, users(name, email), class_schedule(starts_at, class_types(name))').eq('tenant_id', tenantId).in('id', [...bookingIdsToResolve]).then(r => r.data || [])
           : [],
         userIdsToResolve.size > 0
-          ? supabaseAdmin.from('users').select('id, name, email').in('id', [...userIdsToResolve]).then(r => r.data || [])
+          ? supabaseAdmin.from('users').select('id, name, email').eq('tenant_id', tenantId).in('id', [...userIdsToResolve]).then(r => r.data || [])
           : [],
         classIdsToResolve.size > 0
-          ? supabaseAdmin.from('class_schedule').select('id, starts_at, class_types(name), instructors(name)').in('id', [...classIdsToResolve]).then(r => r.data || [])
+          ? supabaseAdmin.from('class_schedule').select('id, starts_at, class_types(name), instructors(name)').eq('tenant_id', tenantId).in('id', [...classIdsToResolve]).then(r => r.data || [])
           : [],
         classTypeIdsToResolve.size > 0
-          ? supabaseAdmin.from('class_types').select('id, name').in('id', [...classTypeIdsToResolve]).then(r => r.data || [])
+          ? supabaseAdmin.from('class_types').select('id, name').eq('tenant_id', tenantId).in('id', [...classTypeIdsToResolve]).then(r => r.data || [])
           : [],
       ])
 

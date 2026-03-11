@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth'
+import { requireAuth } from '@/lib/api-helpers'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
 
@@ -8,10 +8,9 @@ import { NextResponse } from 'next/server'
  */
 export async function GET(request) {
   try {
-    const session = await auth()
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const authResult = await requireAuth()
+    if (authResult.response) return authResult.response
+    const { session, tenantId } = authResult
 
     if (!supabaseAdmin) {
       return NextResponse.json({ error: 'Database unavailable' }, { status: 500 })
@@ -27,6 +26,7 @@ export async function GET(request) {
     const { data, error } = await supabaseAdmin
       .from('class_schedule')
       .select('id, starts_at, status')
+      .eq('tenant_id', tenantId)
       .eq('id', id)
       .single()
 

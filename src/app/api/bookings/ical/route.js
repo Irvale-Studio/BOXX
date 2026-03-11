@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth'
+import { requireAuth } from '@/lib/api-helpers'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
 
@@ -7,10 +7,9 @@ import { NextResponse } from 'next/server'
  */
 export async function GET(request) {
   try {
-    const session = await auth()
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const authResult = await requireAuth()
+    if (authResult.response) return authResult.response
+    const { session, tenantId } = authResult
 
     const { searchParams } = new URL(request.url)
     const bookingId = searchParams.get('id')
@@ -26,6 +25,7 @@ export async function GET(request) {
     const { data: booking } = await supabaseAdmin
       .from('bookings')
       .select('id, status, class_schedule(id, starts_at, duration_minutes, class_types(name), instructors(name))')
+      .eq('tenant_id', tenantId)
       .eq('id', bookingId)
       .eq('user_id', session.user.id)
       .single()

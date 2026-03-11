@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth'
+import { requireStaff } from '@/lib/api-helpers'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
 
@@ -7,10 +7,9 @@ import { NextResponse } from 'next/server'
  */
 export async function GET(request) {
   try {
-    const session = await auth()
-    if (!session || (session.user.role !== 'owner' && session.user.role !== 'admin' && session.user.role !== 'employee')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const result = await requireStaff(request)
+    if (result.response) return result.response
+    const { session, tenantId } = result
 
     if (!supabaseAdmin) {
       return NextResponse.json({ error: 'Database unavailable' }, { status: 500 })
@@ -70,12 +69,14 @@ export async function GET(request) {
       supabaseAdmin
         .from('users')
         .select('id', { count: 'exact', head: true })
+        .eq('tenant_id', tenantId)
         .eq('role', 'member'),
 
       // Active credit records
       supabaseAdmin
         .from('user_credits')
         .select('id, credits_remaining', { count: 'exact' })
+        .eq('tenant_id', tenantId)
         .eq('status', 'active')
         .gt('expires_at', now.toISOString()),
 
@@ -83,6 +84,7 @@ export async function GET(request) {
       supabaseAdmin
         .from('bookings')
         .select('id', { count: 'exact', head: true })
+        .eq('tenant_id', tenantId)
         .eq('status', 'confirmed')
         .gte('created_at', todayStart.toISOString())
         .lte('created_at', todayEnd.toISOString()),
@@ -91,6 +93,7 @@ export async function GET(request) {
       supabaseAdmin
         .from('class_schedule')
         .select('id, starts_at, ends_at, capacity, status, notes, class_types(name, color, duration_mins), instructors(name)')
+        .eq('tenant_id', tenantId)
         .gte('starts_at', classesStart.toISOString())
         .lte('starts_at', classesEnd.toISOString())
         .order('starts_at', { ascending: true }),
@@ -99,12 +102,14 @@ export async function GET(request) {
       supabaseAdmin
         .from('user_credits')
         .select('id, class_packs(price_thb)')
+        .eq('tenant_id', tenantId)
         .gte('purchased_at', monthStart.toISOString()),
 
       // Recent signups (last 7 days)
       supabaseAdmin
         .from('users')
         .select('id, name, email, avatar_url, created_at')
+        .eq('tenant_id', tenantId)
         .gte('created_at', sevenDaysAgo.toISOString())
         .order('created_at', { ascending: false })
         .limit(10),
@@ -113,6 +118,7 @@ export async function GET(request) {
       supabaseAdmin
         .from('user_credits')
         .select('id, credits_remaining, expires_at, user_id, users(name, email), class_packs(name)')
+        .eq('tenant_id', tenantId)
         .eq('status', 'active')
         .gt('expires_at', now.toISOString())
         .lte('credits_remaining', 2)
@@ -124,6 +130,7 @@ export async function GET(request) {
       supabaseAdmin
         .from('bookings')
         .select('id', { count: 'exact', head: true })
+        .eq('tenant_id', tenantId)
         .eq('status', 'confirmed'),
 
       // Recent cancellations (last 7 days)
@@ -134,6 +141,7 @@ export async function GET(request) {
           users(name, email),
           class_schedule(starts_at, class_types(name))
         `)
+        .eq('tenant_id', tenantId)
         .eq('status', 'cancelled')
         .gte('cancelled_at', sevenDaysAgo.toISOString())
         .order('cancelled_at', { ascending: false })
@@ -143,6 +151,7 @@ export async function GET(request) {
       supabaseAdmin
         .from('bookings')
         .select('id', { count: 'exact', head: true })
+        .eq('tenant_id', tenantId)
         .eq('status', 'confirmed')
         .gte('created_at', sevenDaysAgo.toISOString()),
 
@@ -150,6 +159,7 @@ export async function GET(request) {
       supabaseAdmin
         .from('bookings')
         .select('id', { count: 'exact', head: true })
+        .eq('tenant_id', tenantId)
         .eq('status', 'confirmed')
         .gte('created_at', fourteenDaysAgo.toISOString())
         .lt('created_at', sevenDaysAgo.toISOString()),
@@ -158,6 +168,7 @@ export async function GET(request) {
       supabaseAdmin
         .from('users')
         .select('id', { count: 'exact', head: true })
+        .eq('tenant_id', tenantId)
         .eq('role', 'member')
         .gte('created_at', sevenDaysAgo.toISOString()),
 
@@ -165,6 +176,7 @@ export async function GET(request) {
       supabaseAdmin
         .from('users')
         .select('id', { count: 'exact', head: true })
+        .eq('tenant_id', tenantId)
         .eq('role', 'member')
         .gte('created_at', fourteenDaysAgo.toISOString())
         .lt('created_at', sevenDaysAgo.toISOString()),
@@ -173,6 +185,7 @@ export async function GET(request) {
       supabaseAdmin
         .from('class_schedule')
         .select('id, starts_at, ends_at, capacity, status, class_types(name, color), instructors(name)')
+        .eq('tenant_id', tenantId)
         .eq('status', 'active')
         .gte('starts_at', now.toISOString())
         .lte('starts_at', nextWeek.toISOString())
@@ -190,6 +203,7 @@ export async function GET(request) {
       supabaseAdmin
         .from('bookings')
         .select('user_id')
+        .eq('tenant_id', tenantId)
         .eq('status', 'confirmed')
         .gte('created_at', sevenDaysAgo.toISOString()),
 
@@ -197,6 +211,7 @@ export async function GET(request) {
       supabaseAdmin
         .from('bookings')
         .select('user_id')
+        .eq('tenant_id', tenantId)
         .eq('status', 'confirmed')
         .gte('created_at', fourteenDaysAgo.toISOString())
         .lt('created_at', sevenDaysAgo.toISOString()),
@@ -205,6 +220,7 @@ export async function GET(request) {
       supabaseAdmin
         .from('bookings')
         .select('user_id')
+        .eq('tenant_id', tenantId)
         .eq('status', 'confirmed')
         .gte('created_at', monthStart.toISOString()),
 
@@ -212,6 +228,7 @@ export async function GET(request) {
       supabaseAdmin
         .from('bookings')
         .select('user_id')
+        .eq('tenant_id', tenantId)
         .eq('status', 'confirmed')
         .gte('created_at', lastMonthStart.toISOString())
         .lte('created_at', lastMonthEnd.toISOString()),
@@ -220,6 +237,7 @@ export async function GET(request) {
       supabaseAdmin
         .from('bookings')
         .select('id', { count: 'exact', head: true })
+        .eq('tenant_id', tenantId)
         .eq('status', 'confirmed')
         .gte('created_at', monthStart.toISOString()),
 
@@ -227,6 +245,7 @@ export async function GET(request) {
       supabaseAdmin
         .from('bookings')
         .select('id', { count: 'exact', head: true })
+        .eq('tenant_id', tenantId)
         .eq('status', 'confirmed')
         .gte('created_at', lastMonthStart.toISOString())
         .lte('created_at', lastMonthEnd.toISOString()),
@@ -235,6 +254,7 @@ export async function GET(request) {
       supabaseAdmin
         .from('user_credits')
         .select('id, class_packs(price_thb)')
+        .eq('tenant_id', tenantId)
         .gte('purchased_at', lastMonthStart.toISOString())
         .lte('purchased_at', lastMonthEnd.toISOString()),
     ])
@@ -256,6 +276,7 @@ export async function GET(request) {
       supabaseAdmin
         .from('bookings')
         .select('user_id')
+        .eq('tenant_id', tenantId)
         .eq('status', 'confirmed')
         .gte('created_at', thirtyDaysAgo.toISOString()),
 
@@ -263,12 +284,14 @@ export async function GET(request) {
       supabaseAdmin
         .from('users')
         .select('id, name, email, avatar_url, created_at')
+        .eq('tenant_id', tenantId)
         .eq('role', 'member'),
 
       // Most recent confirmed booking per user (for inactivity check)
       supabaseAdmin
         .from('bookings')
         .select('user_id, created_at')
+        .eq('tenant_id', tenantId)
         .eq('status', 'confirmed')
         .order('created_at', { ascending: false }),
     ])
@@ -303,6 +326,7 @@ export async function GET(request) {
     const { data: allActiveCredits } = await supabaseAdmin
       .from('user_credits')
       .select('user_id, credits_remaining, expires_at, class_packs(name)')
+      .eq('tenant_id', tenantId)
       .eq('status', 'active')
       .gt('expires_at', now.toISOString())
 
@@ -362,11 +386,13 @@ export async function GET(request) {
         supabaseAdmin
           .from('bookings')
           .select('id, class_schedule_id, status, users(id, name, avatar_url, email)')
+          .eq('tenant_id', tenantId)
           .in('class_schedule_id', classIds)
           .eq('status', 'confirmed'),
         supabaseAdmin
           .from('waitlist')
           .select('class_schedule_id, position, users(id, name, avatar_url, email)')
+          .eq('tenant_id', tenantId)
           .in('class_schedule_id', classIds)
           .order('position', { ascending: true }),
       ])
@@ -431,6 +457,7 @@ export async function GET(request) {
       const { data: upcomingBookings } = await supabaseAdmin
         .from('bookings')
         .select('class_schedule_id')
+        .eq('tenant_id', tenantId)
         .in('class_schedule_id', upcomingIds)
         .eq('status', 'confirmed')
 

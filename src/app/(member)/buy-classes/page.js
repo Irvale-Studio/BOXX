@@ -128,7 +128,7 @@ function BuyClassesContent() {
       <div className="text-center mb-10">
         <h1 className="text-3xl sm:text-4xl font-bold text-foreground tracking-tight">Choose Your Pack</h1>
         <p className="text-muted mt-3 max-w-md mx-auto">
-          Invest in yourself. Every pack gives you access to world-class boxing and PT sessions with UK-qualified coaches.
+          Invest in yourself. Choose a pack that fits your training goals.
         </p>
       </div>
 
@@ -310,7 +310,7 @@ function BuyClassesContent() {
       {/* Social proof */}
       <div className="mt-12 text-center">
         <p className="text-muted text-sm">
-          Join the BOXX community &middot; UK-qualified coaches &middot; Chiang Mai&apos;s first luxury boxing studio
+          Flexible packs &middot; No expiry pressure &middot; Book anytime
         </p>
       </div>
 

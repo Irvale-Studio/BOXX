@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth'
+import { requireStaff, requireAdmin } from '@/lib/api-helpers'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
@@ -6,12 +6,12 @@ import { z } from 'zod'
 /**
  * GET /api/admin/class-types — List all class types
  */
-export async function GET() {
+export async function GET(request) {
   try {
-    const session = await auth()
-    if (!session || (session.user.role !== 'owner' && session.user.role !== 'admin' && session.user.role !== 'employee')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const result = await requireStaff(request)
+    if (result.response) return result.response
+    const { session, tenantId } = result
+
     if (!supabaseAdmin) {
       return NextResponse.json({ error: 'Database unavailable' }, { status: 500 })
     }
@@ -19,6 +19,7 @@ export async function GET() {
     const { data, error } = await supabaseAdmin
       .from('class_types')
       .select('*')
+      .eq('tenant_id', tenantId)
       .order('name')
 
     if (error) {
@@ -47,10 +48,10 @@ const createSchema = z.object({
  */
 export async function POST(request) {
   try {
-    const session = await auth()
-    if (!session || (session.user.role !== 'owner' && session.user.role !== 'admin' && session.user.role !== 'employee')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const result = await requireStaff(request)
+    if (result.response) return result.response
+    const { session, tenantId } = result
+
     if (!supabaseAdmin) {
       return NextResponse.json({ error: 'Database unavailable' }, { status: 500 })
     }
@@ -62,15 +63,22 @@ export async function POST(request) {
     }
 
     // Check platform class type limit
-    const { checkClassTypeLimit } = await import('@/lib/platform-limits')
+    const { checkClassTypeLimit, checkTenantPlanLimit } = await import('@/lib/platform-limits')
     const { allowed: ctAllowed, reason: ctReason } = await checkClassTypeLimit()
     if (!ctAllowed) {
       return NextResponse.json({ error: ctReason }, { status: 403 })
     }
 
+    // Check plan-level class type limit
+    const typeLimit = await checkTenantPlanLimit(tenantId, 'max_class_types')
+    if (!typeLimit.allowed) {
+      return NextResponse.json({ error: `Class type limit reached (${typeLimit.current}/${typeLimit.limit} on ${typeLimit.plan} plan)` }, { status: 403 })
+    }
+
     const { data: ct, error } = await supabaseAdmin
       .from('class_types')
       .insert({
+        tenant_id: tenantId,
         name: parsed.data.name,
         description: parsed.data.description || null,
         duration_mins: parsed.data.duration_mins || 60,
@@ -88,6 +96,7 @@ export async function POST(request) {
     }
 
     await supabaseAdmin.from('admin_audit_log').insert({
+      tenant_id: tenantId,
       admin_id: session.user.id,
       action: 'create_class_type',
       target_type: 'class_types',
@@ -111,10 +120,10 @@ const deleteSchema = z.object({
  */
 export async function DELETE(request) {
   try {
-    const session = await auth()
-    if (!session || (session.user.role !== 'owner' && session.user.role !== 'admin')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const result = await requireAdmin(request)
+    if (result.response) return result.response
+    const { session, tenantId } = result
+
     if (!supabaseAdmin) {
       return NextResponse.json({ error: 'Database unavailable' }, { status: 500 })
     }
@@ -131,6 +140,7 @@ export async function DELETE(request) {
     const { count } = await supabaseAdmin
       .from('class_schedule')
       .select('id', { count: 'exact', head: true })
+      .eq('tenant_id', tenantId)
       .eq('class_type_id', id)
 
     if (count > 0) {
@@ -143,6 +153,7 @@ export async function DELETE(request) {
     const { error } = await supabaseAdmin
       .from('class_types')
       .delete()
+      .eq('tenant_id', tenantId)
       .eq('id', id)
 
     if (error) {
@@ -151,6 +162,7 @@ export async function DELETE(request) {
     }
 
     await supabaseAdmin.from('admin_audit_log').insert({
+      tenant_id: tenantId,
       admin_id: session.user.id,
       action: 'delete_class_type',
       target_type: 'class_types',
@@ -171,6 +183,7 @@ const updateSchema = z.object({
   duration_mins: z.number().int().min(1).max(300).optional(),
   color: z.string().max(20).optional(),
   icon: z.string().max(10).nullable().optional(),
+  image_url: z.string().max(2000).nullable().optional(),
   is_private: z.boolean().optional(),
   active: z.boolean().optional(),
 })
@@ -180,10 +193,10 @@ const updateSchema = z.object({
  */
 export async function PUT(request) {
   try {
-    const session = await auth()
-    if (!session || (session.user.role !== 'owner' && session.user.role !== 'admin' && session.user.role !== 'employee')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const result = await requireStaff(request)
+    if (result.response) return result.response
+    const { session, tenantId } = result
+
     if (!supabaseAdmin) {
       return NextResponse.json({ error: 'Database unavailable' }, { status: 500 })
     }
@@ -201,6 +214,7 @@ export async function PUT(request) {
       const { count } = await supabaseAdmin
         .from('class_schedule')
         .select('id', { count: 'exact', head: true })
+        .eq('tenant_id', tenantId)
         .eq('class_type_id', id)
         .eq('status', 'active')
         .gt('starts_at', new Date().toISOString())
@@ -216,6 +230,7 @@ export async function PUT(request) {
     const { data: ct, error } = await supabaseAdmin
       .from('class_types')
       .update(updates)
+      .eq('tenant_id', tenantId)
       .eq('id', id)
       .select()
       .single()
@@ -226,6 +241,7 @@ export async function PUT(request) {
     }
 
     await supabaseAdmin.from('admin_audit_log').insert({
+      tenant_id: tenantId,
       admin_id: session.user.id,
       action: 'update_class_type',
       target_type: 'class_types',

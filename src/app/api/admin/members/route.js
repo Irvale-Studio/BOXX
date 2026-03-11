@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth'
+import { requireStaff } from '@/lib/api-helpers'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
@@ -8,10 +8,9 @@ import { z } from 'zod'
  */
 export async function GET(request) {
   try {
-    const session = await auth()
-    if (!session || (session.user.role !== 'owner' && session.user.role !== 'admin' && session.user.role !== 'employee')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const result = await requireStaff(request)
+    if (result.response) return result.response
+    const { session, tenantId } = result
 
     if (!supabaseAdmin) {
       return NextResponse.json({ error: 'Database unavailable' }, { status: 500 })
@@ -37,6 +36,7 @@ export async function GET(request) {
     let query = supabaseAdmin
       .from('users')
       .select('id, name, email, avatar_url, role, created_at, phone', { count: 'exact' })
+      .eq('tenant_id', tenantId)
       .order(sortConfig.column, { ascending: sortConfig.ascending })
       .range(offset, offset + limit - 1)
 
@@ -65,12 +65,14 @@ export async function GET(request) {
         supabaseAdmin
           .from('user_credits')
           .select('user_id, credits_remaining')
+          .eq('tenant_id', tenantId)
           .in('user_id', memberIds)
           .eq('status', 'active')
           .gt('expires_at', new Date().toISOString()),
         supabaseAdmin
           .from('bookings')
           .select('user_id')
+          .eq('tenant_id', tenantId)
           .in('user_id', memberIds)
           .eq('status', 'confirmed'),
       ])
@@ -128,10 +130,9 @@ const grantCreditsSchema = z.object({
  */
 export async function POST(request) {
   try {
-    const session = await auth()
-    if (!session || (session.user.role !== 'owner' && session.user.role !== 'admin' && session.user.role !== 'employee')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const result = await requireStaff(request)
+    if (result.response) return result.response
+    const { session, tenantId } = result
 
     if (!supabaseAdmin) {
       return NextResponse.json({ error: 'Database unavailable' }, { status: 500 })
@@ -149,6 +150,7 @@ export async function POST(request) {
     const { data: pack } = await supabaseAdmin
       .from('class_packs')
       .select('*')
+      .eq('tenant_id', tenantId)
       .eq('id', packId)
       .single()
 
@@ -162,6 +164,7 @@ export async function POST(request) {
     const { data: credit, error } = await supabaseAdmin
       .from('user_credits')
       .insert({
+        tenant_id: tenantId,
         user_id: userId,
         class_pack_id: packId,
         credits_total: pack.credits,
@@ -182,11 +185,13 @@ export async function POST(request) {
     const { data: grantUser } = await supabaseAdmin
       .from('users')
       .select('name, email')
+      .eq('tenant_id', tenantId)
       .eq('id', userId)
       .single()
 
     // Audit log
     await supabaseAdmin.from('admin_audit_log').insert({
+      tenant_id: tenantId,
       admin_id: session.user.id,
       action: 'grant_credits',
       target_type: 'user_credits',

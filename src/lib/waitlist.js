@@ -15,7 +15,7 @@ export async function promoteFromWaitlist(classScheduleId) {
     // Get class info
     const { data: cls } = await supabaseAdmin
       .from('class_schedule')
-      .select('id, capacity, starts_at, status, class_types(name), instructors(name)')
+      .select('id, capacity, starts_at, status, tenant_id, class_types(name), instructors(name)')
       .eq('id', classScheduleId)
       .single()
 
@@ -79,6 +79,7 @@ export async function promoteFromWaitlist(classScheduleId) {
           class_schedule_id: classScheduleId,
           credit_id: credits[0].id,
           status: 'confirmed',
+          tenant_id: cls.tenant_id,
         })
 
       if (bookingError) {

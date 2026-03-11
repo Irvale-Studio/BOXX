@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth'
+import { requireAuth } from '@/lib/api-helpers'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
@@ -12,10 +12,9 @@ const joinSchema = z.object({
  */
 export async function POST(request) {
   try {
-    const session = await auth()
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const authResult = await requireAuth()
+    if (authResult.response) return authResult.response
+    const { session, tenantId } = authResult
 
     const body = await request.json()
     const parsed = joinSchema.safeParse(body)
@@ -34,6 +33,7 @@ export async function POST(request) {
     const { data: cls } = await supabaseAdmin
       .from('class_schedule')
       .select('id, capacity, starts_at, status')
+      .eq('tenant_id', tenantId)
       .eq('id', classScheduleId)
       .eq('status', 'active')
       .single()
@@ -50,6 +50,7 @@ export async function POST(request) {
     const { data: existingBooking } = await supabaseAdmin
       .from('bookings')
       .select('id')
+      .eq('tenant_id', tenantId)
       .eq('user_id', userId)
       .eq('class_schedule_id', classScheduleId)
       .eq('status', 'confirmed')
@@ -63,6 +64,7 @@ export async function POST(request) {
     const { data: existingWaitlist } = await supabaseAdmin
       .from('waitlist')
       .select('id, position')
+      .eq('tenant_id', tenantId)
       .eq('user_id', userId)
       .eq('class_schedule_id', classScheduleId)
       .limit(1)
@@ -75,6 +77,7 @@ export async function POST(request) {
     const { data: maxPos } = await supabaseAdmin
       .from('waitlist')
       .select('position')
+      .eq('tenant_id', tenantId)
       .eq('class_schedule_id', classScheduleId)
       .order('position', { ascending: false })
       .limit(1)
@@ -85,6 +88,7 @@ export async function POST(request) {
     const { data: entry, error } = await supabaseAdmin
       .from('waitlist')
       .insert({
+        tenant_id: tenantId,
         user_id: userId,
         class_schedule_id: classScheduleId,
         position: nextPosition,

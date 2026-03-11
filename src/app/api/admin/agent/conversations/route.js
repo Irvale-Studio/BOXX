@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth'
+import { requireAdmin, requireFeature } from '@/lib/api-helpers'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
 import { getSuggestions } from '@/lib/agent/memory'
@@ -8,16 +8,20 @@ import { enforceConversationCap } from '@/lib/agent/conversations'
 /**
  * GET /api/admin/agent/conversations — List conversations + dynamic suggestions
  */
-export async function GET() {
+export async function GET(request) {
   try {
-    const session = await auth()
-    if (!session || (session.user.role !== 'admin' && session.user.role !== 'owner')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const result = await requireAdmin(request)
+    if (result.response) return result.response
+    const { session, tenantId } = result
+
+    // Feature flag: AI assistant
+    const featureCheck = await requireFeature(tenantId, 'ai_assistant')
+    if (featureCheck.response) return featureCheck.response
 
     const { data: conversations } = await supabaseAdmin
       .from('agent_conversations')
       .select('id, title, created_at, updated_at')
+      .eq('tenant_id', tenantId)
       .eq('user_id', session.user.id)
       .order('updated_at', { ascending: false })
       .limit(50)
@@ -43,10 +47,13 @@ export async function GET() {
  */
 export async function POST(request) {
   try {
-    const session = await auth()
-    if (!session || (session.user.role !== 'admin' && session.user.role !== 'owner')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const result = await requireAdmin(request)
+    if (result.response) return result.response
+    const { session, tenantId } = result
+
+    // Feature flag: AI assistant
+    const featureCheck = await requireFeature(tenantId, 'ai_assistant')
+    if (featureCheck.response) return featureCheck.response
 
     await enforceConversationCap(session.user.id)
 
@@ -55,6 +62,7 @@ export async function POST(request) {
     const { data: conversation, error } = await supabaseAdmin
       .from('agent_conversations')
       .insert({
+        tenant_id: tenantId,
         user_id: session.user.id,
         title: body.title || 'New conversation',
       })

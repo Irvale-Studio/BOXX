@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth'
+import { requireAuth } from '@/lib/api-helpers'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { rateLimit } from '@/lib/rate-limit'
 import { NextResponse } from 'next/server'
@@ -15,10 +15,9 @@ const passwordSchema = z.object({
  */
 export async function POST(request) {
   try {
-    const session = await auth()
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const authResult = await requireAuth()
+    if (authResult.response) return authResult.response
+    const { session, tenantId } = authResult
 
     const { limited } = rateLimit(`password:${session.user.id}`, 5, 15 * 60 * 1000)
     if (limited) {
@@ -41,6 +40,7 @@ export async function POST(request) {
     const { data: user } = await supabaseAdmin
       .from('users')
       .select('id, password_hash, google_id')
+      .eq('tenant_id', tenantId)
       .eq('id', session.user.id)
       .single()
 
@@ -68,6 +68,7 @@ export async function POST(request) {
     const { error } = await supabaseAdmin
       .from('users')
       .update({ password_hash: newHash })
+      .eq('tenant_id', tenantId)
       .eq('id', session.user.id)
 
     if (error) {

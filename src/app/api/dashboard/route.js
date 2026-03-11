@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth'
+import { requireAuth } from '@/lib/api-helpers'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
 
@@ -8,10 +8,9 @@ import { NextResponse } from 'next/server'
  */
 export async function GET() {
   try {
-    const session = await auth()
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const authResult = await requireAuth()
+    if (authResult.response) return authResult.response
+    const { session, tenantId } = authResult
 
     if (!supabaseAdmin) {
       return NextResponse.json({ error: 'Database unavailable' }, { status: 500 })
@@ -32,6 +31,7 @@ export async function GET() {
       supabaseAdmin
         .from('users')
         .select('id, email, name, phone, avatar_url, bio, show_in_roster, google_id, created_at')
+        .eq('tenant_id', tenantId)
         .eq('id', userId)
         .single(),
 
@@ -39,6 +39,7 @@ export async function GET() {
       supabaseAdmin
         .from('user_credits')
         .select('*, class_packs(name, is_membership)')
+        .eq('tenant_id', tenantId)
         .eq('user_id', userId)
         .eq('status', 'active')
         .gt('expires_at', now)
@@ -48,6 +49,7 @@ export async function GET() {
       supabaseAdmin
         .from('class_packs')
         .select('*')
+        .eq('tenant_id', tenantId)
         .eq('active', true)
         .order('display_order', { ascending: true }),
 
@@ -59,6 +61,7 @@ export async function GET() {
           class_types(id, name, description, duration_mins, color, icon),
           instructors(id, name, photo_url, bio)
         `)
+        .eq('tenant_id', tenantId)
         .eq('status', 'active')
         .gte('starts_at', now)
         .lte('starts_at', new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString())
@@ -75,6 +78,7 @@ export async function GET() {
             instructors(name, photo_url)
           )
         `)
+        .eq('tenant_id', tenantId)
         .eq('user_id', userId)
         .in('status', ['confirmed', 'cancelled', 'invited'])
         .order('created_at', { ascending: false })
@@ -92,6 +96,7 @@ export async function GET() {
       const { data: counts } = await supabaseAdmin
         .from('bookings')
         .select('class_schedule_id')
+        .eq('tenant_id', tenantId)
         .in('class_schedule_id', scheduleIds)
         .eq('status', 'confirmed')
 
@@ -105,6 +110,7 @@ export async function GET() {
       const { data: userBookings } = await supabaseAdmin
         .from('bookings')
         .select('class_schedule_id')
+        .eq('tenant_id', tenantId)
         .eq('user_id', userId)
         .in('class_schedule_id', scheduleIds)
         .eq('status', 'confirmed')
@@ -117,6 +123,7 @@ export async function GET() {
       const { data: waitlistEntries } = await supabaseAdmin
         .from('waitlist')
         .select('class_schedule_id, position')
+        .eq('tenant_id', tenantId)
         .eq('user_id', userId)
         .in('class_schedule_id', scheduleIds)
 
@@ -130,6 +137,7 @@ export async function GET() {
       const { data: rosterData } = await supabaseAdmin
         .from('bookings')
         .select('class_schedule_id, users(id, name, avatar_url, bio, show_in_roster)')
+        .eq('tenant_id', tenantId)
         .in('class_schedule_id', scheduleIds)
         .eq('status', 'confirmed')
 
@@ -175,6 +183,7 @@ export async function GET() {
           instructors(name)
         )
       `)
+      .eq('tenant_id', tenantId)
       .eq('user_id', userId)
       .order('created_at', { ascending: true })
 

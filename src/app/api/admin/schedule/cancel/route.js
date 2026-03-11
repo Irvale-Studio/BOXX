@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth'
+import { requireStaff } from '@/lib/api-helpers'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { sendClassCancelledByAdmin } from '@/lib/email'
 import { NextResponse } from 'next/server'
@@ -20,10 +20,9 @@ const cancelSchema = z.object({
  */
 export async function POST(request) {
   try {
-    const session = await auth()
-    if (!session || (session.user.role !== 'owner' && session.user.role !== 'admin' && session.user.role !== 'employee')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const result = await requireStaff(request)
+    if (result.response) return result.response
+    const { session, tenantId } = result
 
     if (!supabaseAdmin) {
       return NextResponse.json({ error: 'Database unavailable' }, { status: 500 })
@@ -41,6 +40,7 @@ export async function POST(request) {
     const { data: cls, error: clsError } = await supabaseAdmin
       .from('class_schedule')
       .select('id, status, starts_at, recurring_id, class_types(name)')
+      .eq('tenant_id', tenantId)
       .eq('id', classId)
       .single()
 
@@ -56,6 +56,7 @@ export async function POST(request) {
       const { data: recurringClasses } = await supabaseAdmin
         .from('class_schedule')
         .select('id')
+        .eq('tenant_id', tenantId)
         .eq('recurring_id', cls.recurring_id)
         .eq('status', 'active')
 
@@ -70,6 +71,7 @@ export async function POST(request) {
       const { error: cancelError } = await supabaseAdmin
         .from('class_schedule')
         .update({ status: 'cancelled' })
+        .eq('tenant_id', tenantId)
         .eq('id', cId)
 
       if (cancelError) {
@@ -82,12 +84,14 @@ export async function POST(request) {
       const { data: classDetail } = await supabaseAdmin
         .from('class_schedule')
         .select('starts_at, class_types(name)')
+        .eq('tenant_id', tenantId)
         .eq('id', cId)
         .single()
 
       const { data: bookings } = await supabaseAdmin
         .from('bookings')
         .select('id, user_id, credit_id')
+        .eq('tenant_id', tenantId)
         .eq('class_schedule_id', cId)
         .eq('status', 'confirmed')
 
@@ -101,12 +105,14 @@ export async function POST(request) {
               credit_returned: true,
               cancelled_at: new Date().toISOString(),
             })
+            .eq('tenant_id', tenantId)
             .eq('id', booking.id)
 
           if (booking.credit_id) {
             const { data: credit } = await supabaseAdmin
               .from('user_credits')
               .select('credits_remaining')
+              .eq('tenant_id', tenantId)
               .eq('id', booking.credit_id)
               .single()
 
@@ -114,6 +120,7 @@ export async function POST(request) {
               await supabaseAdmin
                 .from('user_credits')
                 .update({ credits_remaining: credit.credits_remaining + 1 })
+                .eq('tenant_id', tenantId)
                 .eq('id', booking.credit_id)
             }
 
@@ -123,6 +130,7 @@ export async function POST(request) {
           const { data: memberUser } = await supabaseAdmin
             .from('users')
             .select('email, name')
+            .eq('tenant_id', tenantId)
             .eq('id', booking.user_id)
             .single()
 
@@ -148,12 +156,14 @@ export async function POST(request) {
         await supabaseAdmin
           .from('waitlist')
           .delete()
+          .eq('tenant_id', tenantId)
           .eq('class_schedule_id', cId)
       }
     }
 
     // 4. Audit log
     await supabaseAdmin.from('admin_audit_log').insert({
+      tenant_id: tenantId,
       admin_id: session.user.id,
       action: cancelAll ? 'cancel_recurring_classes' : 'cancel_class',
       target_type: 'class_schedule',

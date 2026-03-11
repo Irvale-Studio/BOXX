@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth'
+import { requireStaff } from '@/lib/api-helpers'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { promoteFromWaitlist } from '@/lib/waitlist'
 import { NextResponse } from 'next/server'
@@ -10,10 +10,9 @@ import { z } from 'zod'
  */
 export async function GET(request) {
   try {
-    const session = await auth()
-    if (!session || (session.user.role !== 'owner' && session.user.role !== 'admin' && session.user.role !== 'employee')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const result = await requireStaff(request)
+    if (result.response) return result.response
+    const { session, tenantId } = result
 
     if (!supabaseAdmin) {
       return NextResponse.json({ error: 'Database unavailable' }, { status: 500 })
@@ -36,6 +35,7 @@ export async function GET(request) {
       const { data: matchedUsers } = await supabaseAdmin
         .from('users')
         .select('id')
+        .eq('tenant_id', tenantId)
         .or(`name.ilike.%${search.replace(/[%_,().\\]/g, '\\$&')}%,email.ilike.%${search.replace(/[%_,().\\]/g, '\\$&')}%`)
       searchUserIds = (matchedUsers || []).map((u) => u.id)
       if (searchUserIds.length === 0) {
@@ -53,6 +53,7 @@ export async function GET(request) {
         class_schedule(id, starts_at, ends_at, class_types(id, name, color), instructors(name)),
         user_credits(id, class_packs(name))
       `, { count: 'exact' })
+      .eq('tenant_id', tenantId)
       .order('created_at', { ascending: sortAscending })
       .range(offset, offset + limit - 1)
 
@@ -66,7 +67,7 @@ export async function GET(request) {
 
     // Filter by class date range and/or class type
     if (dateFrom || dateTo || classType) {
-      let classQuery = supabaseAdmin.from('class_schedule').select('id')
+      let classQuery = supabaseAdmin.from('class_schedule').select('id').eq('tenant_id', tenantId)
       if (dateFrom) classQuery = classQuery.gte('starts_at', new Date(dateFrom).toISOString())
       if (dateTo) {
         const endDate = new Date(dateTo)
@@ -112,10 +113,10 @@ const updateBookingSchema = z.object({
  */
 export async function PUT(request) {
   try {
-    const session = await auth()
-    if (!session || (session.user.role !== 'owner' && session.user.role !== 'admin' && session.user.role !== 'employee')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const result = await requireStaff(request)
+    if (result.response) return result.response
+    const { session, tenantId } = result
+
     if (!supabaseAdmin) {
       return NextResponse.json({ error: 'Database unavailable' }, { status: 500 })
     }
@@ -131,6 +132,7 @@ export async function PUT(request) {
     const { data: booking } = await supabaseAdmin
       .from('bookings')
       .select('id, user_id, credit_id, status, class_schedule_id')
+      .eq('tenant_id', tenantId)
       .eq('id', bookingId)
       .single()
 
@@ -145,6 +147,7 @@ export async function PUT(request) {
         cancelled_at: new Date().toISOString(),
         credit_returned: refundCredit !== false,
       })
+      .eq('tenant_id', tenantId)
       .eq('id', bookingId)
 
     // Refund credit if requested
@@ -152,6 +155,7 @@ export async function PUT(request) {
       const { data: credit } = await supabaseAdmin
         .from('user_credits')
         .select('id, credits_remaining')
+        .eq('tenant_id', tenantId)
         .eq('id', booking.credit_id)
         .single()
 
@@ -159,17 +163,19 @@ export async function PUT(request) {
         await supabaseAdmin
           .from('user_credits')
           .update({ credits_remaining: credit.credits_remaining + 1 })
+          .eq('tenant_id', tenantId)
           .eq('id', credit.id)
       }
     }
 
     // Look up member + class info for audit details
     const [{ data: cancelUser }, { data: cancelClass }] = await Promise.all([
-      supabaseAdmin.from('users').select('name, email').eq('id', booking.user_id).single(),
-      supabaseAdmin.from('class_schedule').select('starts_at, class_types(name)').eq('id', booking.class_schedule_id).single(),
+      supabaseAdmin.from('users').select('name, email').eq('tenant_id', tenantId).eq('id', booking.user_id).single(),
+      supabaseAdmin.from('class_schedule').select('starts_at, class_types(name)').eq('tenant_id', tenantId).eq('id', booking.class_schedule_id).single(),
     ])
 
     await supabaseAdmin.from('admin_audit_log').insert({
+      tenant_id: tenantId,
       admin_id: session.user.id,
       action: 'booking_cancel',
       target_type: 'booking',

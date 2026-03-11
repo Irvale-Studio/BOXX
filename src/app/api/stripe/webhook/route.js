@@ -4,6 +4,8 @@ import { sendPackPurchaseConfirmation } from '@/lib/email'
 import { confirmPendingInvitations } from '@/lib/confirm-pending-invitations'
 import { NextResponse } from 'next/server'
 
+const DEFAULT_TENANT_ID = process.env.DEFAULT_TENANT_ID || 'a0000000-0000-0000-0000-000000000001'
+
 /**
  * POST /api/stripe/webhook — Handle Stripe webhook events
  * Verifies signature, processes payment events, allocates credits
@@ -69,18 +71,20 @@ export async function POST(request) {
  * Handle successful checkout — allocate credits to user
  */
 async function handleCheckoutCompleted(session) {
-  const { userId, packId } = session.metadata || {}
+  const { userId, packId, tenantId: metaTenantId } = session.metadata || {}
   if (!userId || !packId) {
     console.error('[stripe/webhook] Missing metadata in checkout session')
     return
   }
 
+  const tenantId = metaTenantId || DEFAULT_TENANT_ID
   const paymentId = session.payment_intent || session.subscription || session.id
 
   // Idempotency: check if credits already allocated for this payment
   const { data: existing } = await supabaseAdmin
     .from('user_credits')
     .select('id')
+    .eq('tenant_id', tenantId)
     .eq('stripe_payment_id', paymentId)
     .limit(1)
 
@@ -93,6 +97,7 @@ async function handleCheckoutCompleted(session) {
   const { data: pack } = await supabaseAdmin
     .from('class_packs')
     .select('*')
+    .eq('tenant_id', tenantId)
     .eq('id', packId)
     .single()
 
@@ -107,6 +112,7 @@ async function handleCheckoutCompleted(session) {
 
   // Insert user credits (unique constraint on stripe_payment_id prevents duplicates)
   const { error } = await supabaseAdmin.from('user_credits').insert({
+    tenant_id: tenantId,
     user_id: userId,
     class_pack_id: packId,
     credits_total: pack.credits, // null for unlimited
@@ -133,6 +139,7 @@ async function handleCheckoutCompleted(session) {
   const { data: purchaseUser } = await supabaseAdmin
     .from('users')
     .select('email, name')
+    .eq('tenant_id', tenantId)
     .eq('id', userId)
     .single()
 
@@ -150,7 +157,7 @@ async function handleCheckoutCompleted(session) {
   }
 
   // Auto-confirm any pending class invitations
-  confirmPendingInvitations(userId).catch((err) =>
+  confirmPendingInvitations(userId, tenantId).catch((err) =>
     console.error('[stripe/webhook] Auto-confirm invitations failed:', err)
   )
 }
@@ -185,6 +192,7 @@ async function handleInvoiceSucceeded(invoice) {
   await supabaseAdmin
     .from('user_credits')
     .update({ expires_at: newExpiry.toISOString() })
+    .eq('tenant_id', credit.tenant_id)
     .eq('id', credit.id)
 
   console.log(`[stripe/webhook] Subscription renewed: credit=${credit.id}`)
@@ -214,10 +222,13 @@ async function handleInvoiceFailed(invoice) {
  * Handle subscription cancellation
  */
 async function handleSubscriptionDeleted(subscription) {
+  // stripe_sub_id is globally unique so tenant_id filter not strictly needed,
+  // but included for consistency
   const { error } = await supabaseAdmin
     .from('user_credits')
     .update({ status: 'cancelled' })
     .eq('stripe_sub_id', subscription.id)
+    // Note: no tenant_id filter here since we don't have it from subscription object
 
   if (error) {
     console.error('[stripe/webhook] Failed to cancel credit:', error)

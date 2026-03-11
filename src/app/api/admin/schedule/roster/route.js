@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth'
+import { requireStaff } from '@/lib/api-helpers'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { promoteFromWaitlist } from '@/lib/waitlist'
 import { sendRemovedFromClass, sendPrivateClassInvitation, sendClassInvitationNeedsCredits, sendBookingConfirmation } from '@/lib/email'
@@ -22,10 +22,10 @@ const removeMemberSchema = z.object({
  */
 export async function POST(request) {
   try {
-    const session = await auth()
-    if (!session || (session.user.role !== 'owner' && session.user.role !== 'admin' && session.user.role !== 'employee')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const result = await requireStaff(request)
+    if (result.response) return result.response
+    const { session, tenantId } = result
+
     if (!supabaseAdmin) {
       return NextResponse.json({ error: 'Database unavailable' }, { status: 500 })
     }
@@ -42,6 +42,7 @@ export async function POST(request) {
     const { data: existing } = await supabaseAdmin
       .from('bookings')
       .select('id, status')
+      .eq('tenant_id', tenantId)
       .eq('class_schedule_id', classId)
       .eq('user_id', userId)
       .in('status', ['confirmed', 'invited'])
@@ -53,14 +54,15 @@ export async function POST(request) {
 
     // Look up class and member info
     const [{ data: rosterClass }, { data: addedUser }] = await Promise.all([
-      supabaseAdmin.from('class_schedule').select('starts_at, is_private, class_types(name), instructors(name)').eq('id', classId).single(),
-      supabaseAdmin.from('users').select('id, email, name').eq('id', userId).single(),
+      supabaseAdmin.from('class_schedule').select('starts_at, is_private, class_types(name), instructors(name)').eq('tenant_id', tenantId).eq('id', classId).single(),
+      supabaseAdmin.from('users').select('id, email, name').eq('tenant_id', tenantId).eq('id', userId).single(),
     ])
 
     // Check if member has available credits
     const { data: allCredits } = await supabaseAdmin
       .from('user_credits')
       .select('id, credits_remaining')
+      .eq('tenant_id', tenantId)
       .eq('user_id', userId)
       .eq('status', 'active')
       .gt('expires_at', new Date().toISOString())
@@ -88,6 +90,7 @@ export async function POST(request) {
     const { data: booking, error } = await supabaseAdmin
       .from('bookings')
       .insert({
+        tenant_id: tenantId,
         user_id: userId,
         class_schedule_id: classId,
         credit_id: creditId,
@@ -109,6 +112,7 @@ export async function POST(request) {
     await supabaseAdmin
       .from('waitlist')
       .delete()
+      .eq('tenant_id', tenantId)
       .eq('class_schedule_id', classId)
       .eq('user_id', userId)
 
@@ -144,6 +148,7 @@ export async function POST(request) {
       const { data: auditUser } = await supabaseAdmin
         .from('users')
         .select('name, email')
+        .eq('tenant_id', tenantId)
         .eq('id', userId)
         .single()
       auditMemberName = auditUser?.name
@@ -152,6 +157,7 @@ export async function POST(request) {
         const { data: auditClass } = await supabaseAdmin
           .from('class_schedule')
           .select('starts_at, class_types(name)')
+          .eq('tenant_id', tenantId)
           .eq('id', classId)
           .single()
         auditClassName = auditClass?.class_types?.name || 'Unknown class'
@@ -160,6 +166,7 @@ export async function POST(request) {
     }
 
     await supabaseAdmin.from('admin_audit_log').insert({
+      tenant_id: tenantId,
       admin_id: session.user.id,
       action: 'admin_add_to_class',
       target_type: 'booking',
@@ -179,10 +186,10 @@ export async function POST(request) {
  */
 export async function DELETE(request) {
   try {
-    const session = await auth()
-    if (!session || (session.user.role !== 'owner' && session.user.role !== 'admin' && session.user.role !== 'employee')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const result = await requireStaff(request)
+    if (result.response) return result.response
+    const { session, tenantId } = result
+
     if (!supabaseAdmin) {
       return NextResponse.json({ error: 'Database unavailable' }, { status: 500 })
     }
@@ -200,6 +207,7 @@ export async function DELETE(request) {
       const { error: wlError } = await supabaseAdmin
         .from('waitlist')
         .delete()
+        .eq('tenant_id', tenantId)
         .eq('class_schedule_id', classId)
         .eq('user_id', userId)
 
@@ -210,11 +218,12 @@ export async function DELETE(request) {
 
       // Look up member + class info for audit details
       const [{ data: wlUser }, { data: wlClass }] = await Promise.all([
-        supabaseAdmin.from('users').select('name, email').eq('id', userId).single(),
-        supabaseAdmin.from('class_schedule').select('starts_at, class_types(name)').eq('id', classId).single(),
+        supabaseAdmin.from('users').select('name, email').eq('tenant_id', tenantId).eq('id', userId).single(),
+        supabaseAdmin.from('class_schedule').select('starts_at, class_types(name)').eq('tenant_id', tenantId).eq('id', classId).single(),
       ])
 
       await supabaseAdmin.from('admin_audit_log').insert({
+        tenant_id: tenantId,
         admin_id: session.user.id,
         action: 'admin_remove_from_waitlist',
         target_type: 'waitlist',
@@ -229,6 +238,7 @@ export async function DELETE(request) {
     const { data: booking } = await supabaseAdmin
       .from('bookings')
       .select('id, credit_id, status')
+      .eq('tenant_id', tenantId)
       .eq('class_schedule_id', classId)
       .eq('user_id', userId)
       .in('status', ['confirmed', 'invited'])
@@ -246,6 +256,7 @@ export async function DELETE(request) {
         cancelled_at: new Date().toISOString(),
         credit_returned: refundCredit !== false,
       })
+      .eq('tenant_id', tenantId)
       .eq('id', booking.id)
 
     // Refund credit if applicable
@@ -253,6 +264,7 @@ export async function DELETE(request) {
       const { data: credit } = await supabaseAdmin
         .from('user_credits')
         .select('id, credits_remaining')
+        .eq('tenant_id', tenantId)
         .eq('id', booking.credit_id)
         .single()
 
@@ -260,17 +272,19 @@ export async function DELETE(request) {
         await supabaseAdmin
           .from('user_credits')
           .update({ credits_remaining: credit.credits_remaining + 1 })
+          .eq('tenant_id', tenantId)
           .eq('id', credit.id)
       }
     }
 
     // Look up member + class info for audit log and email
     const [{ data: removeClass }, { data: removedUser }] = await Promise.all([
-      supabaseAdmin.from('class_schedule').select('starts_at, class_types(name)').eq('id', classId).single(),
-      supabaseAdmin.from('users').select('email, name').eq('id', userId).single(),
+      supabaseAdmin.from('class_schedule').select('starts_at, class_types(name)').eq('tenant_id', tenantId).eq('id', classId).single(),
+      supabaseAdmin.from('users').select('email, name').eq('tenant_id', tenantId).eq('id', userId).single(),
     ])
 
     await supabaseAdmin.from('admin_audit_log').insert({
+      tenant_id: tenantId,
       admin_id: session.user.id,
       action: 'admin_remove_from_class',
       target_type: 'booking',

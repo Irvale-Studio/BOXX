@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth'
+import { requireAuth } from '@/lib/api-helpers'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { computeGamificationStats } from '@/lib/gamification'
 import { NextResponse } from 'next/server'
@@ -8,10 +8,9 @@ import { NextResponse } from 'next/server'
  */
 export async function GET() {
   try {
-    const session = await auth()
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const authResult = await requireAuth()
+    if (authResult.response) return authResult.response
+    const { session, tenantId } = authResult
 
     if (!supabaseAdmin) {
       return NextResponse.json({ error: 'Database unavailable' }, { status: 500 })
@@ -26,6 +25,7 @@ export async function GET() {
         id, status,
         class_schedule(starts_at, class_types(name))
       `)
+      .eq('tenant_id', tenantId)
       .eq('user_id', userId)
       .eq('status', 'confirmed')
       .order('created_at', { ascending: true })
@@ -34,6 +34,7 @@ export async function GET() {
     const { data: classTypes } = await supabaseAdmin
       .from('class_types')
       .select('id')
+      .eq('tenant_id', tenantId)
       .eq('active', true)
 
     const totalClassTypes = classTypes?.length || 4

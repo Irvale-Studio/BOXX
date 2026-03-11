@@ -4,6 +4,8 @@ const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KE
 
 const FROM = process.env.EMAIL_FROM || 'BOXX Thailand <noreply@boxxthailand.com>'
 
+const DEFAULT_TENANT_ID = process.env.DEFAULT_TENANT_ID || 'a0000000-0000-0000-0000-000000000001'
+
 // HTML-encode user-provided values to prevent XSS/injection in emails
 function escapeHtml(str) {
   if (!str) return ''
@@ -140,13 +142,14 @@ function detailTable(rows) {
 // ─── Email enabled check ────────────────────────────────────────────────────
 // Checks studio_settings for email_{slug}_enabled. Defaults to enabled.
 
-async function isEmailEnabled(slug) {
+async function isEmailEnabled(slug, tenantId = DEFAULT_TENANT_ID) {
   try {
     const { supabaseAdmin } = await import('@/lib/supabase/admin')
     if (!supabaseAdmin) return true
     const { data } = await supabaseAdmin
       .from('studio_settings')
       .select('value')
+      .eq('tenant_id', tenantId)
       .eq('key', `email_${slug}_enabled`)
       .single()
     if (data && data.value === 'false') return false
@@ -158,13 +161,14 @@ async function isEmailEnabled(slug) {
 
 // ─── Load custom message for an email slug ──────────────────────────────────
 
-async function getCustomMessage(slug) {
+async function getCustomMessage(slug, tenantId = DEFAULT_TENANT_ID) {
   try {
     const { supabaseAdmin } = await import('@/lib/supabase/admin')
     if (!supabaseAdmin) return {}
     const { data } = await supabaseAdmin
       .from('studio_settings')
       .select('key, value')
+      .eq('tenant_id', tenantId)
       .in('key', [`email_${slug}_subject`, `email_${slug}_body`])
     if (!data) return {}
     const result = {}
@@ -181,20 +185,20 @@ async function getCustomMessage(slug) {
 // ─── Preview renderer (sample data for each email type) ─────────────────────
 
 const SAMPLE_DATA = {
-  booking_confirmation: { name: 'Sarah', className: 'BOXXBEGINNER', instructor: 'Bert', date: 'Monday 15 Jan', time: '09:00' },
-  class_reminder: { name: 'Sarah', className: 'BOXXBEGINNER', instructor: 'Bert', time: '09:00' },
-  waitlist_promotion: { name: 'Sarah', className: 'BOXXINTER', date: 'Tuesday 16 Jan', time: '17:00' },
+  booking_confirmation: { name: 'Sarah', className: 'Group Class', instructor: 'Coach', date: 'Monday 15 Jan', time: '09:00' },
+  class_reminder: { name: 'Sarah', className: 'Group Class', instructor: 'Coach', time: '09:00' },
+  waitlist_promotion: { name: 'Sarah', className: 'Advanced Class', date: 'Tuesday 16 Jan', time: '17:00' },
   credit_expiry_warning: { name: 'Sarah', packName: '10-Class Pack', creditsRemaining: 3, expiresAt: '18 Jan 2025' },
   welcome: { name: 'Sarah' },
-  cancellation_confirmation: { name: 'Sarah', className: 'BOXXBEGINNER', date: 'Monday 15 Jan', time: '09:00', creditRefunded: true },
-  class_cancelled_admin: { name: 'Sarah', className: 'BOXX&TRAIN', date: 'Wednesday 17 Jan', time: '18:00' },
+  cancellation_confirmation: { name: 'Sarah', className: 'Group Class', date: 'Monday 15 Jan', time: '09:00', creditRefunded: true },
+  class_cancelled_admin: { name: 'Sarah', className: 'Strength & Conditioning', date: 'Wednesday 17 Jan', time: '18:00' },
   pack_purchase_confirmation: { name: 'Sarah', packName: '10-Class Pack', credits: 10, validityDays: 60, expiresAt: '15 Mar 2025' },
   credits_low_warning: { name: 'Sarah', creditsRemaining: 1, packName: '10-Class Pack' },
-  class_changed: { name: 'Sarah', className: 'BOXXBEGINNER', changes: ['Time changed from 09:00 to 10:00', 'Instructor changed to Coach Mike'], date: 'Monday 15 Jan', time: '10:00' },
-  removed_from_class: { name: 'Sarah', className: 'BOXXINTER', date: 'Tuesday 16 Jan', time: '17:00', creditRefunded: true },
-  admin_cancelled_booking: { name: 'Sarah', className: 'BOXXBEGINNER', date: 'Monday 15 Jan', time: '09:00', creditRefunded: true },
-  admin_direct: { subject: 'Studio Update', body: 'Hi Sarah,\n\nJust wanted to let you know about our new class schedule starting next week.\n\nBest,\nBOXX Team' },
-  private_class_invitation: { name: 'Sarah', className: 'Private PT Session', instructor: 'Bert', date: 'Thursday 18 Jan', time: '14:00' },
+  class_changed: { name: 'Sarah', className: 'Group Class', changes: ['Time changed from 09:00 to 10:00', 'Instructor changed to Coach Mike'], date: 'Monday 15 Jan', time: '10:00' },
+  removed_from_class: { name: 'Sarah', className: 'Advanced Class', date: 'Tuesday 16 Jan', time: '17:00', creditRefunded: true },
+  admin_cancelled_booking: { name: 'Sarah', className: 'Group Class', date: 'Monday 15 Jan', time: '09:00', creditRefunded: true },
+  admin_direct: { subject: 'Studio Update', body: 'Hi Sarah,\n\nJust wanted to let you know about our new class schedule starting next week.\n\nBest,\nThe Studio Team' },
+  private_class_invitation: { name: 'Sarah', className: 'Private PT Session', instructor: 'Coach', date: 'Thursday 18 Jan', time: '14:00' },
 }
 
 // Default subjects and headings for each email type

@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth'
+import { requireStaff } from '@/lib/api-helpers'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
@@ -20,10 +20,10 @@ const recurringSchema = z.object({
  */
 export async function POST(request) {
   try {
-    const session = await auth()
-    if (!session || (session.user.role !== 'owner' && session.user.role !== 'admin' && session.user.role !== 'employee')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const result = await requireStaff(request)
+    if (result.response) return result.response
+    const { session, tenantId } = result
+
     if (!supabaseAdmin) {
       return NextResponse.json({ error: 'Database unavailable' }, { status: 500 })
     }
@@ -70,6 +70,7 @@ export async function POST(request) {
         const endsAt = new Date(`${dateStr}T${endTime}:00+07:00`).toISOString()
 
         classesToInsert.push({
+          tenant_id: tenantId,
           class_type_id: classTypeId,
           instructor_id: instructorId,
           starts_at: startsAt,
@@ -93,6 +94,7 @@ export async function POST(request) {
     const { data: existingClasses } = await supabaseAdmin
       .from('class_schedule')
       .select('starts_at, ends_at')
+      .eq('tenant_id', tenantId)
       .eq('instructor_id', instructorId)
       .eq('status', 'active')
       .gte('starts_at', new Date(new Date(firstStart).getTime() - 86400000).toISOString())
@@ -129,10 +131,12 @@ export async function POST(request) {
     const { data: recurClassType } = await supabaseAdmin
       .from('class_types')
       .select('name')
+      .eq('tenant_id', tenantId)
       .eq('id', classTypeId)
       .single()
 
     await supabaseAdmin.from('admin_audit_log').insert({
+      tenant_id: tenantId,
       admin_id: session.user.id,
       action: 'create_recurring_classes',
       target_type: 'class_schedule',

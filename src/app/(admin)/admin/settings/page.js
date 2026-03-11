@@ -88,11 +88,11 @@ function StudioInfoTab() {
         if (res.ok) {
           const { settings } = await res.json()
           setForm({
-            studio_name: settings.studio_name || 'BOXX Boxing Studio',
-            studio_address: settings.studio_address || '89/2 Bumruang Road, Wat Ket, Chiang Mai 50000',
-            studio_phone: settings.studio_phone || '+66 93 497 2306',
-            studio_email: settings.studio_email || 'hello@boxxthailand.com',
-            studio_website: settings.studio_website || 'https://boxxthailand.com',
+            studio_name: settings.studio_name || '',
+            studio_address: settings.studio_address || '',
+            studio_phone: settings.studio_phone || '',
+            studio_email: settings.studio_email || '',
+            studio_website: settings.studio_website || '',
           })
         }
       } catch (err) {
@@ -207,10 +207,10 @@ function SocialLinksTab() {
         if (res.ok) {
           const { settings } = await res.json()
           setForm({
-            social_instagram: settings.social_instagram || 'https://instagram.com/boxxthailand',
-            social_tiktok: settings.social_tiktok || 'https://tiktok.com/@boxxthailand',
+            social_instagram: settings.social_instagram || '',
+            social_tiktok: settings.social_tiktok || '',
             social_facebook: settings.social_facebook || '',
-            social_line: settings.social_line || '@boxxthailand',
+            social_line: settings.social_line || '',
             social_youtube: settings.social_youtube || '',
           })
         }
@@ -260,11 +260,11 @@ function SocialLinksTab() {
   }
 
   const fields = [
-    { key: 'social_instagram', label: 'Instagram URL', placeholder: 'https://instagram.com/boxxthailand' },
-    { key: 'social_tiktok', label: 'TikTok URL', placeholder: 'https://tiktok.com/@boxxthailand' },
-    { key: 'social_facebook', label: 'Facebook URL', placeholder: 'https://facebook.com/boxxthailand' },
-    { key: 'social_line', label: 'LINE ID', placeholder: '@boxxthailand' },
-    { key: 'social_youtube', label: 'YouTube URL', placeholder: 'https://youtube.com/@boxxthailand' },
+    { key: 'social_instagram', label: 'Instagram URL', placeholder: 'https://instagram.com/yourstudio' },
+    { key: 'social_tiktok', label: 'TikTok URL', placeholder: 'https://tiktok.com/@yourstudio' },
+    { key: 'social_facebook', label: 'Facebook URL', placeholder: 'https://facebook.com/yourstudio' },
+    { key: 'social_line', label: 'LINE ID', placeholder: '@yourstudio' },
+    { key: 'social_youtube', label: 'YouTube URL', placeholder: 'https://youtube.com/@yourstudio' },
   ]
 
   return (
@@ -325,13 +325,13 @@ function SeoTab() {
         if (res.ok) {
           const { settings } = await res.json()
           setForm({
-            seo_title: settings.seo_title || 'BOXX | Luxury Boutique Boxing & Personal Training Studio in Chiang Mai',
-            seo_description: settings.seo_description || "Chiang Mai's first luxury boutique boxing and personal training studio. UK-qualified coaches delivering authentic British boxing and strength training. Small-group classes, max 6 per session.",
-            seo_keywords: settings.seo_keywords || 'boxing, chiang mai, personal training, boutique gym, luxury fitness, boxing classes, strength training, thailand',
-            seo_og_title: settings.seo_og_title || 'BOXX | Luxury Boutique Boxing Studio in Chiang Mai',
-            seo_og_description: settings.seo_og_description || 'Boxing and strength training, done properly. Small-group classes led by UK-qualified coaches.',
-            seo_og_image: settings.seo_og_image || '/images/brand/og-share.jpg',
-            seo_url: settings.seo_url || 'https://www.boxxthailand.com',
+            seo_title: settings.seo_title || '',
+            seo_description: settings.seo_description || '',
+            seo_keywords: settings.seo_keywords || '',
+            seo_og_title: settings.seo_og_title || '',
+            seo_og_description: settings.seo_og_description || '',
+            seo_og_image: settings.seo_og_image || '',
+            seo_url: settings.seo_url || '',
           })
         }
       } catch (err) {
@@ -394,7 +394,7 @@ function SeoTab() {
                 id="seo_title"
                 value={form.seo_title}
                 onChange={(e) => setForm({ ...form, seo_title: e.target.value })}
-                placeholder="BOXX | Luxury Boxing Studio in Chiang Mai"
+                placeholder="Your Studio | Page Title"
               />
               <p className="text-xs text-muted">{form.seo_title.length}/60 characters — keep under 60 for best results</p>
             </div>
@@ -418,7 +418,7 @@ function SeoTab() {
                 id="seo_keywords"
                 value={form.seo_keywords}
                 onChange={(e) => setForm({ ...form, seo_keywords: e.target.value })}
-                placeholder="boxing, chiang mai, personal training, fitness"
+                placeholder="fitness, personal training, classes, studio"
               />
               <p className="text-xs text-muted">Comma-separated keywords</p>
             </div>
@@ -429,7 +429,7 @@ function SeoTab() {
                 id="seo_url"
                 value={form.seo_url}
                 onChange={(e) => setForm({ ...form, seo_url: e.target.value })}
-                placeholder="https://www.boxxthailand.com"
+                placeholder="https://www.yourstudio.com"
               />
             </div>
 
@@ -459,7 +459,7 @@ function SeoTab() {
                 id="seo_og_title"
                 value={form.seo_og_title}
                 onChange={(e) => setForm({ ...form, seo_og_title: e.target.value })}
-                placeholder="BOXX | Luxury Boxing Studio"
+                placeholder="Your Studio | Social Share Title"
               />
             </div>
 
@@ -481,7 +481,7 @@ function SeoTab() {
                 id="seo_og_image"
                 value={form.seo_og_image}
                 onChange={(e) => setForm({ ...form, seo_og_image: e.target.value })}
-                placeholder="https://www.boxxthailand.com/images/brand/og-image.jpg"
+                placeholder="https://www.yourstudio.com/images/og-image.jpg"
               />
               <p className="text-xs text-muted">Recommended: 1200x630px. Leave blank to use auto-generated image.</p>
               {form.seo_og_image && (
@@ -503,7 +503,7 @@ function SeoTab() {
                   </div>
                 )}
                 <div className="p-3 bg-card">
-                  <p className="text-xs text-muted truncate">{form.seo_url || 'boxxthailand.com'}</p>
+                  <p className="text-xs text-muted truncate">{form.seo_url || 'yourstudio.com'}</p>
                   <p className="text-sm font-semibold text-foreground mt-0.5 truncate">{form.seo_og_title || 'Page title'}</p>
                   <p className="text-xs text-muted mt-0.5 line-clamp-2">{form.seo_og_description || 'Page description'}</p>
                 </div>

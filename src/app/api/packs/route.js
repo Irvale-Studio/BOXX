@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth'
+import { requireAuth } from '@/lib/api-helpers'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
 
@@ -7,10 +7,9 @@ import { NextResponse } from 'next/server'
  */
 export async function GET() {
   try {
-    const session = await auth()
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const authResult = await requireAuth()
+    if (authResult.response) return authResult.response
+    const { session, tenantId } = authResult
 
     if (!supabaseAdmin) {
       return NextResponse.json({ error: 'Database unavailable' }, { status: 500 })
@@ -20,6 +19,7 @@ export async function GET() {
     const { data: packs, error: packsError } = await supabaseAdmin
       .from('class_packs')
       .select('*')
+      .eq('tenant_id', tenantId)
       .eq('active', true)
       .order('display_order', { ascending: true })
 
@@ -32,6 +32,7 @@ export async function GET() {
     const { data: activeCredits } = await supabaseAdmin
       .from('user_credits')
       .select('id, credits_remaining, expires_at, status, class_packs(name, is_membership)')
+      .eq('tenant_id', tenantId)
       .eq('user_id', session.user.id)
       .eq('status', 'active')
       .gt('expires_at', new Date().toISOString())
@@ -40,6 +41,7 @@ export async function GET() {
     const { data: purchaseHistory } = await supabaseAdmin
       .from('user_credits')
       .select('id, credits_remaining, credits_total, expires_at, status, purchased_at, class_packs(name, price_thb, credits, is_membership)')
+      .eq('tenant_id', tenantId)
       .eq('user_id', session.user.id)
       .order('purchased_at', { ascending: false })
 

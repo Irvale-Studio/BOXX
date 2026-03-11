@@ -10,19 +10,31 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Architecture
 
-Single-page Next.js 16 app (App Router) with no routing beyond the root page. All content is in `src/app/page.js`, which composes 14 section components in order:
+Multi-tenant SaaS studio management platform. Next.js 16 App Router with three route groups:
 
-LoadingScreen → Navbar → Hero → MarqueeBanner → About → Features → Classes → Gallery → Testimonials → Community → Process → CTABanner → FAQ → Contact → Footer
+- `(admin)` — Admin panel (schedule, members, bookings, packs, class types, instructors, analytics, emails, settings, AI assistant)
+- `(member)` — Member area (dashboard, book classes, my bookings, buy classes, profile)
+- `api/` — 52 API routes (auth, member, admin, cron, stripe, AI agent)
 
-- **Components:** `src/components/` — all client components using Framer Motion for scroll animations
-- **Styling:** Tailwind CSS v4 with `@theme inline` in `src/app/globals.css` defining custom colors as CSS variables
-- **Utility:** `src/lib/utils.js` — `cn()` function (clsx + tailwind-merge) for conditional class merging
-- **Layout:** `src/app/layout.js` — root layout with Geist font and SEO metadata
-- **Dynamic OG/Favicon:** `src/app/opengraph-image.js` and `src/app/icon.js` generate images at build time using `sharp`
+**Key files:**
+- `src/lib/auth.js` — NextAuth v5 config (Google OAuth + credentials)
+- `src/lib/admin-auth.js` — Role-based access helpers (requireStaff/Admin/Owner)
+- `src/lib/email.js` — 15 Resend email templates
+- `src/lib/platform-limits.js` — Per-tenant resource limits
+- `src/lib/stripe.js` — Stripe Connect configuration
+- `src/lib/waitlist.js` — Waitlist promotion logic
+- `src/lib/gamification.js` — Badges and streaks
+- `supabase/schema.sql` — Full database schema
+
+## Database
+
+Supabase (Postgres) with Row Level Security. Tables include: users, class_types, instructors, class_schedule, bookings, user_credits, class_packs, waitlist, studio_settings, admin_audit_log, email_log, page_views, plus AI agent tables.
+
+Multi-tenancy via `tenant_id` on every table (migration in progress — see dev spec).
 
 ## Design Tokens (globals.css)
 
-Use Tailwind classes mapped to these CSS variables — do not use raw hex values:
+Use Tailwind classes mapped to CSS variables — do not use raw hex values:
 
 | Tailwind class    | Variable         | Value    |
 |-------------------|------------------|----------|
@@ -36,18 +48,16 @@ Use Tailwind classes mapped to these CSS variables — do not use raw hex values
 | `bg-card`         | `--card`         | #111111  |
 | `border-card-border` | `--card-border` | #1a1a1a |
 
-## Brand Reference
-
-Full brand doc at `docs/brand-reference.md` — includes founder bio, class descriptions, testimonials, contact info, and image inventory.
-
 ## Task Tracking
 
-All task tracking lives in **`docs/dev-spec.md`** — this is the single source of truth. Read it at the start of each session and update it after completing features.
+All task tracking lives in **`docs/saas-dev-spec.md`** — this is the single source of truth. Read it at the start of each session and update it after completing features.
 
 ## Key Conventions
 
 - JavaScript only (no TypeScript)
-- All components are client-side (`"use client"`) with Framer Motion animations
-- Images are WebP in `public/images/studio/` and `public/images/brand/`
-- Use `cn()` from `@/lib/utils` for combining Tailwind classes
+- shadcn/ui components for admin/member pages (Button, Card, Input, Label, Badge, Tabs, Dialog, Switch)
+- `cn()` from `@/lib/utils` for combining Tailwind classes
 - Dark luxury aesthetic: black backgrounds, white text, gold (#c8a750) accents
+- UI interactions should feel polished and layered — use subtle hover states, smooth transitions, and progressive disclosure rather than abrupt show/hide
+- Images are WebP in `public/images/`
+- Confirm with user before starting next phase of work

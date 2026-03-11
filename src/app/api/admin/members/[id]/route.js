@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth'
+import { requireStaff } from '@/lib/api-helpers'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
@@ -8,10 +8,10 @@ import { z } from 'zod'
  */
 export async function GET(request, { params }) {
   try {
-    const session = await auth()
-    if (!session || (session.user.role !== 'owner' && session.user.role !== 'admin' && session.user.role !== 'employee')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const result = await requireStaff(request)
+    if (result.response) return result.response
+    const { session, tenantId } = result
+
     if (!supabaseAdmin) {
       return NextResponse.json({ error: 'Database unavailable' }, { status: 500 })
     }
@@ -22,22 +22,26 @@ export async function GET(request, { params }) {
       supabaseAdmin
         .from('users')
         .select('id, email, name, phone, avatar_url, bio, role, google_id, created_at')
+        .eq('tenant_id', tenantId)
         .eq('id', id)
         .single(),
       supabaseAdmin
         .from('bookings')
         .select('id, status, late_cancel, credit_returned, created_at, cancelled_at, class_schedule(id, starts_at, class_types(name, color), instructors(name))')
+        .eq('tenant_id', tenantId)
         .eq('user_id', id)
         .order('created_at', { ascending: false })
         .limit(50),
       supabaseAdmin
         .from('user_credits')
         .select('id, credits_total, credits_remaining, expires_at, status, purchased_at, class_packs(name), stripe_payment_id')
+        .eq('tenant_id', tenantId)
         .eq('user_id', id)
         .order('purchased_at', { ascending: false }),
       supabaseAdmin
         .from('waitlist')
         .select('id, position, created_at, class_schedule(id, starts_at, class_types(name))')
+        .eq('tenant_id', tenantId)
         .eq('user_id', id)
         .order('created_at', { ascending: false }),
     ])
@@ -87,10 +91,10 @@ const editMemberSchema = z.object({
  */
 export async function PUT(request, { params }) {
   try {
-    const session = await auth()
-    if (!session || (session.user.role !== 'owner' && session.user.role !== 'admin' && session.user.role !== 'employee')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const result = await requireStaff(request)
+    if (result.response) return result.response
+    const { session, tenantId } = result
+
     if (!supabaseAdmin) {
       return NextResponse.json({ error: 'Database unavailable' }, { status: 500 })
     }
@@ -111,6 +115,7 @@ export async function PUT(request, { params }) {
     const { data: targetUser } = await supabaseAdmin
       .from('users')
       .select('role')
+      .eq('tenant_id', tenantId)
       .eq('id', id)
       .single()
 
@@ -150,6 +155,7 @@ export async function PUT(request, { params }) {
     const { error } = await supabaseAdmin
       .from('users')
       .update(updates)
+      .eq('tenant_id', tenantId)
       .eq('id', id)
 
     if (error) {
@@ -164,10 +170,12 @@ export async function PUT(request, { params }) {
     const { data: updatedMember } = await supabaseAdmin
       .from('users')
       .select('name, email')
+      .eq('tenant_id', tenantId)
       .eq('id', id)
       .single()
 
     await supabaseAdmin.from('admin_audit_log').insert({
+      tenant_id: tenantId,
       admin_id: session.user.id,
       action: 'edit_member',
       target_type: 'user',
@@ -189,10 +197,10 @@ export async function PUT(request, { params }) {
  */
 export async function DELETE(request, { params }) {
   try {
-    const session = await auth()
-    if (!session || (session.user.role !== 'owner' && session.user.role !== 'admin' && session.user.role !== 'employee')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const result = await requireStaff(request)
+    if (result.response) return result.response
+    const { session, tenantId } = result
+
     if (!supabaseAdmin) {
       return NextResponse.json({ error: 'Database unavailable' }, { status: 500 })
     }
@@ -212,6 +220,7 @@ export async function DELETE(request, { params }) {
     const { data: user } = await supabaseAdmin
       .from('users')
       .select('role')
+      .eq('tenant_id', tenantId)
       .eq('id', id)
       .single()
 
@@ -232,6 +241,7 @@ export async function DELETE(request, { params }) {
     const { data: futureBookings } = await supabaseAdmin
       .from('bookings')
       .select('id, class_schedule_id, user_credit_id')
+      .eq('tenant_id', tenantId)
       .eq('user_id', id)
       .eq('status', 'confirmed')
 
@@ -242,6 +252,7 @@ export async function DELETE(request, { params }) {
         const { data: schedule } = await supabaseAdmin
           .from('class_schedule')
           .select('starts_at')
+          .eq('tenant_id', tenantId)
           .eq('id', b.class_schedule_id)
           .single()
 
@@ -264,17 +275,19 @@ export async function DELETE(request, { params }) {
         await supabaseAdmin
           .from('bookings')
           .update({ status: 'cancelled', credit_returned: true })
+          .eq('tenant_id', tenantId)
           .in('id', futureIds)
       }
     }
 
     // Remove from waitlists
-    await supabaseAdmin.from('waitlist').delete().eq('user_id', id)
+    await supabaseAdmin.from('waitlist').delete().eq('tenant_id', tenantId).eq('user_id', id)
 
     // Freeze: set role to 'frozen' — preserves all data
     const { error } = await supabaseAdmin
       .from('users')
       .update({ role: 'frozen' })
+      .eq('tenant_id', tenantId)
       .eq('id', id)
 
     if (error) {
@@ -286,10 +299,12 @@ export async function DELETE(request, { params }) {
     const { data: frozenMember } = await supabaseAdmin
       .from('users')
       .select('name, email')
+      .eq('tenant_id', tenantId)
       .eq('id', id)
       .single()
 
     await supabaseAdmin.from('admin_audit_log').insert({
+      tenant_id: tenantId,
       admin_id: session.user.id,
       action: 'freeze_member',
       target_type: 'user',

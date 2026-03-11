@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth'
+import { requireStaff } from '@/lib/api-helpers'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
 
@@ -8,10 +8,9 @@ import { NextResponse } from 'next/server'
  */
 export async function GET(request) {
   try {
-    const session = await auth()
-    if (!session || (session.user.role !== 'owner' && session.user.role !== 'admin' && session.user.role !== 'employee')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const result = await requireStaff(request)
+    if (result.response) return result.response
+    const { session, tenantId } = result
 
     if (!supabaseAdmin) {
       return NextResponse.json({ error: 'Database unavailable' }, { status: 500 })
@@ -41,8 +40,8 @@ export async function GET(request) {
       webAnalytics,
       businessAnalytics,
     ] = await Promise.all([
-      getWebAnalytics(currentStart, currentEnd, prevStart, prevEnd, rangeDays, todayBangkok),
-      getBusinessAnalytics(currentStart, currentEnd, prevStart, prevEnd, rangeDays, todayBangkok),
+      getWebAnalytics(tenantId, currentStart, currentEnd, prevStart, prevEnd, rangeDays, todayBangkok),
+      getBusinessAnalytics(tenantId, currentStart, currentEnd, prevStart, prevEnd, rangeDays, todayBangkok),
     ])
 
     return NextResponse.json({
@@ -62,11 +61,12 @@ export async function GET(request) {
 // ─────────────────────────────────────
 // WEB ANALYTICS (from page_views table)
 // ─────────────────────────────────────
-async function getWebAnalytics(currentStart, currentEnd, prevStart, prevEnd, rangeDays, todayBangkok) {
+async function getWebAnalytics(tenantId, currentStart, currentEnd, prevStart, prevEnd, rangeDays, todayBangkok) {
   // Check if page_views table exists by attempting a query
   const { data: pvTest, error: pvError } = await supabaseAdmin
     .from('page_views')
     .select('id', { count: 'exact', head: true })
+    .eq('tenant_id', tenantId)
     .limit(0)
 
   if (pvError) {
@@ -91,6 +91,7 @@ async function getWebAnalytics(currentStart, currentEnd, prevStart, prevEnd, ran
     supabaseAdmin
       .from('page_views')
       .select('id', { count: 'exact', head: true })
+      .eq('tenant_id', tenantId)
       .gte('created_at', currentStart)
       .lte('created_at', currentEnd),
 
@@ -98,6 +99,7 @@ async function getWebAnalytics(currentStart, currentEnd, prevStart, prevEnd, ran
     supabaseAdmin
       .from('page_views')
       .select('id', { count: 'exact', head: true })
+      .eq('tenant_id', tenantId)
       .gte('created_at', prevStart)
       .lt('created_at', currentStart),
 
@@ -105,6 +107,7 @@ async function getWebAnalytics(currentStart, currentEnd, prevStart, prevEnd, ran
     supabaseAdmin
       .from('page_views')
       .select('path, referrer, device_type, utm_source, created_at')
+      .eq('tenant_id', tenantId)
       .gte('created_at', currentStart)
       .lte('created_at', currentEnd)
       .order('created_at', { ascending: true }),
@@ -194,7 +197,7 @@ async function getWebAnalytics(currentStart, currentEnd, prevStart, prevEnd, ran
 // ─────────────────────────────────────
 // BUSINESS ANALYTICS
 // ─────────────────────────────────────
-async function getBusinessAnalytics(currentStart, currentEnd, prevStart, prevEnd, rangeDays, todayBangkok) {
+async function getBusinessAnalytics(tenantId, currentStart, currentEnd, prevStart, prevEnd, rangeDays, todayBangkok) {
   const [
     totalMembersRes,
     newMembersCurrentRes,
@@ -213,12 +216,14 @@ async function getBusinessAnalytics(currentStart, currentEnd, prevStart, prevEnd
     supabaseAdmin
       .from('users')
       .select('id', { count: 'exact', head: true })
+      .eq('tenant_id', tenantId)
       .eq('role', 'member'),
 
     // New members in current range
     supabaseAdmin
       .from('users')
       .select('id', { count: 'exact', head: true })
+      .eq('tenant_id', tenantId)
       .eq('role', 'member')
       .gte('created_at', currentStart)
       .lte('created_at', currentEnd),
@@ -227,6 +232,7 @@ async function getBusinessAnalytics(currentStart, currentEnd, prevStart, prevEnd
     supabaseAdmin
       .from('users')
       .select('id', { count: 'exact', head: true })
+      .eq('tenant_id', tenantId)
       .eq('role', 'member')
       .gte('created_at', prevStart)
       .lt('created_at', currentStart),
@@ -235,6 +241,7 @@ async function getBusinessAnalytics(currentStart, currentEnd, prevStart, prevEnd
     supabaseAdmin
       .from('bookings')
       .select('user_id')
+      .eq('tenant_id', tenantId)
       .eq('status', 'confirmed')
       .gte('created_at', currentStart)
       .lte('created_at', currentEnd),
@@ -243,6 +250,7 @@ async function getBusinessAnalytics(currentStart, currentEnd, prevStart, prevEnd
     supabaseAdmin
       .from('bookings')
       .select('id', { count: 'exact', head: true })
+      .eq('tenant_id', tenantId)
       .gte('created_at', currentStart)
       .lte('created_at', currentEnd),
 
@@ -250,6 +258,7 @@ async function getBusinessAnalytics(currentStart, currentEnd, prevStart, prevEnd
     supabaseAdmin
       .from('bookings')
       .select('id', { count: 'exact', head: true })
+      .eq('tenant_id', tenantId)
       .gte('created_at', prevStart)
       .lt('created_at', currentStart),
 
@@ -257,6 +266,7 @@ async function getBusinessAnalytics(currentStart, currentEnd, prevStart, prevEnd
     supabaseAdmin
       .from('user_credits')
       .select('class_pack_id, class_packs(price_thb)')
+      .eq('tenant_id', tenantId)
       .gte('purchased_at', currentStart)
       .lte('purchased_at', currentEnd),
 
@@ -264,6 +274,7 @@ async function getBusinessAnalytics(currentStart, currentEnd, prevStart, prevEnd
     supabaseAdmin
       .from('user_credits')
       .select('class_pack_id, class_packs(price_thb)')
+      .eq('tenant_id', tenantId)
       .gte('purchased_at', prevStart)
       .lt('purchased_at', currentStart),
 
@@ -271,6 +282,7 @@ async function getBusinessAnalytics(currentStart, currentEnd, prevStart, prevEnd
     supabaseAdmin
       .from('bookings')
       .select('class_schedule_id, class_schedule(class_type_id, capacity, class_types(name))')
+      .eq('tenant_id', tenantId)
       .eq('status', 'confirmed')
       .gte('created_at', currentStart)
       .lte('created_at', currentEnd),
@@ -279,6 +291,7 @@ async function getBusinessAnalytics(currentStart, currentEnd, prevStart, prevEnd
     supabaseAdmin
       .from('user_credits')
       .select('class_pack_id, class_packs(name, price_thb)')
+      .eq('tenant_id', tenantId)
       .gte('purchased_at', currentStart)
       .lte('purchased_at', currentEnd),
 
@@ -286,6 +299,7 @@ async function getBusinessAnalytics(currentStart, currentEnd, prevStart, prevEnd
     supabaseAdmin
       .from('class_schedule')
       .select('id, instructor_id, instructors(name), starts_at')
+      .eq('tenant_id', tenantId)
       .gte('starts_at', currentStart)
       .lte('starts_at', currentEnd)
       .eq('status', 'active'),
@@ -294,6 +308,7 @@ async function getBusinessAnalytics(currentStart, currentEnd, prevStart, prevEnd
     supabaseAdmin
       .from('bookings')
       .select('created_at')
+      .eq('tenant_id', tenantId)
       .gte('created_at', currentStart)
       .lte('created_at', currentEnd)
       .order('created_at', { ascending: true }),
@@ -377,6 +392,7 @@ async function getBusinessAnalytics(currentStart, currentEnd, prevStart, prevEnd
     const { data: instrBookings } = await supabaseAdmin
       .from('bookings')
       .select('class_schedule_id')
+      .eq('tenant_id', tenantId)
       .eq('status', 'confirmed')
       .in('class_schedule_id', scheduleIds)
 

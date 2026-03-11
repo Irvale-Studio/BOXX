@@ -5,7 +5,7 @@
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { sendBookingConfirmation } from '@/lib/email'
 
-export async function confirmPendingInvitations(userId) {
+export async function confirmPendingInvitations(userId, tenantId) {
   let confirmed = 0
 
   try {

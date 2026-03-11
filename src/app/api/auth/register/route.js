@@ -5,11 +5,14 @@ import { sendWelcomeEmail } from '@/lib/email'
 import bcrypt from 'bcryptjs'
 import { z } from 'zod'
 
+const DEFAULT_TENANT_ID = process.env.DEFAULT_TENANT_ID || 'a0000000-0000-0000-0000-000000000001'
+
 const registerSchema = z.object({
   name: z.string().min(1, 'Name is required').max(100),
   email: z.string().email('Invalid email'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
   consent: z.literal(true, { message: 'You must agree to the Privacy Policy and Terms of Service' }),
+  tenantId: z.string().uuid().optional(),
 })
 
 export async function POST(request) {
@@ -34,25 +37,33 @@ export async function POST(request) {
       )
     }
 
-    const { name, email, password } = parsed.data
+    const { name, email, password, tenantId: bodyTenantId } = parsed.data
+    const tenantId = bodyTenantId || DEFAULT_TENANT_ID
     const emailLower = email.toLowerCase()
 
     // Check platform member limit
     try {
-      const { checkMemberLimit } = await import('@/lib/platform-limits')
+      const { checkMemberLimit, checkTenantPlanLimit } = await import('@/lib/platform-limits')
       const { allowed, reason } = await checkMemberLimit()
       if (!allowed) {
         return NextResponse.json({ error: 'Registration is temporarily unavailable. Please try again later.' }, { status: 503 })
+      }
+
+      // Check plan-level member limit
+      const memberLimit = await checkTenantPlanLimit(tenantId, 'max_members')
+      if (!memberLimit.allowed) {
+        return NextResponse.json({ error: 'This studio has reached its member limit. Please contact the studio.' }, { status: 403 })
       }
     } catch {
       // Don't block registration if limit check fails
     }
 
-    // Check if email already exists
+    // Check if email already exists within this tenant
     const { data: existing } = await supabaseAdmin
       .from('users')
       .select('id')
       .eq('email', emailLower)
+      .eq('tenant_id', tenantId)
       .single()
 
     if (existing) {
@@ -72,6 +83,7 @@ export async function POST(request) {
         email: emailLower,
         password_hash: passwordHash,
         role: 'member',
+        tenant_id: tenantId,
       })
 
     if (error) {

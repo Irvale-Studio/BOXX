@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth'
+import { requireStaff } from '@/lib/api-helpers'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
@@ -20,10 +20,9 @@ const deleteSchema = z.object({
  */
 export async function POST(request) {
   try {
-    const session = await auth()
-    if (!session || (session.user.role !== 'owner' && session.user.role !== 'admin' && session.user.role !== 'employee')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const result = await requireStaff(request)
+    if (result.response) return result.response
+    const { session, tenantId } = result
 
     if (!supabaseAdmin) {
       return NextResponse.json({ error: 'Database unavailable' }, { status: 500 })
@@ -41,6 +40,7 @@ export async function POST(request) {
     const { data: cls, error: clsError } = await supabaseAdmin
       .from('class_schedule')
       .select('id, status, starts_at, recurring_id, class_types(name)')
+      .eq('tenant_id', tenantId)
       .eq('id', classScheduleId)
       .single()
 
@@ -56,6 +56,7 @@ export async function POST(request) {
     const { data: deletedBookings, error: bookingsError } = await supabaseAdmin
       .from('bookings')
       .delete()
+      .eq('tenant_id', tenantId)
       .eq('class_schedule_id', classScheduleId)
       .select('id')
 
@@ -68,6 +69,7 @@ export async function POST(request) {
     const { data: deletedWaitlist, error: waitlistError } = await supabaseAdmin
       .from('waitlist')
       .delete()
+      .eq('tenant_id', tenantId)
       .eq('class_schedule_id', classScheduleId)
       .select('id')
 
@@ -80,6 +82,7 @@ export async function POST(request) {
     const { error: deleteError } = await supabaseAdmin
       .from('class_schedule')
       .delete()
+      .eq('tenant_id', tenantId)
       .eq('id', classScheduleId)
 
     if (deleteError) {
@@ -89,6 +92,7 @@ export async function POST(request) {
 
     // 4. Audit log
     await supabaseAdmin.from('admin_audit_log').insert({
+      tenant_id: tenantId,
       admin_id: session.user.id,
       action: 'delete_cancelled_class',
       target_type: 'class_schedule',

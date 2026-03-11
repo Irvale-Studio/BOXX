@@ -708,27 +708,11 @@ function ProfileSection({ user, credits, onUpdate, creditAnimation }) {
 /* ─────────────────────────────────────────────────────────
    SHARED HELPERS — class images + colors
    ───────────────────────────────────────────────────────── */
-const classImageMap = {
-  beginner: '/images/studio/class-boxing.webp',
-  intermediate: '/images/studio/class-action.webp',
-  train: '/images/studio/class-train.webp',
-  juniors: '/images/studio/class-juniors.webp',
-}
-
 function getClassImage(cls) {
-  try {
-    if (cls?.is_private || cls?.class_types?.is_private) return '/images/studio/pt-session.webp'
-    const icon = cls?.class_types?.icon?.toLowerCase() || ''
-    const name = (cls?.class_types?.name || '').toLowerCase()
-    // Check name for private/1:1/pt before icon map
-    if (name.includes('private') || name.includes('1:1') || name.includes('pt ') || name.includes('personal')) return '/images/studio/pt-session.webp'
-    if (classImageMap[icon]) return classImageMap[icon]
-    if (name.includes('beginner')) return classImageMap.beginner
-    if (name.includes('inter')) return classImageMap.intermediate
-    if (name.includes('train')) return classImageMap.train
-    if (name.includes('junior')) return classImageMap.juniors
-  } catch {}
-  return classImageMap.beginner
+  // Use admin-uploaded image if available
+  if (cls?.class_types?.image_url) return cls.class_types.image_url
+  // No image — return null (caller should use gradient fallback)
+  return null
 }
 
 function getClassColor(cls) {
@@ -1162,16 +1146,16 @@ function ScheduleSection({ credits, onUpdate, sharedClassId, view, onViewChange,
         style={{ borderLeftWidth: '4px', borderLeftColor: isCancelled ? '#ef4444' : classColor }}
         onClick={() => !isCancelled && setExpandedId(isExpanded ? null : cls.id)}
       >
-        {/* Blended image from right side */}
+        {/* Blended image or gradient from right side */}
         <div className="absolute top-0 right-0 bottom-0 w-1/3 sm:w-2/5">
-          <Image
-            src={classImage}
-            alt=""
-            fill
-            className="object-cover"
-            sizes="(max-width: 640px) 33vw, 40vw"
-          />
-          <div className="absolute inset-0 bg-gradient-to-r from-card via-card/70 to-card/40" />
+          {classImage ? (
+            <>
+              <Image src={classImage} alt="" fill className="object-cover" sizes="(max-width: 640px) 33vw, 40vw" />
+              <div className="absolute inset-0 bg-gradient-to-r from-card via-card/70 to-card/40" />
+            </>
+          ) : (
+            <div className="absolute inset-0 bg-gradient-to-r from-card via-transparent to-transparent" style={{ background: `linear-gradient(to right, var(--card), ${classColor}15, ${classColor}08)` }} />
+          )}
         </div>
 
         <CardContent className="p-5 relative">
@@ -1633,10 +1617,16 @@ function ScheduleSection({ credits, onUpdate, sharedClassId, view, onViewChange,
                         <div className="w-10 h-1 rounded-full bg-foreground/20" />
                       </div>
 
-                      {/* Blended image from right side */}
+                      {/* Blended image or gradient from right side */}
                       <div className="absolute top-0 right-0 bottom-0 w-1/3 sm:w-2/5">
-                        <Image src={classImage} alt="" fill className="object-cover" sizes="(max-width: 640px) 33vw, 40vw" />
-                        <div className="absolute inset-0 bg-gradient-to-r from-card via-card/70 to-card/40" />
+                        {classImage ? (
+                          <>
+                            <Image src={classImage} alt="" fill className="object-cover" sizes="(max-width: 640px) 33vw, 40vw" />
+                            <div className="absolute inset-0 bg-gradient-to-r from-card via-card/70 to-card/40" />
+                          </>
+                        ) : (
+                          <div className="absolute inset-0" style={{ background: `linear-gradient(to right, var(--card), ${classColor}15, ${classColor}08)` }} />
+                        )}
                       </div>
 
                       <CardContent className="p-5 pb-10 md:pb-5 relative">
@@ -1829,10 +1819,16 @@ function BookingsSection({ upcoming, past, waitlist = [], credits = [], onUpdate
         style={{ borderLeftWidth: '4px', borderLeftColor: isCancelled ? '#ef4444' : classColor }}
         onClick={() => setExpandedId(isExpanded ? null : cardId)}
       >
-        {/* Blended image from right */}
+        {/* Blended image or gradient from right */}
         <div className="absolute top-0 right-0 bottom-0 w-1/3 sm:w-2/5">
-          <Image src={classImage} alt="" fill className="object-cover" sizes="(max-width: 640px) 33vw, 40vw" />
-          <div className="absolute inset-0 bg-gradient-to-r from-card via-card/70 to-card/40" />
+          {classImage ? (
+            <>
+              <Image src={classImage} alt="" fill className="object-cover" sizes="(max-width: 640px) 33vw, 40vw" />
+              <div className="absolute inset-0 bg-gradient-to-r from-card via-card/70 to-card/40" />
+            </>
+          ) : (
+            <div className="absolute inset-0" style={{ background: `linear-gradient(to right, var(--card), ${classColor}15, ${classColor}08)` }} />
+          )}
         </div>
 
         <CardContent className="p-5 relative">

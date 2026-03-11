@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth'
+import { requireAdmin } from '@/lib/api-helpers'
 import { isStripeConfigured } from '@/lib/stripe'
 import { NextResponse } from 'next/server'
 
@@ -7,10 +7,9 @@ import { NextResponse } from 'next/server'
  */
 export async function GET() {
   try {
-    const session = await auth()
-    if (!session || (session.user.role !== 'owner' && session.user.role !== 'admin')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const authResult = await requireAdmin()
+    if (authResult.response) return authResult.response
+    // tenantId available via authResult.tenantId if needed in future
 
     const configured = await isStripeConfigured()
 

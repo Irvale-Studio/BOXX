@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth'
+import { requireAuth } from '@/lib/api-helpers'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
@@ -15,10 +15,9 @@ const profileSchema = z.object({
  */
 export async function PUT(request) {
   try {
-    const session = await auth()
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const authResult = await requireAuth()
+    if (authResult.response) return authResult.response
+    const { session, tenantId } = authResult
 
     const body = await request.json()
     const parsed = profileSchema.safeParse(body)
@@ -33,6 +32,7 @@ export async function PUT(request) {
     const { error } = await supabaseAdmin
       .from('users')
       .update(parsed.data)
+      .eq('tenant_id', tenantId)
       .eq('id', session.user.id)
 
     if (error) {
@@ -52,10 +52,9 @@ export async function PUT(request) {
  */
 export async function DELETE(request) {
   try {
-    const session = await auth()
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const authResult = await requireAuth()
+    if (authResult.response) return authResult.response
+    const { session, tenantId } = authResult
 
     const body = await request.json()
     const { confirmation } = body
@@ -74,6 +73,7 @@ export async function DELETE(request) {
     await supabaseAdmin
       .from('bookings')
       .update({ status: 'cancelled' })
+      .eq('tenant_id', tenantId)
       .eq('user_id', userId)
       .eq('status', 'confirmed')
 
@@ -81,12 +81,14 @@ export async function DELETE(request) {
     await supabaseAdmin
       .from('waitlist')
       .delete()
+      .eq('tenant_id', tenantId)
       .eq('user_id', userId)
 
     // Void remaining credits
     await supabaseAdmin
       .from('user_credits')
       .update({ credits_remaining: 0 })
+      .eq('tenant_id', tenantId)
       .eq('user_id', userId)
 
     // Anonymize user record (keep for booking history integrity)
@@ -103,6 +105,7 @@ export async function DELETE(request) {
         password_hash: null,
         role: 'frozen',
       })
+      .eq('tenant_id', tenantId)
       .eq('id', userId)
 
     if (error) {

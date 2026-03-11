@@ -1,16 +1,15 @@
-import { auth } from '@/lib/auth'
+import { requireStaff } from '@/lib/api-helpers'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
 
 /**
  * GET /api/admin/schedule/options — Get class types and instructors for dropdowns
  */
-export async function GET() {
+export async function GET(request) {
   try {
-    const session = await auth()
-    if (!session || (session.user.role !== 'owner' && session.user.role !== 'admin' && session.user.role !== 'employee')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const result = await requireStaff(request)
+    if (result.response) return result.response
+    const { session, tenantId } = result
 
     if (!supabaseAdmin) {
       return NextResponse.json({ error: 'Database unavailable' }, { status: 500 })
@@ -20,11 +19,13 @@ export async function GET() {
       supabaseAdmin
         .from('class_types')
         .select('id, name, color, duration_mins, is_private')
+        .eq('tenant_id', tenantId)
         .eq('active', true)
         .order('name'),
       supabaseAdmin
         .from('instructors')
         .select('id, name')
+        .eq('tenant_id', tenantId)
         .eq('active', true)
         .order('name'),
     ])

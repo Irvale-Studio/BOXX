@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth'
+import { requireAuth } from '@/lib/api-helpers'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
@@ -12,10 +12,9 @@ const leaveSchema = z.object({
  */
 export async function POST(request) {
   try {
-    const session = await auth()
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const authResult = await requireAuth()
+    if (authResult.response) return authResult.response
+    const { session, tenantId } = authResult
 
     const body = await request.json()
     const parsed = leaveSchema.safeParse(body)
@@ -34,6 +33,7 @@ export async function POST(request) {
     const { data: entry } = await supabaseAdmin
       .from('waitlist')
       .select('id, position')
+      .eq('tenant_id', tenantId)
       .eq('user_id', userId)
       .eq('class_schedule_id', classScheduleId)
       .single()
@@ -46,6 +46,7 @@ export async function POST(request) {
     const { error } = await supabaseAdmin
       .from('waitlist')
       .delete()
+      .eq('tenant_id', tenantId)
       .eq('id', entry.id)
 
     if (error) {
@@ -57,6 +58,7 @@ export async function POST(request) {
     const { data: behind } = await supabaseAdmin
       .from('waitlist')
       .select('id, position')
+      .eq('tenant_id', tenantId)
       .eq('class_schedule_id', classScheduleId)
       .gt('position', entry.position)
       .order('position', { ascending: true })
@@ -66,6 +68,7 @@ export async function POST(request) {
         await supabaseAdmin
           .from('waitlist')
           .update({ position: w.position - 1 })
+          .eq('tenant_id', tenantId)
           .eq('id', w.id)
       }
     }

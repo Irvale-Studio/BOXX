@@ -1,6 +1,8 @@
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
 
+const DEFAULT_TENANT_ID = process.env.DEFAULT_TENANT_ID || 'a0000000-0000-0000-0000-000000000001'
+
 // Public keys that are safe to expose
 const PUBLIC_KEYS = [
   'studio_name', 'studio_address', 'studio_phone', 'studio_email', 'studio_website',
@@ -22,6 +24,7 @@ export async function GET() {
     const { data } = await supabaseAdmin
       .from('studio_settings')
       .select('key, value')
+      .eq('tenant_id', DEFAULT_TENANT_ID)
       .in('key', PUBLIC_KEYS)
 
     const settings = Object.fromEntries((data || []).map((r) => [r.key, r.value]))

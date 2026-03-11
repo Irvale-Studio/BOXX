@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth'
+import { requireStaff } from '@/lib/api-helpers'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { sendClassChanged } from '@/lib/email'
 import { NextResponse } from 'next/server'
@@ -14,10 +14,10 @@ const notifySchema = z.object({
  */
 export async function POST(request) {
   try {
-    const session = await auth()
-    if (!session || (session.user.role !== 'owner' && session.user.role !== 'admin' && session.user.role !== 'employee')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const result = await requireStaff(request)
+    if (result.response) return result.response
+    const { session, tenantId } = result
+
     if (!supabaseAdmin) {
       return NextResponse.json({ error: 'Database unavailable' }, { status: 500 })
     }
@@ -34,6 +34,7 @@ export async function POST(request) {
     const { data: cls } = await supabaseAdmin
       .from('class_schedule')
       .select('*, class_types(name), instructors(name)')
+      .eq('tenant_id', tenantId)
       .eq('id', classId)
       .single()
 
@@ -45,6 +46,7 @@ export async function POST(request) {
     const { data: bookings } = await supabaseAdmin
       .from('bookings')
       .select('users(id, name, email)')
+      .eq('tenant_id', tenantId)
       .eq('class_schedule_id', classId)
       .eq('status', 'confirmed')
 
@@ -77,6 +79,7 @@ export async function POST(request) {
     await Promise.allSettled(emailPromises)
 
     await supabaseAdmin.from('admin_audit_log').insert({
+      tenant_id: tenantId,
       admin_id: session.user.id,
       action: 'notify_class_change',
       target_type: 'class_schedule',

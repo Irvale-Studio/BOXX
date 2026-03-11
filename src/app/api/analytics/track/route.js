@@ -2,6 +2,8 @@ import { headers } from 'next/headers'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { rateLimit } from '@/lib/rate-limit'
 
+const DEFAULT_TENANT_ID = process.env.DEFAULT_TENANT_ID || 'a0000000-0000-0000-0000-000000000001'
+
 const BOT_PATTERNS = [
   'bot', 'crawl', 'spider', 'slurp', 'facebookexternalhit',
   'linkedinbot', 'twitterbot', 'whatsapp', 'telegram',
@@ -53,6 +55,7 @@ export async function POST(request) {
     const deviceType = getDeviceType(body.screen_width)
 
     await supabaseAdmin.from('page_views').insert({
+      tenant_id: DEFAULT_TENANT_ID,
       path: body.path,
       referrer: body.referrer || null,
       utm_source: body.utm_source || null,

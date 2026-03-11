@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth'
+import { requireStaff } from '@/lib/api-helpers'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
@@ -8,10 +8,9 @@ import { z } from 'zod'
  */
 export async function GET(request) {
   try {
-    const session = await auth()
-    if (!session || (session.user.role !== 'owner' && session.user.role !== 'admin' && session.user.role !== 'employee')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const result = await requireStaff(request)
+    if (result.response) return result.response
+    const { session, tenantId } = result
 
     if (!supabaseAdmin) {
       return NextResponse.json({ error: 'Database unavailable' }, { status: 500 })
@@ -32,6 +31,7 @@ export async function GET(request) {
         class_types(id, name, description, duration_mins, color, icon, is_private),
         instructors(id, name, photo_url)
       `)
+      .eq('tenant_id', tenantId)
       .gte('starts_at', new Date(start).toISOString())
       .lte('starts_at', new Date(end).toISOString())
       .order('starts_at', { ascending: true })
@@ -52,11 +52,13 @@ export async function GET(request) {
         supabaseAdmin
           .from('bookings')
           .select('class_schedule_id, status, users(id, name, avatar_url, email)')
+          .eq('tenant_id', tenantId)
           .in('class_schedule_id', classIds)
           .eq('status', 'confirmed'),
         supabaseAdmin
           .from('waitlist')
           .select('class_schedule_id, position, users(id, name, avatar_url, email)')
+          .eq('tenant_id', tenantId)
           .in('class_schedule_id', classIds)
           .order('position', { ascending: true }),
       ])
@@ -120,10 +122,9 @@ const createClassSchema = z.object({
  */
 export async function POST(request) {
   try {
-    const session = await auth()
-    if (!session || (session.user.role !== 'owner' && session.user.role !== 'admin' && session.user.role !== 'employee')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const result = await requireStaff(request)
+    if (result.response) return result.response
+    const { session, tenantId } = result
 
     if (!supabaseAdmin) {
       return NextResponse.json({ error: 'Database unavailable' }, { status: 500 })
@@ -138,10 +139,16 @@ export async function POST(request) {
     const { classTypeId, instructorId, startsAt, endsAt, capacity, notes } = parsed.data
 
     // Check platform class limit
-    const { checkClassLimit } = await import('@/lib/platform-limits')
+    const { checkClassLimit, checkTenantPlanLimit } = await import('@/lib/platform-limits')
     const { allowed: classAllowed, reason: classReason } = await checkClassLimit()
     if (!classAllowed) {
       return NextResponse.json({ error: classReason }, { status: 403 })
+    }
+
+    // Check plan-level class limit
+    const classLimit = await checkTenantPlanLimit(tenantId, 'max_classes_month')
+    if (!classLimit.allowed) {
+      return NextResponse.json({ error: `Monthly class limit reached (${classLimit.current}/${classLimit.limit} on ${classLimit.plan} plan)` }, { status: 403 })
     }
 
     // Business rule: check for time clashes with same instructor
@@ -151,6 +158,7 @@ export async function POST(request) {
     const { data: overlaps } = await supabaseAdmin
       .from('class_schedule')
       .select('id, starts_at, ends_at, class_types(name)')
+      .eq('tenant_id', tenantId)
       .eq('instructor_id', instructorId)
       .eq('status', 'active')
       .lt('starts_at', newEnd.toISOString())
@@ -167,6 +175,7 @@ export async function POST(request) {
     const { data: cls, error } = await supabaseAdmin
       .from('class_schedule')
       .insert({
+        tenant_id: tenantId,
         class_type_id: classTypeId,
         instructor_id: instructorId,
         starts_at: startsAt,
@@ -185,6 +194,7 @@ export async function POST(request) {
 
     // Audit log
     await supabaseAdmin.from('admin_audit_log').insert({
+      tenant_id: tenantId,
       admin_id: session.user.id,
       action: 'create_class',
       target_type: 'class_schedule',
@@ -222,10 +232,9 @@ const updateClassSchema = z.object({
  */
 export async function PUT(request) {
   try {
-    const session = await auth()
-    if (!session || (session.user.role !== 'owner' && session.user.role !== 'admin' && session.user.role !== 'employee')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const result = await requireStaff(request)
+    if (result.response) return result.response
+    const { session, tenantId } = result
 
     if (!supabaseAdmin) {
       return NextResponse.json({ error: 'Database unavailable' }, { status: 500 })
@@ -243,6 +252,7 @@ export async function PUT(request) {
     const { data: existing } = await supabaseAdmin
       .from('class_schedule')
       .select('id, class_type_id, capacity, starts_at, ends_at, instructor_id, recurring_id')
+      .eq('tenant_id', tenantId)
       .eq('id', id)
       .single()
 
@@ -260,6 +270,7 @@ export async function PUT(request) {
       const { count: bookedCount } = await supabaseAdmin
         .from('bookings')
         .select('id', { count: 'exact', head: true })
+        .eq('tenant_id', tenantId)
         .eq('class_schedule_id', id)
         .eq('status', 'confirmed')
 
@@ -277,6 +288,7 @@ export async function PUT(request) {
       const { data: overlaps } = await supabaseAdmin
         .from('class_schedule')
         .select('id, starts_at, ends_at, class_types(name)')
+        .eq('tenant_id', tenantId)
         .eq('instructor_id', checkInstructor)
         .eq('status', 'active')
         .neq('id', id)
@@ -310,6 +322,7 @@ export async function PUT(request) {
     const { data: cls, error } = await supabaseAdmin
       .from('class_schedule')
       .update(updates)
+      .eq('tenant_id', tenantId)
       .eq('id', id)
       .select('*, class_types(id, name, color), instructors(id, name)')
       .single()
@@ -340,6 +353,7 @@ export async function PUT(request) {
         const { data: siblings } = await supabaseAdmin
           .from('class_schedule')
           .select('id, starts_at, ends_at')
+          .eq('tenant_id', tenantId)
           .eq('recurring_id', cls.recurring_id)
           .eq('status', 'active')
           .neq('id', id)
@@ -357,6 +371,7 @@ export async function PUT(request) {
               starts_at: sibStart.toISOString(),
               ends_at: sibEnd.toISOString(),
             })
+            .eq('tenant_id', tenantId)
             .eq('id', sib.id)
 
           siblingsUpdated++
@@ -366,6 +381,7 @@ export async function PUT(request) {
         const { count } = await supabaseAdmin
           .from('class_schedule')
           .update(sharedUpdates)
+          .eq('tenant_id', tenantId)
           .eq('recurring_id', cls.recurring_id)
           .eq('status', 'active')
           .neq('id', id)
@@ -375,6 +391,7 @@ export async function PUT(request) {
     }
 
     await supabaseAdmin.from('admin_audit_log').insert({
+      tenant_id: tenantId,
       admin_id: session.user.id,
       action: updateAll ? 'update_recurring_classes' : 'update_class',
       target_type: 'class_schedule',

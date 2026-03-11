@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth'
+import { requireAuth } from '@/lib/api-helpers'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
 
@@ -7,10 +7,9 @@ import { NextResponse } from 'next/server'
  */
 export async function GET() {
   try {
-    const session = await auth()
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const authResult = await requireAuth()
+    if (authResult.response) return authResult.response
+    const { session, tenantId } = authResult
 
     if (!supabaseAdmin) {
       return NextResponse.json({ error: 'Database unavailable' }, { status: 500 })
@@ -23,21 +22,25 @@ export async function GET() {
       supabaseAdmin
         .from('users')
         .select('id, email, name, phone, bio, avatar_url, role, created_at')
+        .eq('tenant_id', tenantId)
         .eq('id', userId)
         .single(),
       supabaseAdmin
         .from('bookings')
         .select('id, status, created_at, class_schedule(starts_at, class_types(name))')
+        .eq('tenant_id', tenantId)
         .eq('user_id', userId)
         .order('created_at', { ascending: false }),
       supabaseAdmin
         .from('user_credits')
         .select('id, credits_total, credits_remaining, expires_at, created_at, class_packs(name)')
+        .eq('tenant_id', tenantId)
         .eq('user_id', userId)
         .order('created_at', { ascending: false }),
       supabaseAdmin
         .from('waitlist')
         .select('id, position, created_at, class_schedule(starts_at, class_types(name))')
+        .eq('tenant_id', tenantId)
         .eq('user_id', userId)
         .order('created_at', { ascending: false }),
     ])

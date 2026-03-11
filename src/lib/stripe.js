@@ -1,18 +1,20 @@
 import Stripe from 'stripe'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 
-// Cache the Stripe instance and settings to avoid repeated DB lookups
-let _stripe = null
-let _stripeKeySource = null // track which key was used
+const DEFAULT_TENANT_ID = process.env.DEFAULT_TENANT_ID || 'a0000000-0000-0000-0000-000000000001'
+
+// Cache Stripe instances per tenant
+const _stripeCache = new Map()
 
 /**
  * Get Stripe secret key — checks studio_settings first, falls back to env var
  */
-async function getStripeSecretKey() {
+async function getStripeSecretKey(tenantId = DEFAULT_TENANT_ID) {
   if (supabaseAdmin) {
     const { data } = await supabaseAdmin
       .from('studio_settings')
       .select('value')
+      .eq('tenant_id', tenantId)
       .eq('key', 'stripe_secret_key')
       .single()
 
@@ -25,11 +27,12 @@ async function getStripeSecretKey() {
 /**
  * Get Stripe webhook secret — checks studio_settings first, falls back to env var
  */
-export async function getWebhookSecret() {
+export async function getWebhookSecret(tenantId = DEFAULT_TENANT_ID) {
   if (supabaseAdmin) {
     const { data } = await supabaseAdmin
       .from('studio_settings')
       .select('value')
+      .eq('tenant_id', tenantId)
       .eq('key', 'stripe_webhook_secret')
       .single()
 
@@ -42,16 +45,17 @@ export async function getWebhookSecret() {
 /**
  * Get a Stripe instance (async — checks DB settings first)
  */
-export async function getStripeAsync() {
-  const key = await getStripeSecretKey()
+export async function getStripeAsync(tenantId = DEFAULT_TENANT_ID) {
+  const key = await getStripeSecretKey(tenantId)
   if (!key) return null
 
   // Reuse cached instance if same key
-  if (_stripe && _stripeKeySource === key) return _stripe
+  const cached = _stripeCache.get(key)
+  if (cached) return cached
 
-  _stripe = new Stripe(key, { apiVersion: '2024-12-18.acacia' })
-  _stripeKeySource = key
-  return _stripe
+  const stripe = new Stripe(key, { apiVersion: '2024-12-18.acacia' })
+  _stripeCache.set(key, stripe)
+  return stripe
 }
 
 /**
@@ -69,7 +73,7 @@ export function getStripe() {
 /**
  * Check if Stripe is configured (has a secret key in DB or env)
  */
-export async function isStripeConfigured() {
-  const key = await getStripeSecretKey()
+export async function isStripeConfigured(tenantId = DEFAULT_TENANT_ID) {
+  const key = await getStripeSecretKey(tenantId)
   return !!key
 }

@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth'
+import { requireAdmin } from '@/lib/api-helpers'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
 import Stripe from 'stripe'
@@ -19,10 +19,9 @@ const APP_URL = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || '
  */
 export async function POST(request) {
   try {
-    const session = await auth()
-    if (!session || (session.user.role !== 'admin' && session.user.role !== 'owner')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const result = await requireAdmin(request)
+    if (result.response) return result.response
+    const { session, tenantId } = result
 
     if (!supabaseAdmin) {
       return NextResponse.json({ error: 'Database unavailable' }, { status: 500 })
@@ -79,10 +78,10 @@ export async function POST(request) {
 
     // Save to studio_settings
     const settings = [
-      { key: 'stripe_secret_key', value: secretKey },
+      { tenant_id: tenantId, key: 'stripe_secret_key', value: secretKey },
     ]
     if (webhookSecret) {
-      settings.push({ key: 'stripe_webhook_secret', value: webhookSecret })
+      settings.push({ tenant_id: tenantId, key: 'stripe_webhook_secret', value: webhookSecret })
     }
 
     const { error: dbError } = await supabaseAdmin

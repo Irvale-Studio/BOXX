@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth'
+import { requireAuth } from '@/lib/api-helpers'
 import { rateLimit } from '@/lib/rate-limit'
 import { getStripeAsync } from '@/lib/stripe'
 import { supabaseAdmin } from '@/lib/supabase/admin'
@@ -16,10 +16,9 @@ const checkoutSchema = z.object({
  */
 export async function POST(request) {
   try {
-    const session = await auth()
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const authResult = await requireAuth()
+    if (authResult.response) return authResult.response
+    const { session, tenantId } = authResult
 
     // Rate limit: 5 checkout attempts per minute per user
     const { limited } = rateLimit(`checkout:${session.user.id}`, 5, 60 * 1000)
@@ -43,6 +42,7 @@ export async function POST(request) {
     const { data: pack, error: packError } = await supabaseAdmin
       .from('class_packs')
       .select('*')
+      .eq('tenant_id', tenantId)
       .eq('id', packId)
       .eq('active', true)
       .single()
@@ -56,6 +56,7 @@ export async function POST(request) {
       const { data: priorCredits } = await supabaseAdmin
         .from('user_credits')
         .select('id')
+        .eq('tenant_id', tenantId)
         .eq('user_id', session.user.id)
         .limit(1)
 
@@ -88,6 +89,7 @@ export async function POST(request) {
     const { data: user } = await supabaseAdmin
       .from('users')
       .select('stripe_customer_id, email, name')
+      .eq('tenant_id', tenantId)
       .eq('id', session.user.id)
       .single()
 
@@ -104,6 +106,7 @@ export async function POST(request) {
       await supabaseAdmin
         .from('users')
         .update({ stripe_customer_id: customerId })
+        .eq('tenant_id', tenantId)
         .eq('id', session.user.id)
     }
 
@@ -117,6 +120,7 @@ export async function POST(request) {
       metadata: {
         userId: session.user.id,
         packId: pack.id,
+        tenantId: tenantId,
       },
       success_url: `${APP_URL}/buy-classes?success=true&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${APP_URL}/buy-classes`,

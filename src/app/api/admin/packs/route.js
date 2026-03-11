@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth'
+import { requireAdmin } from '@/lib/api-helpers'
 import { getStripeAsync } from '@/lib/stripe'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
@@ -53,12 +53,11 @@ async function resolveStripeInput(input) {
 /**
  * GET /api/admin/packs — Get all class packs (admin)
  */
-export async function GET() {
+export async function GET(request) {
   try {
-    const session = await auth()
-    if (!session || (session.user.role !== 'admin' && session.user.role !== 'owner')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const result = await requireAdmin(request)
+    if (result.response) return result.response
+    const { session, tenantId } = result
 
     if (!supabaseAdmin) {
       return NextResponse.json({ error: 'Database unavailable' }, { status: 500 })
@@ -67,6 +66,7 @@ export async function GET() {
     const { data, error } = await supabaseAdmin
       .from('class_packs')
       .select('*')
+      .eq('tenant_id', tenantId)
       .order('display_order', { ascending: true })
 
     if (error) {
@@ -99,10 +99,9 @@ const createPackSchema = z.object({
  */
 export async function POST(request) {
   try {
-    const session = await auth()
-    if (!session || (session.user.role !== 'admin' && session.user.role !== 'owner')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const result = await requireAdmin(request)
+    if (result.response) return result.response
+    const { session, tenantId } = result
 
     if (!supabaseAdmin) {
       return NextResponse.json({ error: 'Database unavailable' }, { status: 500 })
@@ -115,14 +114,20 @@ export async function POST(request) {
     }
 
     // Check platform pack limit
-    const { checkPackLimit } = await import('@/lib/platform-limits')
+    const { checkPackLimit, checkTenantPlanLimit } = await import('@/lib/platform-limits')
     const { allowed: packAllowed, reason: packReason } = await checkPackLimit()
     if (!packAllowed) {
       return NextResponse.json({ error: packReason }, { status: 403 })
     }
 
+    // Check plan-level pack limit
+    const packLimit = await checkTenantPlanLimit(tenantId, 'max_packs')
+    if (!packLimit.allowed) {
+      return NextResponse.json({ error: `Pack limit reached (${packLimit.current}/${packLimit.limit} on ${packLimit.plan} plan)` }, { status: 403 })
+    }
+
     // Resolve Stripe input (product ID, URL, or price ID) to actual price ID
-    const insertData = { ...parsed.data, active: true }
+    const insertData = { ...parsed.data, tenant_id: tenantId, active: true }
     if (insertData.stripe_price_id) {
       try {
         const { priceId, productId } = await resolveStripeInput(insertData.stripe_price_id)
@@ -160,10 +165,9 @@ const deletePackSchema = z.object({
  */
 export async function DELETE(request) {
   try {
-    const session = await auth()
-    if (!session || (session.user.role !== 'admin' && session.user.role !== 'owner')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const result = await requireAdmin(request)
+    if (result.response) return result.response
+    const { session, tenantId } = result
 
     if (!supabaseAdmin) {
       return NextResponse.json({ error: 'Database unavailable' }, { status: 500 })
@@ -181,6 +185,7 @@ export async function DELETE(request) {
     const { count } = await supabaseAdmin
       .from('user_credits')
       .select('id', { count: 'exact', head: true })
+      .eq('tenant_id', tenantId)
       .eq('class_pack_id', id)
 
     if (count > 0) {
@@ -193,6 +198,7 @@ export async function DELETE(request) {
     const { error } = await supabaseAdmin
       .from('class_packs')
       .delete()
+      .eq('tenant_id', tenantId)
       .eq('id', id)
 
     if (error) {
@@ -227,10 +233,9 @@ const updatePackSchema = z.object({
  */
 export async function PUT(request) {
   try {
-    const session = await auth()
-    if (!session || (session.user.role !== 'admin' && session.user.role !== 'owner')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const result = await requireAdmin(request)
+    if (result.response) return result.response
+    const { session, tenantId } = result
 
     if (!supabaseAdmin) {
       return NextResponse.json({ error: 'Database unavailable' }, { status: 500 })
@@ -260,6 +265,7 @@ export async function PUT(request) {
       const { count } = await supabaseAdmin
         .from('user_credits')
         .select('id', { count: 'exact', head: true })
+        .eq('tenant_id', tenantId)
         .eq('class_pack_id', id)
         .eq('status', 'active')
         .gt('expires_at', new Date().toISOString())
@@ -276,6 +282,7 @@ export async function PUT(request) {
     const { data: pack, error } = await supabaseAdmin
       .from('class_packs')
       .update(updates)
+      .eq('tenant_id', tenantId)
       .eq('id', id)
       .select()
       .single()

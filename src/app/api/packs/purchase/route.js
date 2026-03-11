@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth'
+import { requireAuth } from '@/lib/api-helpers'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { sendPackPurchaseConfirmation } from '@/lib/email'
 import { confirmPendingInvitations } from '@/lib/confirm-pending-invitations'
@@ -15,10 +15,9 @@ const purchaseSchema = z.object({
  */
 export async function POST(request) {
   try {
-    const session = await auth()
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const authResult = await requireAuth()
+    if (authResult.response) return authResult.response
+    const { session, tenantId } = authResult
 
     // Direct purchase must be explicitly enabled — otherwise use Stripe checkout
     if (process.env.ENABLE_DIRECT_PURCHASE !== 'true') {
@@ -41,6 +40,7 @@ export async function POST(request) {
     const { data: pack, error: packError } = await supabaseAdmin
       .from('class_packs')
       .select('*')
+      .eq('tenant_id', tenantId)
       .eq('id', packId)
       .eq('active', true)
       .single()
@@ -54,6 +54,7 @@ export async function POST(request) {
       const { data: priorCredits } = await supabaseAdmin
         .from('user_credits')
         .select('id')
+        .eq('tenant_id', tenantId)
         .eq('user_id', session.user.id)
         .limit(1)
 
@@ -72,6 +73,7 @@ export async function POST(request) {
     const { data: credit, error: creditError } = await supabaseAdmin
       .from('user_credits')
       .insert({
+        tenant_id: tenantId,
         user_id: session.user.id,
         class_pack_id: pack.id,
         credits_total: pack.credits,
@@ -92,6 +94,7 @@ export async function POST(request) {
     const { data: purchaseUser } = await supabaseAdmin
       .from('users')
       .select('email, name')
+      .eq('tenant_id', tenantId)
       .eq('id', session.user.id)
       .single()
 
@@ -109,7 +112,7 @@ export async function POST(request) {
     }
 
     // Auto-confirm any pending class invitations
-    const autoConfirmed = await confirmPendingInvitations(session.user.id)
+    const autoConfirmed = await confirmPendingInvitations(session.user.id, tenantId)
 
     return NextResponse.json({
       credit,

@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth'
+import { requireAuth } from '@/lib/api-helpers'
 import { rateLimit } from '@/lib/rate-limit'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { sendBookingConfirmation, sendCreditsLowWarning } from '@/lib/email'
@@ -15,10 +15,9 @@ const bookingSchema = z.object({
  */
 export async function POST(request) {
   try {
-    const session = await auth()
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const authResult = await requireAuth()
+    if (authResult.response) return authResult.response
+    const { session, tenantId } = authResult
 
     // Rate limit: 10 booking attempts per minute per user
     const { limited } = rateLimit(`booking:${session.user.id}`, 10, 60 * 1000)
@@ -44,6 +43,7 @@ export async function POST(request) {
     const { data: cls, error: clsError } = await supabaseAdmin
       .from('class_schedule')
       .select('*, class_types(name), instructors(name)')
+      .eq('tenant_id', tenantId)
       .eq('id', classScheduleId)
       .eq('status', 'active')
       .single()
@@ -61,6 +61,7 @@ export async function POST(request) {
     const { data: existingBooking } = await supabaseAdmin
       .from('bookings')
       .select('id, status')
+      .eq('tenant_id', tenantId)
       .eq('user_id', userId)
       .eq('class_schedule_id', classScheduleId)
       .in('status', ['confirmed', 'invited'])
@@ -77,6 +78,7 @@ export async function POST(request) {
     const { data: confirmedBookings } = await supabaseAdmin
       .from('bookings')
       .select('id')
+      .eq('tenant_id', tenantId)
       .eq('class_schedule_id', classScheduleId)
       .eq('status', 'confirmed')
 
@@ -90,6 +92,7 @@ export async function POST(request) {
     const { data: allCredits } = await supabaseAdmin
       .from('user_credits')
       .select('*')
+      .eq('tenant_id', tenantId)
       .eq('user_id', userId)
       .eq('status', 'active')
       .gt('expires_at', now)
@@ -121,6 +124,7 @@ export async function POST(request) {
     const { data: booking, error: bookingError } = await supabaseAdmin
       .from('bookings')
       .insert({
+        tenant_id: tenantId,
         user_id: userId,
         class_schedule_id: classScheduleId,
         credit_id: credit.id,
@@ -143,6 +147,7 @@ export async function POST(request) {
     const { data: emailUser } = await supabaseAdmin
       .from('users')
       .select('email, name')
+      .eq('tenant_id', tenantId)
       .eq('id', userId)
       .single()
 
@@ -171,6 +176,7 @@ export async function POST(request) {
         const { data: packInfo } = await supabaseAdmin
           .from('class_packs')
           .select('name')
+          .eq('tenant_id', tenantId)
           .eq('id', credit.class_pack_id)
           .single()
 

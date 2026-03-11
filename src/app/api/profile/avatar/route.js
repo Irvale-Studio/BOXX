@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth'
+import { requireAuth } from '@/lib/api-helpers'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
 
@@ -10,10 +10,9 @@ const MAX_SIZE = 10 * 1024 * 1024 // 10MB (mobile photos can be large)
  */
 export async function POST(request) {
   try {
-    const session = await auth()
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const authResult = await requireAuth()
+    if (authResult.response) return authResult.response
+    const { session, tenantId } = authResult
 
     const formData = await request.formData()
     const file = formData.get('avatar')
@@ -63,6 +62,7 @@ export async function POST(request) {
     await supabaseAdmin
       .from('users')
       .update({ avatar_url: avatarUrl })
+      .eq('tenant_id', tenantId)
       .eq('id', session.user.id)
 
     return NextResponse.json({ avatar_url: avatarUrl })

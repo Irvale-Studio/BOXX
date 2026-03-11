@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth'
+import { requireAdmin } from '@/lib/api-helpers'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
@@ -6,12 +6,11 @@ import { z } from 'zod'
 /**
  * GET /api/admin/settings — Get all studio settings
  */
-export async function GET() {
+export async function GET(request) {
   try {
-    const session = await auth()
-    if (!session || (session.user.role !== 'admin' && session.user.role !== 'owner')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const result = await requireAdmin(request)
+    if (result.response) return result.response
+    const { session, tenantId } = result
 
     if (!supabaseAdmin) {
       return NextResponse.json({ error: 'Database unavailable' }, { status: 500 })
@@ -20,6 +19,7 @@ export async function GET() {
     const { data, error } = await supabaseAdmin
       .from('studio_settings')
       .select('key, value')
+      .eq('tenant_id', tenantId)
 
     if (error) {
       console.error('[admin/settings] Error:', error)
@@ -52,10 +52,9 @@ const updateSchema = z.record(z.string(), z.string())
  */
 export async function PUT(request) {
   try {
-    const session = await auth()
-    if (!session || (session.user.role !== 'admin' && session.user.role !== 'owner')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const result = await requireAdmin(request)
+    if (result.response) return result.response
+    const { session, tenantId } = result
 
     const body = await request.json()
     const parsed = updateSchema.safeParse(body)
@@ -71,7 +70,7 @@ export async function PUT(request) {
     const protectedKeys = ['stripe_account_id', 'stripe_access_token']
     const updates = Object.entries(parsed.data)
       .filter(([key]) => !protectedKeys.includes(key))
-      .map(([key, value]) => ({ key, value }))
+      .map(([key, value]) => ({ tenant_id: tenantId, key, value }))
 
     if (updates.length > 0) {
       const { error } = await supabaseAdmin

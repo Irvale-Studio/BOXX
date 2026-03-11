@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth'
+import { requireAuth } from '@/lib/api-helpers'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
 
@@ -7,10 +7,9 @@ import { NextResponse } from 'next/server'
  */
 export async function GET(request) {
   try {
-    const session = await auth()
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const authResult = await requireAuth()
+    if (authResult.response) return authResult.response
+    const { session, tenantId } = authResult
 
     if (!supabaseAdmin) {
       return NextResponse.json({ error: 'Database unavailable' }, { status: 500 })
@@ -40,6 +39,7 @@ export async function GET(request) {
         class_types(id, name, description, duration_mins, color, icon, is_private),
         instructors(id, name, photo_url, bio)
       `)
+      .eq('tenant_id', tenantId)
       .in('status', ['active', 'cancelled'])
       .gte('starts_at', startDate.toISOString())
       .lte('starts_at', endDate.toISOString())
@@ -64,27 +64,32 @@ export async function GET(request) {
       supabaseAdmin
         .from('bookings')
         .select('class_schedule_id')
+        .eq('tenant_id', tenantId)
         .in('class_schedule_id', scheduleIds)
         .eq('status', 'confirmed'),
       supabaseAdmin
         .from('bookings')
         .select('id, class_schedule_id')
+        .eq('tenant_id', tenantId)
         .eq('user_id', userId)
         .in('class_schedule_id', scheduleIds)
         .eq('status', 'confirmed'),
       supabaseAdmin
         .from('waitlist')
         .select('class_schedule_id, position')
+        .eq('tenant_id', tenantId)
         .eq('user_id', userId)
         .in('class_schedule_id', scheduleIds),
       supabaseAdmin
         .from('bookings')
         .select('class_schedule_id, users(id, name, avatar_url, bio, show_in_roster)')
+        .eq('tenant_id', tenantId)
         .in('class_schedule_id', scheduleIds)
         .eq('status', 'confirmed'),
       supabaseAdmin
         .from('waitlist')
         .select('class_schedule_id, position, users(id, name, avatar_url, show_in_roster)')
+        .eq('tenant_id', tenantId)
         .in('class_schedule_id', scheduleIds)
         .order('position', { ascending: true }),
     ])

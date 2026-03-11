@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth'
+import { requireStaff } from '@/lib/api-helpers'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
 import { renderEmailPreview } from '@/lib/email'
@@ -9,10 +9,9 @@ import { renderEmailPreview } from '@/lib/email'
  */
 export async function GET(request) {
   try {
-    const session = await auth()
-    if (!session || !['admin', 'employee'].includes(session.user.role)) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const result = await requireStaff(request)
+    if (result.response) return result.response
+    const { session, tenantId } = result
 
     const { searchParams } = new URL(request.url)
     const slug = searchParams.get('slug')
@@ -27,6 +26,7 @@ export async function GET(request) {
       const { data } = await supabaseAdmin
         .from('studio_settings')
         .select('key, value')
+        .eq('tenant_id', tenantId)
         .in('key', [`email_${slug}_subject`, `email_${slug}_body`])
       if (data) {
         for (const row of data) {

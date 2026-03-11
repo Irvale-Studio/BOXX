@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth'
+import { requireAuth } from '@/lib/api-helpers'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { promoteFromWaitlist } from '@/lib/waitlist'
 import { sendCancellationConfirmation } from '@/lib/email'
@@ -15,10 +15,9 @@ const cancelSchema = z.object({
  */
 export async function POST(request) {
   try {
-    const session = await auth()
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const authResult = await requireAuth()
+    if (authResult.response) return authResult.response
+    const { session, tenantId } = authResult
 
     const body = await request.json()
     const parsed = cancelSchema.safeParse(body)
@@ -37,6 +36,7 @@ export async function POST(request) {
     const { data: booking, error: bookingError } = await supabaseAdmin
       .from('bookings')
       .select('*, class_schedule(starts_at, class_types(name))')
+      .eq('tenant_id', tenantId)
       .eq('id', bookingId)
       .eq('user_id', userId)
       .eq('status', 'confirmed')
@@ -65,6 +65,7 @@ export async function POST(request) {
         credit_returned: !isLateCancellation,
         cancelled_at: new Date().toISOString(),
       })
+      .eq('tenant_id', tenantId)
       .eq('id', bookingId)
 
     if (updateError) {
@@ -77,6 +78,7 @@ export async function POST(request) {
       const { data: credit } = await supabaseAdmin
         .from('user_credits')
         .select('credits_remaining')
+        .eq('tenant_id', tenantId)
         .eq('id', booking.credit_id)
         .single()
 
@@ -84,6 +86,7 @@ export async function POST(request) {
         await supabaseAdmin
           .from('user_credits')
           .update({ credits_remaining: credit.credits_remaining + 1 })
+          .eq('tenant_id', tenantId)
           .eq('id', booking.credit_id)
       }
     }
@@ -92,6 +95,7 @@ export async function POST(request) {
     const { data: cancelUser } = await supabaseAdmin
       .from('users')
       .select('email, name')
+      .eq('tenant_id', tenantId)
       .eq('id', userId)
       .single()
 

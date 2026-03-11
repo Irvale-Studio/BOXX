@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth'
+import { requireAdmin, requireFeature } from '@/lib/api-helpers'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
@@ -16,11 +16,11 @@ const DAILY_MESSAGE_LIMIT = 200
 /**
  * Build system prompt with live studio context (class types, instructors, packs)
  */
-async function buildSystemPrompt(adminName) {
+async function buildSystemPrompt(adminName, tenantId) {
   const [classTypesRes, instructorsRes, packsRes] = await Promise.all([
-    supabaseAdmin.from('class_types').select('name, duration_mins, is_private').eq('active', true),
-    supabaseAdmin.from('instructors').select('name').eq('active', true),
-    supabaseAdmin.from('class_packs').select('name, credits, validity_days, price_thb').eq('active', true),
+    supabaseAdmin.from('class_types').select('name, duration_mins, is_private').eq('tenant_id', tenantId).eq('active', true),
+    supabaseAdmin.from('instructors').select('name').eq('tenant_id', tenantId).eq('active', true),
+    supabaseAdmin.from('class_packs').select('name, credits, validity_days, price_thb').eq('tenant_id', tenantId).eq('active', true),
   ])
 
   const classTypes = (classTypesRes.data || []).map((ct) =>
@@ -72,7 +72,7 @@ ${packs || '(none configured)'}
 /**
  * Check daily message usage for a user
  */
-async function checkDailyLimit(userId) {
+async function checkDailyLimit(userId, tenantId) {
   // Use Bangkok timezone for daily reset
   const bangkokDate = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Bangkok' })
   const todayStart = new Date(`${bangkokDate}T00:00:00+07:00`)
@@ -81,6 +81,7 @@ async function checkDailyLimit(userId) {
   const { data: convos } = await supabaseAdmin
     .from('agent_conversations')
     .select('id')
+    .eq('tenant_id', tenantId)
     .eq('user_id', userId)
 
   if (!convos?.length) return false
@@ -88,6 +89,7 @@ async function checkDailyLimit(userId) {
   const { count } = await supabaseAdmin
     .from('agent_messages')
     .select('id', { count: 'exact', head: true })
+    .eq('tenant_id', tenantId)
     .eq('role', 'user')
     .gte('created_at', todayStart.toISOString())
     .in('conversation_id', convos.map((c) => c.id))
@@ -112,9 +114,19 @@ function generateTitle(message) {
  */
 export async function POST(request) {
   try {
-    const session = await auth()
-    if (!session || (session.user.role !== 'admin' && session.user.role !== 'owner')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const result = await requireAdmin(request)
+    if (result.response) return result.response
+    const { session, tenantId } = result
+
+    // Feature flag: AI assistant
+    const featureCheck = await requireFeature(tenantId, 'ai_assistant')
+    if (featureCheck.response) return featureCheck.response
+
+    // Check plan-level AI query limit
+    const { checkTenantPlanLimit } = await import('@/lib/platform-limits')
+    const aiLimit = await checkTenantPlanLimit(tenantId, 'max_ai_queries')
+    if (!aiLimit.allowed) {
+      return NextResponse.json({ error: `Monthly AI query limit reached (${aiLimit.current}/${aiLimit.limit} on ${aiLimit.plan} plan)` }, { status: 403 })
     }
 
     if (!process.env.ANTHROPIC_API_KEY) {
@@ -137,7 +149,7 @@ export async function POST(request) {
     }
 
     // Daily rate limit
-    const dailyLimited = await checkDailyLimit(session.user.id)
+    const dailyLimited = await checkDailyLimit(session.user.id, tenantId)
     if (dailyLimited) {
       return NextResponse.json({ error: `Daily limit reached (${DAILY_MESSAGE_LIMIT} messages). Try again tomorrow.` }, { status: 429 })
     }
@@ -160,6 +172,7 @@ export async function POST(request) {
         const { data: convo } = await supabaseAdmin
           .from('agent_conversations')
           .insert({
+            tenant_id: tenantId,
             user_id: session.user.id,
             title: generateTitle(userMessage),
           })
@@ -172,6 +185,7 @@ export async function POST(request) {
         const { data: convo } = await supabaseAdmin
           .from('agent_conversations')
           .select('id')
+          .eq('tenant_id', tenantId)
           .eq('id', convoId)
           .eq('user_id', session.user.id)
           .single()
@@ -182,6 +196,7 @@ export async function POST(request) {
       // Save user message
       if (convoId) {
         await supabaseAdmin.from('agent_messages').insert({
+          tenant_id: tenantId,
           conversation_id: convoId,
           role: 'user',
           content: userMessage,
@@ -192,7 +207,7 @@ export async function POST(request) {
       convoId = null // continue without persistence
     }
 
-    const systemPrompt = await buildSystemPrompt(session.user.name)
+    const systemPrompt = await buildSystemPrompt(session.user.name, tenantId)
     const context = { adminId: session.user.id, adminName: session.user.name }
 
     // Truncate message history to last 40 messages to prevent unbounded token growth
@@ -265,6 +280,7 @@ export async function POST(request) {
     if (convoId) {
       try {
         await supabaseAdmin.from('agent_messages').insert({
+          tenant_id: tenantId,
           conversation_id: convoId,
           role: 'assistant',
           content: textContent,
@@ -273,6 +289,7 @@ export async function POST(request) {
         await supabaseAdmin
           .from('agent_conversations')
           .update({ updated_at: new Date().toISOString() })
+          .eq('tenant_id', tenantId)
           .eq('id', convoId)
       } catch (err) {
         console.error('[admin/agent] Message save error:', err.message)

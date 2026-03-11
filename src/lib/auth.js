@@ -25,11 +25,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (!credentials?.email || !credentials?.password) return null
         if (!supabaseAdmin) return null
 
-        const { data: user, error } = await supabaseAdmin
+        // Tenant-scoped login: if tenantId provided, scope lookup
+        const query = supabaseAdmin
           .from('users')
           .select('*')
           .eq('email', credentials.email.toLowerCase())
-          .single()
+
+        if (credentials.tenantId) {
+          query.eq('tenant_id', credentials.tenantId)
+        }
+
+        const { data: user, error } = await query.single()
 
         if (error || !user || !user.password_hash) return null
 
@@ -45,6 +51,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           name: user.name,
           image: user.avatar_url,
           role: user.role,
+          tenantId: user.tenant_id,
         }
       },
     }),
@@ -74,10 +81,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           user.id = existing.id
           user.role = existing.role
           user.image = existing.avatar_url
+          user.tenantId = existing.tenant_id
           return true
         }
 
         // New Google user — create account
+        // Resolve tenant from the request context (stored in account metadata)
+        const tenantId = account.tenantId || process.env.DEFAULT_TENANT_ID || 'a0000000-0000-0000-0000-000000000001'
+
         const { data: newUser, error } = await supabaseAdmin
           .from('users')
           .insert({
@@ -86,6 +97,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             avatar_url: user.image,
             google_id: account.providerAccountId,
             role: 'member',
+            tenant_id: tenantId,
           })
           .select()
           .single()
@@ -99,6 +111,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         user.id = newUser.id
         user.role = newUser.role
+        user.tenantId = newUser.tenant_id
       }
 
       return true
@@ -107,12 +120,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (user) {
         token.id = user.id
         token.role = user.role || 'member'
+        token.tenantId = user.tenantId
       }
       return token
     },
     async session({ session, token }) {
       session.user.id = token.id
       session.user.role = token.role
+      session.user.tenantId = token.tenantId
 
       // Admin, owner, and employee sessions expire after 8 hours
       if (token.role === 'owner' || token.role === 'admin' || token.role === 'employee') {

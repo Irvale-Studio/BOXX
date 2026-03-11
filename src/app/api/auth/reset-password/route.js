@@ -4,10 +4,13 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import bcrypt from 'bcryptjs'
 
+const DEFAULT_TENANT_ID = process.env.DEFAULT_TENANT_ID || 'a0000000-0000-0000-0000-000000000001'
+
 const schema = z.object({
   email: z.string().email(),
   token: z.string().min(1),
   password: z.string().min(8, 'Password must be at least 8 characters').max(128),
+  tenantId: z.string().uuid().optional(),
 })
 
 /**
@@ -31,13 +34,15 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Service unavailable' }, { status: 503 })
     }
 
-    const { email, token, password } = parsed.data
+    const { email, token, password, tenantId: bodyTenantId } = parsed.data
+    const tenantId = bodyTenantId || DEFAULT_TENANT_ID
 
     // Find user
     const { data: user } = await supabaseAdmin
       .from('users')
       .select('id, role')
       .eq('email', email.toLowerCase())
+      .eq('tenant_id', tenantId)
       .single()
 
     if (!user || user.role === 'frozen') {

@@ -5,8 +5,11 @@ import { z } from 'zod'
 import crypto from 'crypto'
 import bcrypt from 'bcryptjs'
 
+const DEFAULT_TENANT_ID = process.env.DEFAULT_TENANT_ID || 'a0000000-0000-0000-0000-000000000001'
+
 const schema = z.object({
   email: z.string().email(),
+  tenantId: z.string().uuid().optional(),
 })
 
 /**
@@ -32,12 +35,14 @@ export async function POST(request) {
     }
 
     const email = parsed.data.email.toLowerCase()
+    const tenantId = parsed.data.tenantId || DEFAULT_TENANT_ID
 
     // Find user (only password-auth users can reset)
     const { data: user } = await supabaseAdmin
       .from('users')
       .select('id, name, email, password_hash, role')
       .eq('email', email)
+      .eq('tenant_id', tenantId)
       .single()
 
     // Always return success to prevent email enumeration
@@ -63,6 +68,7 @@ export async function POST(request) {
         user_id: user.id,
         token_hash: tokenHash,
         expires_at: expiresAt.toISOString(),
+        tenant_id: tenantId,
       })
 
     // Send reset email

@@ -1,14 +1,57 @@
 -- ─────────────────────────────────────
--- BOXX Full Database Schema
--- Run this in Supabase SQL Editor
+-- Studio SaaS — Full Database Schema
+-- Multi-tenant with Row Level Security
 -- ─────────────────────────────────────
+
+-- ─────────────────────────────────────
+-- TENANTS
+-- ─────────────────────────────────────
+CREATE TABLE tenants (
+  id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name           TEXT NOT NULL,
+  slug           TEXT UNIQUE NOT NULL,
+  custom_domain  TEXT UNIQUE,
+  vertical       TEXT NOT NULL DEFAULT 'boxing',
+  plan           TEXT NOT NULL DEFAULT 'free',
+  trial_ends_at  TIMESTAMPTZ,
+  logo_url       TEXT,
+  primary_color  TEXT DEFAULT '#c8a750',
+  timezone       TEXT DEFAULT 'UTC',
+  currency       TEXT DEFAULT 'USD',
+  stripe_customer_id TEXT,
+  is_active      BOOLEAN DEFAULT true,
+  created_at     TIMESTAMPTZ DEFAULT now(),
+  updated_at     TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX idx_tenants_slug ON tenants(slug);
+CREATE INDEX idx_tenants_custom_domain ON tenants(custom_domain) WHERE custom_domain IS NOT NULL;
+
+-- ─────────────────────────────────────
+-- LOCATIONS
+-- ─────────────────────────────────────
+CREATE TABLE locations (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id   UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  name        TEXT NOT NULL,
+  address     TEXT,
+  city        TEXT,
+  country     TEXT,
+  phone       TEXT,
+  timezone    TEXT,
+  is_active   BOOLEAN DEFAULT true,
+  created_at  TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX idx_locations_tenant_id ON locations(tenant_id);
 
 -- ─────────────────────────────────────
 -- USERS
 -- ─────────────────────────────────────
 CREATE TABLE users (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  email           TEXT UNIQUE NOT NULL,
+  tenant_id       UUID NOT NULL REFERENCES tenants(id),
+  email           TEXT NOT NULL,
   name            TEXT,
   phone           TEXT,
   avatar_url      TEXT,
@@ -18,14 +61,39 @@ CREATE TABLE users (
   google_id       TEXT,
   password_hash   TEXT,
   stripe_customer_id TEXT,
-  created_at      TIMESTAMPTZ DEFAULT now()
+  created_at      TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(tenant_id, email)
 );
+
+CREATE INDEX idx_users_email ON users(email);
+CREATE INDEX idx_users_google_id ON users(google_id);
+CREATE INDEX idx_users_tenant_id ON users(tenant_id);
+CREATE INDEX idx_users_tenant_email ON users(tenant_id, email);
+
+-- ─────────────────────────────────────
+-- STAFF-TENANT MEMBERSHIP
+-- ─────────────────────────────────────
+CREATE TABLE staff_tenants (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  tenant_id   UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  role        TEXT NOT NULL DEFAULT 'member',
+  location_ids UUID[] DEFAULT '{}',
+  invited_at  TIMESTAMPTZ,
+  accepted_at TIMESTAMPTZ DEFAULT now(),
+  created_at  TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(user_id, tenant_id)
+);
+
+CREATE INDEX idx_staff_tenants_user_id ON staff_tenants(user_id);
+CREATE INDEX idx_staff_tenants_tenant_id ON staff_tenants(tenant_id);
 
 -- ─────────────────────────────────────
 -- AUTH TABLES
 -- ─────────────────────────────────────
 CREATE TABLE password_reset_tokens (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id   UUID REFERENCES tenants(id),
   user_id     UUID REFERENCES users(id) ON DELETE CASCADE,
   token_hash  TEXT NOT NULL,
   expires_at  TIMESTAMPTZ NOT NULL,
@@ -35,31 +103,39 @@ CREATE TABLE password_reset_tokens (
 
 CREATE TABLE login_attempts (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id     UUID REFERENCES tenants(id),
   email         TEXT NOT NULL,
   ip_address    TEXT,
   success       BOOLEAN,
   attempted_at  TIMESTAMPTZ DEFAULT now()
 );
 
+CREATE INDEX idx_login_attempts_email ON login_attempts(email);
+
 -- ─────────────────────────────────────
 -- CLASS TYPES
 -- ─────────────────────────────────────
 CREATE TABLE class_types (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id     UUID NOT NULL REFERENCES tenants(id),
   name          TEXT NOT NULL,
   description   TEXT,
   duration_mins INT DEFAULT 60,
   color         TEXT,
   icon          TEXT,
+  image_url     TEXT,
   is_private    BOOLEAN DEFAULT false,
   active        BOOLEAN DEFAULT true
 );
+
+CREATE INDEX idx_class_types_tenant_id ON class_types(tenant_id);
 
 -- ─────────────────────────────────────
 -- INSTRUCTORS
 -- ─────────────────────────────────────
 CREATE TABLE instructors (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id     UUID NOT NULL REFERENCES tenants(id),
   name          TEXT NOT NULL,
   bio           TEXT,
   photo_url     TEXT,
@@ -67,11 +143,15 @@ CREATE TABLE instructors (
   active        BOOLEAN DEFAULT true
 );
 
+CREATE INDEX idx_instructors_tenant_id ON instructors(tenant_id);
+
 -- ─────────────────────────────────────
 -- CLASS SCHEDULE
 -- ─────────────────────────────────────
 CREATE TABLE class_schedule (
   id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id         UUID NOT NULL REFERENCES tenants(id),
+  location_id       UUID REFERENCES locations(id),
   class_type_id     UUID REFERENCES class_types(id),
   instructor_id     UUID REFERENCES instructors(id),
   starts_at         TIMESTAMPTZ NOT NULL,
@@ -85,11 +165,17 @@ CREATE TABLE class_schedule (
   created_at        TIMESTAMPTZ DEFAULT now()
 );
 
+CREATE INDEX idx_class_schedule_starts_at ON class_schedule(starts_at);
+CREATE INDEX idx_class_schedule_tenant_id ON class_schedule(tenant_id);
+CREATE INDEX idx_class_schedule_location_id ON class_schedule(location_id);
+CREATE INDEX idx_class_schedule_tenant_starts ON class_schedule(tenant_id, starts_at);
+
 -- ─────────────────────────────────────
 -- CLASS PACKS
 -- ─────────────────────────────────────
 CREATE TABLE class_packs (
   id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id         UUID NOT NULL REFERENCES tenants(id),
   name              TEXT NOT NULL,
   description       TEXT,
   credits           INT,
@@ -104,20 +190,14 @@ CREATE TABLE class_packs (
   display_order     INT DEFAULT 0
 );
 
-INSERT INTO class_packs
-  (name, description, credits, validity_days, price_thb, is_intro, is_membership, badge_text, display_order)
-VALUES
-  ('NEW CUSTOMER OFFER – 1 Single Class', '1 class credit valid for all BOXX classes. For NEW CUSTOMERS ONLY.', 1, 30, 300, true, false, 'New Members Only', 1),
-  ('1 Single Class', '1 class credit valid for all BOXX classes. Perfect for a drop-in.', 1, 30, 600, false, false, null, 2),
-  ('5 Class Pack', '5 class credits valid for all BOXX classes.', 5, 30, 2750, false, false, null, 3),
-  ('10 Class Pack', '10 class credits valid for all BOXX classes.', 10, 60, 5200, false, false, 'Best Value', 4),
-  ('Monthly Unlimited Classes', 'Unlimited class credits valid for all BOXX classes.', null, 30, 5500, false, true, 'Most Popular', 5);
+CREATE INDEX idx_class_packs_tenant_id ON class_packs(tenant_id);
 
 -- ─────────────────────────────────────
 -- USER CREDITS
 -- ─────────────────────────────────────
 CREATE TABLE user_credits (
   id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id           UUID NOT NULL REFERENCES tenants(id),
   user_id             UUID REFERENCES users(id) ON DELETE CASCADE,
   class_pack_id       UUID REFERENCES class_packs(id),
   credits_total       INT,
@@ -130,11 +210,21 @@ CREATE TABLE user_credits (
   purchased_at        TIMESTAMPTZ DEFAULT now()
 );
 
+CREATE INDEX idx_user_credits_user_id ON user_credits(user_id);
+CREATE INDEX idx_user_credits_status ON user_credits(status);
+CREATE INDEX idx_user_credits_tenant_id ON user_credits(tenant_id);
+CREATE INDEX idx_user_credits_tenant_status ON user_credits(tenant_id, status);
+
+CREATE UNIQUE INDEX idx_user_credits_stripe_payment_id
+  ON user_credits(stripe_payment_id)
+  WHERE stripe_payment_id IS NOT NULL;
+
 -- ─────────────────────────────────────
 -- BOOKINGS
 -- ─────────────────────────────────────
 CREATE TABLE bookings (
   id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id         UUID NOT NULL REFERENCES tenants(id),
   user_id           UUID REFERENCES users(id) ON DELETE CASCADE,
   class_schedule_id UUID REFERENCES class_schedule(id),
   credit_id         UUID REFERENCES user_credits(id),
@@ -147,11 +237,18 @@ CREATE TABLE bookings (
   created_at        TIMESTAMPTZ DEFAULT now()
 );
 
+CREATE INDEX idx_bookings_user_id ON bookings(user_id);
+CREATE INDEX idx_bookings_class_schedule_id ON bookings(class_schedule_id);
+CREATE INDEX idx_bookings_status ON bookings(status);
+CREATE INDEX idx_bookings_tenant_id ON bookings(tenant_id);
+CREATE INDEX idx_bookings_tenant_status ON bookings(tenant_id, status);
+
 -- ─────────────────────────────────────
 -- WAITLIST
 -- ─────────────────────────────────────
 CREATE TABLE waitlist (
   id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id         UUID NOT NULL REFERENCES tenants(id),
   user_id           UUID REFERENCES users(id) ON DELETE CASCADE,
   class_schedule_id UUID REFERENCES class_schedule(id),
   position          INT NOT NULL,
@@ -161,11 +258,15 @@ CREATE TABLE waitlist (
   UNIQUE(user_id, class_schedule_id)
 );
 
+CREATE INDEX idx_waitlist_class_schedule_id ON waitlist(class_schedule_id);
+CREATE INDEX idx_waitlist_tenant_id ON waitlist(tenant_id);
+
 -- ─────────────────────────────────────
 -- ADMIN AUDIT LOG
 -- ─────────────────────────────────────
 CREATE TABLE admin_audit_log (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id   UUID REFERENCES tenants(id),
   admin_id    UUID REFERENCES users(id),
   action      TEXT NOT NULL,
   target_type TEXT,
@@ -175,54 +276,24 @@ CREATE TABLE admin_audit_log (
   created_at  TIMESTAMPTZ DEFAULT now()
 );
 
+CREATE INDEX idx_admin_audit_log_tenant_id ON admin_audit_log(tenant_id);
+
 -- ─────────────────────────────────────
--- STUDIO SETTINGS
+-- STUDIO SETTINGS (per-tenant key-value)
 -- ─────────────────────────────────────
 CREATE TABLE studio_settings (
-  key   TEXT PRIMARY KEY,
-  value TEXT
+  tenant_id UUID NOT NULL REFERENCES tenants(id),
+  key       TEXT NOT NULL,
+  value     TEXT,
+  PRIMARY KEY (tenant_id, key)
 );
-
-INSERT INTO studio_settings VALUES
-  ('studio_name',                   'BOXX'),
-  ('studio_tagline',                'Chiang Mai''s Premier Boxing Studio'),
-  ('studio_timezone',               'Asia/Bangkok'),
-  ('studio_address',                '89/2 Bumruang Road, Wat Ket, Chiang Mai 50000'),
-  ('studio_phone',                  '+66 93 497 2306'),
-  ('studio_email',                  'hello@boxxthailand.com'),
-  ('studio_instagram',              'https://instagram.com/boxxthailand'),
-  ('studio_facebook',               ''),
-  ('studio_logo_url',               ''),
-  ('studio_hero_image_url',         ''),
-  ('cancellation_hours',            '24'),
-  ('class_capacity',                '6'),
-  ('booking_opens_days_before',     '7'),
-  ('reminder_24h_enabled',          'true'),
-  ('reminder_2h_enabled',           'true'),
-  ('show_class_roster',             'true'),
-  ('roster_max_avatars',            '6'),
-  ('google_login_primary',          'true'),
-  ('from_email',                    'hello@boxxthailand.com'),
-  ('from_name',                     'BOXX Chiang Mai'),
-  ('email_welcome_subject',         'Welcome to BOXX 🥊'),
-  ('email_welcome_body',            'Hey {{member_name}}, welcome to BOXX! Book your first class and come train with us.'),
-  ('email_booking_subject',         'You''re booked! See you at BOXX 🥊'),
-  ('email_booking_body',            'Hi {{member_name}}, your spot in {{class_name}} on {{date}} at {{time}} is confirmed.'),
-  ('email_reminder_24h_subject',    'Class tomorrow: {{class_name}} at {{time}}'),
-  ('email_reminder_2h_subject',     'Class in 2 hours — {{class_name}} 🥊'),
-  ('email_cancel_free_subject',     'Booking cancelled — see you next time'),
-  ('email_cancel_late_subject',     'Booking cancelled (late cancellation — credit not returned)'),
-  ('email_pack_purchased_subject',  'Your classes are ready 🥊'),
-  ('email_credits_low_subject',     'You have 1 class credit left'),
-  ('email_credits_expired_subject', 'Your class pack has expired'),
-  ('stripe_account_id',             ''),
-  ('stripe_access_token',           '');
 
 -- ─────────────────────────────────────
 -- AGENT CONVERSATIONS
 -- ─────────────────────────────────────
 CREATE TABLE agent_conversations (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id   UUID REFERENCES tenants(id),
   user_id     UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL,
   title       TEXT NOT NULL DEFAULT 'New conversation',
   created_at  TIMESTAMPTZ DEFAULT now(),
@@ -231,12 +302,14 @@ CREATE TABLE agent_conversations (
 
 CREATE INDEX idx_agent_conversations_user_id ON agent_conversations(user_id);
 CREATE INDEX idx_agent_conversations_updated_at ON agent_conversations(updated_at DESC);
+CREATE INDEX idx_agent_conversations_tenant_id ON agent_conversations(tenant_id);
 
 -- ─────────────────────────────────────
 -- AGENT MESSAGES
 -- ─────────────────────────────────────
 CREATE TABLE agent_messages (
   id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id        UUID REFERENCES tenants(id),
   conversation_id  UUID REFERENCES agent_conversations(id) ON DELETE CASCADE NOT NULL,
   role             TEXT NOT NULL CHECK (role IN ('user', 'assistant')),
   content          TEXT NOT NULL,
@@ -250,32 +323,136 @@ CREATE INDEX idx_agent_messages_conversation_id ON agent_messages(conversation_i
 -- AGENT MEMORY
 -- ─────────────────────────────────────
 CREATE TABLE agent_memory (
+  tenant_id   UUID REFERENCES tenants(id),
   user_id     UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
   patterns    JSONB DEFAULT '[]'::jsonb,
   updated_at  TIMESTAMPTZ DEFAULT now()
 );
 
 -- ─────────────────────────────────────
+-- AGENT USAGE TRACKING
+-- ─────────────────────────────────────
+CREATE TABLE agent_usage (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id       UUID REFERENCES tenants(id),
+  user_id         UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL,
+  month           TEXT NOT NULL,
+  input_tokens    BIGINT DEFAULT 0,
+  output_tokens   BIGINT DEFAULT 0,
+  cost_usd        NUMERIC(10,6) DEFAULT 0,
+  created_at      TIMESTAMPTZ DEFAULT now(),
+  updated_at      TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(user_id, month)
+);
+
+CREATE INDEX idx_agent_usage_user_month ON agent_usage(user_id, month);
+CREATE INDEX idx_agent_usage_tenant_id ON agent_usage(tenant_id);
+
+-- ─────────────────────────────────────
+-- EMAIL LOG
+-- ─────────────────────────────────────
+CREATE TABLE email_log (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id   UUID REFERENCES tenants(id),
+  email_type  TEXT NOT NULL,
+  recipient   TEXT NOT NULL,
+  subject     TEXT,
+  status      TEXT NOT NULL DEFAULT 'sent',
+  error       TEXT,
+  resend_id   TEXT,
+  created_at  TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX idx_email_log_created_at ON email_log(created_at DESC);
+CREATE INDEX idx_email_log_email_type ON email_log(email_type);
+CREATE INDEX idx_email_log_tenant_id ON email_log(tenant_id);
+
+-- ─────────────────────────────────────
+-- PAGE VIEW ANALYTICS
+-- ─────────────────────────────────────
+CREATE TABLE page_views (
+  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id    UUID REFERENCES tenants(id),
+  path         TEXT NOT NULL,
+  referrer     TEXT,
+  utm_source   TEXT,
+  utm_medium   TEXT,
+  utm_campaign TEXT,
+  device_type  TEXT DEFAULT 'desktop',
+  created_at   TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX idx_page_views_created_at ON page_views(created_at DESC);
+CREATE INDEX idx_page_views_path ON page_views(path);
+
+-- ─────────────────────────────────────
+-- PLAN LIMITS (reference table)
+-- ─────────────────────────────────────
+CREATE TABLE plan_limits (
+  plan              TEXT PRIMARY KEY,
+  max_locations     INT NOT NULL,
+  max_members       INT NOT NULL,
+  max_ai_queries    INT NOT NULL,
+  max_classes_month INT NOT NULL DEFAULT 9999,
+  max_instructors   INT NOT NULL DEFAULT 9999,
+  max_class_types   INT NOT NULL DEFAULT 9999,
+  max_packs         INT NOT NULL DEFAULT 9999
+);
+
+-- ─────────────────────────────────────
+-- FEATURE FLAGS
+-- ─────────────────────────────────────
+CREATE TABLE feature_flags (
+  key               TEXT PRIMARY KEY,
+  description       TEXT,
+  default_enabled   BOOLEAN DEFAULT false,
+  enabled_for_plans TEXT[] DEFAULT '{}',
+  is_killed         BOOLEAN DEFAULT false,
+  rollout_pct       INT DEFAULT 100,
+  created_at        TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE tenant_feature_flags (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id   UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  flag_key    TEXT NOT NULL REFERENCES feature_flags(key) ON DELETE CASCADE,
+  enabled     BOOLEAN NOT NULL,
+  created_at  TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(tenant_id, flag_key)
+);
+
+CREATE INDEX idx_tenant_feature_flags_tenant_id ON tenant_feature_flags(tenant_id);
+
+-- ─────────────────────────────────────
 -- ROW LEVEL SECURITY
 -- ─────────────────────────────────────
+ALTER TABLE tenants ENABLE ROW LEVEL SECURITY;
+ALTER TABLE locations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE staff_tenants ENABLE ROW LEVEL SECURITY;
 ALTER TABLE bookings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_credits ENABLE ROW LEVEL SECURITY;
 ALTER TABLE waitlist ENABLE ROW LEVEL SECURITY;
-
--- Public read for class_types, instructors, class_schedule, class_packs, studio_settings
 ALTER TABLE class_types ENABLE ROW LEVEL SECURITY;
 ALTER TABLE instructors ENABLE ROW LEVEL SECURITY;
 ALTER TABLE class_schedule ENABLE ROW LEVEL SECURITY;
 ALTER TABLE class_packs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE studio_settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE plan_limits ENABLE ROW LEVEL SECURITY;
+ALTER TABLE feature_flags ENABLE ROW LEVEL SECURITY;
+ALTER TABLE tenant_feature_flags ENABLE ROW LEVEL SECURITY;
 
--- Allow anon read access to public data
+-- Public read for reference/public data
+CREATE POLICY "public_read_tenants" ON tenants FOR SELECT USING (true);
+CREATE POLICY "public_read_locations" ON locations FOR SELECT USING (true);
 CREATE POLICY "public_read_class_types" ON class_types FOR SELECT USING (true);
 CREATE POLICY "public_read_instructors" ON instructors FOR SELECT USING (true);
 CREATE POLICY "public_read_class_schedule" ON class_schedule FOR SELECT USING (true);
 CREATE POLICY "public_read_class_packs" ON class_packs FOR SELECT USING (true);
 CREATE POLICY "public_read_studio_settings" ON studio_settings FOR SELECT USING (true);
+CREATE POLICY "public_read_plan_limits" ON plan_limits FOR SELECT USING (true);
+CREATE POLICY "public_read_feature_flags" ON feature_flags FOR SELECT USING (true);
+CREATE POLICY "public_read_tenant_flags" ON tenant_feature_flags FOR SELECT USING (true);
 
 -- Users can read their own record
 CREATE POLICY "users_own_record" ON users FOR ALL USING (auth.uid() = id);
@@ -289,50 +466,13 @@ CREATE POLICY "credits_own_read" ON user_credits FOR SELECT USING (auth.uid() = 
 -- Waitlist: users can manage their own
 CREATE POLICY "waitlist_own" ON waitlist FOR ALL USING (auth.uid() = user_id);
 
--- ─────────────────────────────────────
--- EMAIL LOG
--- ─────────────────────────────────────
-CREATE TABLE email_log (
-  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  email_type  TEXT NOT NULL,
-  recipient   TEXT NOT NULL,
-  subject     TEXT,
-  status      TEXT NOT NULL DEFAULT 'sent',
-  error       TEXT,
-  resend_id   TEXT,
-  created_at  TIMESTAMPTZ DEFAULT now()
-);
-
-CREATE INDEX idx_email_log_created_at ON email_log(created_at DESC);
-CREATE INDEX idx_email_log_email_type ON email_log(email_type);
-
--- ─────────────────────────────────────
--- INDEXES
--- ─────────────────────────────────────
-CREATE INDEX idx_users_email ON users(email);
-CREATE INDEX idx_users_google_id ON users(google_id);
-CREATE INDEX idx_class_schedule_starts_at ON class_schedule(starts_at);
-CREATE INDEX idx_bookings_user_id ON bookings(user_id);
-CREATE INDEX idx_bookings_class_schedule_id ON bookings(class_schedule_id);
-CREATE INDEX idx_bookings_status ON bookings(status);
-CREATE INDEX idx_user_credits_user_id ON user_credits(user_id);
-CREATE INDEX idx_user_credits_status ON user_credits(status);
-CREATE INDEX idx_waitlist_class_schedule_id ON waitlist(class_schedule_id);
-CREATE INDEX idx_login_attempts_email ON login_attempts(email);
-
--- ─────────────────────────────────────
--- UNIQUE CONSTRAINTS (payment security)
--- ─────────────────────────────────────
--- Prevent duplicate credit allocation from webhook replays
-CREATE UNIQUE INDEX idx_user_credits_stripe_payment_id
-  ON user_credits(stripe_payment_id)
-  WHERE stripe_payment_id IS NOT NULL;
+-- Staff tenants: users can read their own memberships
+CREATE POLICY "staff_own_read" ON staff_tenants FOR SELECT USING (auth.uid() = user_id);
 
 -- ─────────────────────────────────────
 -- FUNCTIONS (atomic credit operations)
 -- ─────────────────────────────────────
 
--- Atomically deduct 1 credit; returns true if successful, false if no credits
 CREATE OR REPLACE FUNCTION deduct_credit(credit_id UUID)
 RETURNS BOOLEAN AS $$
 DECLARE
@@ -348,7 +488,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Atomically restore 1 credit (used when booking insert fails)
 CREATE OR REPLACE FUNCTION restore_credit(credit_id UUID)
 RETURNS VOID AS $$
 BEGIN
@@ -359,24 +498,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- ─────────────────────────────────────
--- AGENT USAGE TRACKING
--- ─────────────────────────────────────
-CREATE TABLE agent_usage (
-  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id         UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL,
-  month           TEXT NOT NULL,
-  input_tokens    BIGINT DEFAULT 0,
-  output_tokens   BIGINT DEFAULT 0,
-  cost_usd        NUMERIC(10,6) DEFAULT 0,
-  created_at      TIMESTAMPTZ DEFAULT now(),
-  updated_at      TIMESTAMPTZ DEFAULT now(),
-  UNIQUE(user_id, month)
-);
-
-CREATE INDEX idx_agent_usage_user_month ON agent_usage(user_id, month);
-
--- Atomically increment agent usage counters (avoids race conditions)
 CREATE OR REPLACE FUNCTION increment_agent_usage(
   p_user_id UUID,
   p_month TEXT,
@@ -396,20 +517,3 @@ BEGIN
     updated_at = now();
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
-
--- ─────────────────────────────────────
--- PAGE VIEW ANALYTICS
--- ─────────────────────────────────────
-CREATE TABLE page_views (
-  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  path         TEXT NOT NULL,
-  referrer     TEXT,
-  utm_source   TEXT,
-  utm_medium   TEXT,
-  utm_campaign TEXT,
-  device_type  TEXT DEFAULT 'desktop',
-  created_at   TIMESTAMPTZ DEFAULT now()
-);
-
-CREATE INDEX idx_page_views_created_at ON page_views(created_at DESC);
-CREATE INDEX idx_page_views_path ON page_views(path);
