@@ -284,7 +284,9 @@ export async function POST(request) {
         to: data.ownerEmail,
         name: data.ownerName,
         studioName: data.studioName,
-        dashboardUrl: `https://${data.slug}.zatrovo.com/admin`,
+        dashboardUrl: process.env.NEXT_PUBLIC_APP_URL
+          ? `${process.env.NEXT_PUBLIC_APP_URL}/admin`
+          : `https://${data.slug}.zatrovo.com/admin`,
         brand: {
           primaryColor: data.primaryColor,
           background: data.theme?.background,

@@ -737,16 +737,21 @@ function LaunchScreen({ form, effectiveTheme, googleAuth, session, updateSession
           } catch { /* non-critical */ }
         }
 
-        // Auth
+        // Auth — sign in to the new tenant
         if (googleAuth) {
           await updateSession()
         } else {
-          await signIn('credentials', {
+          const signInResult = await signIn('credentials', {
             email: form.ownerEmail,
             password: form.password,
             tenantId: data.tenant.id,
             redirect: false,
           })
+          if (signInResult?.error) {
+            console.error('[onboarding] Sign-in failed:', signInResult.error)
+            setError('Account created but sign-in failed. Please log in manually.')
+            return
+          }
         }
 
         // Complete! Fill to 100%
