@@ -291,9 +291,85 @@ function extractDescription(html) {
   return null
 }
 
+// ─── Screenshot / OG image capture ────────────────────────
+
+function extractOgImageUrl(html, baseUrl) {
+  // og:image
+  const ogImage = html.match(/<meta[^>]+(?:property=["']og:image["'][^>]+content=["']([^"']+)["']|content=["']([^"']+)["'][^>]+property=["']og:image["'])/i)
+  if (ogImage) {
+    try { return new URL(ogImage[1] || ogImage[2], baseUrl).href } catch {}
+  }
+  // twitter:image
+  const twImage = html.match(/<meta[^>]+(?:name=["']twitter:image["'][^>]+content=["']([^"']+)["']|content=["']([^"']+)["'][^>]+name=["']twitter:image["'])/i)
+  if (twImage) {
+    try { return new URL(twImage[1] || twImage[2], baseUrl).href } catch {}
+  }
+  return null
+}
+
+async function fetchScreenshot(url, html, baseUrl) {
+  // Strategy 1: Use og:image from the page (most sites have this)
+  const ogUrl = extractOgImageUrl(html, baseUrl)
+  if (ogUrl) {
+    try {
+      const controller = new AbortController()
+      const timer = setTimeout(() => controller.abort(), 8000)
+      const res = await fetch(ogUrl, {
+        signal: controller.signal,
+        headers: { 'User-Agent': USER_AGENT },
+      })
+      clearTimeout(timer)
+
+      if (res.ok) {
+        const contentType = res.headers.get('content-type') || ''
+        if (contentType.startsWith('image/')) {
+          const buffer = await res.arrayBuffer()
+          if (buffer.byteLength > 0 && buffer.byteLength < 5 * 1024 * 1024) {
+            const mediaType = contentType.split(';')[0].trim()
+            // Claude vision supports jpeg, png, gif, webp
+            if (['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(mediaType)) {
+              return {
+                base64: Buffer.from(buffer).toString('base64'),
+                mediaType,
+                source: 'og:image',
+              }
+            }
+          }
+        }
+      }
+    } catch {
+      // og:image fetch failed — continue without screenshot
+    }
+  }
+
+  // Strategy 2: Use a lightweight screenshot API (no API key needed)
+  try {
+    const screenshotUrl = `https://image.thum.io/get/width/1280/crop/800/noanimate/${encodeURIComponent(url)}`
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), 12000)
+    const res = await fetch(screenshotUrl, { signal: controller.signal })
+    clearTimeout(timer)
+
+    if (res.ok) {
+      const buffer = await res.arrayBuffer()
+      if (buffer.byteLength > 1000 && buffer.byteLength < 5 * 1024 * 1024) {
+        return {
+          base64: Buffer.from(buffer).toString('base64'),
+          mediaType: 'image/png',
+          source: 'screenshot',
+        }
+      }
+    }
+  } catch {
+    // Screenshot service failed — continue without
+  }
+
+  return null
+}
+
 // ─── AI Brand Analysis (Claude) ───────────────────────────
 
-async function aiAnalyzeBrand(html, cssContent, regexBrand) {
+async function aiAnalyzeBrand(html, cssContent, regexBrand, screenshot) {
   if (!process.env.ANTHROPIC_API_KEY) return null
 
   try {
@@ -322,15 +398,12 @@ async function aiAnalyzeBrand(html, cssContent, regexBrand) {
       ?.join('\n')
       ?.slice(0, 2000) || ''
 
-    const message = await client.messages.create({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 2048,
-      messages: [{
-        role: 'user',
-        content: `You are a senior UI/UX design system architect. Analyze this website and produce a complete, polished theme for a SaaS booking platform that matches this brand's identity.
+    const textPrompt = `You are a senior UI/UX design system architect. Analyze this website and produce a complete, polished theme for a SaaS booking platform that matches this brand's identity.
 
-STEP 1 — EXTRACT: Find the brand's actual colors, fonts, and feel from the HTML/CSS.
-STEP 2 — DESIGN: Make smart design decisions to turn those raw extractions into a cohesive, production-ready theme. Don't just copy colors — design a system.
+${screenshot ? 'I\'ve included a screenshot/preview of the website. USE IT as your primary visual reference — look at what colors are actually visible: the background, the buttons, the text, the navigation, any accent colors. The visual truth matters more than code analysis.' : ''}
+
+STEP 1 — EXTRACT: Find the brand's actual colors, fonts, and feel from ${screenshot ? 'the screenshot AND' : ''} the HTML/CSS.
+STEP 2 — DESIGN: Use design thinking to turn those extractions into a cohesive, production-ready theme.
 
 Here's what regex extraction found (may be incomplete or wrong):
 - Name: ${regexBrand.name || 'not found'}
@@ -350,10 +423,19 @@ Button/CTA styles:
 ${buttonStyles}
 
 CRITICAL RULES:
-- ONLY use colors that ACTUALLY EXIST on the website. Do NOT invent or hallucinate colors.
+- ONLY use colors that ACTUALLY EXIST on the website${screenshot ? ' (verify against the screenshot)' : ''}. Do NOT invent or hallucinate colors.
 - If you cannot find a distinct secondary or accent color, derive one from the primary by shifting its hue slightly (±20-40°) — do NOT introduce random colors like red unless red is genuinely part of the brand.
 - Ignore standard UI framework colors (red for errors, green for success, yellow for warnings) — these are NOT brand colors.
-- The regex hints above may be WRONG (they sometimes pick up framework utility colors). Trust what you see in the actual HTML/CSS structure over the regex hints.
+- The regex hints above may be WRONG (they sometimes pick up framework utility colors). Trust what you see in the actual HTML/CSS structure${screenshot ? ' and screenshot' : ''} over the regex hints.
+
+DESIGN THINKING — when colors are missing:
+If the website only has 1-2 brand colors, you must carefully design the rest. Think like a professional brand designer:
+- Study the brand's mood: is it minimal? bold? warm? cool? luxury? playful?
+- For SECONDARY: pick a color that supports the primary. Same hue family but lighter/darker, or a close analogous hue (±15-30°). It should feel like the primary's natural companion.
+- For ACCENT: pick a subtle highlight. Could be the primary at lower saturation, or a very slight hue shift. Used sparingly for badges/highlights — should never compete with primary.
+- For SURFACE/BORDER: derive from the background. These are structural, not decorative. Keep them close to the background in the same temperature.
+- Match the brand's energy: a bold fitness brand gets more saturated accents; a luxury spa gets muted, warm tones; a clean minimal brand gets desaturated cool tones.
+- The final palette should look intentional — like a designer chose every color on purpose.
 
 DESIGN RULES:
 1. CONTRAST: foreground text must have WCAG AA contrast (4.5:1) against background. Muted text needs 3:1 minimum.
@@ -368,24 +450,44 @@ DESIGN RULES:
 Return ONLY valid JSON, no markdown or explanation:
 {
   "name": "Business Name",
-  "background": "#hex — main page bg",
-  "surface": "#hex — card/panel bg, subtle step from background",
-  "surfaceHover": "#hex — hovered cards/panels",
-  "primary": "#hex — main CTA/button color from the brand",
-  "primaryHover": "#hex — darkened primary for hover",
-  "secondary": "#hex — links, secondary buttons, complementary to primary",
-  "accent": "#hex — highlights, badges, decorative touches",
-  "foreground": "#hex — main text, high contrast against background",
-  "muted": "#hex — secondary text, labels, captions",
-  "border": "#hex — subtle borders, derived from background",
-  "borderHover": "#hex — border on hover, slightly more visible",
+  "background": "#hex",
+  "surface": "#hex",
+  "surfaceHover": "#hex",
+  "primary": "#hex",
+  "primaryHover": "#hex",
+  "secondary": "#hex",
+  "accent": "#hex",
+  "foreground": "#hex",
+  "muted": "#hex",
+  "border": "#hex",
+  "borderHover": "#hex",
   "titleFont": "Google Font Name",
   "titleFontType": "sans-serif|serif",
   "bodyFont": "Google Font Name",
   "bodyFontType": "sans-serif|serif",
   "mood": "dark|light|warm|cool|luxury|minimal|bold|playful"
 }`
-      }],
+
+    // Build message content — text + optional image
+    const content = []
+
+    if (screenshot) {
+      content.push({
+        type: 'image',
+        source: {
+          type: 'base64',
+          media_type: screenshot.mediaType,
+          data: screenshot.base64,
+        },
+      })
+    }
+
+    content.push({ type: 'text', text: textPrompt })
+
+    const message = await client.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 2048,
+      messages: [{ role: 'user', content }],
     })
 
     const text = message.content[0]?.text?.trim()
@@ -444,8 +546,11 @@ export async function POST(request) {
       font: extractFont(html, cssContent),
     }
 
-    // Step 2: AI analysis (enhances/corrects regex results)
-    const aiResult = await aiAnalyzeBrand(html, cssContent, regexBrand)
+    // Step 2: Fetch screenshot/og:image for visual analysis (parallel with nothing — fast)
+    const screenshot = await fetchScreenshot(normalizedUrl, html, baseUrl)
+
+    // Step 3: AI analysis with visual + code context
+    const aiResult = await aiAnalyzeBrand(html, cssContent, regexBrand, screenshot)
 
     // AI returns a complete designed theme; regex fills gaps if AI is unavailable
     const brand = {
