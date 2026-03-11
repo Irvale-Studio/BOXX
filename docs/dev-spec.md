@@ -518,3 +518,86 @@ All 15 email templates live in `src/lib/email.js` (Resend, branded dark HTML).
 
 ### Seed Data
 - [x] **Rich seed SQL** — varied data for Jacob, Bert, Test User across 6 weeks: streaks, badges, waitlists, cancellations, multiple active packs with different expiry/usage states
+
+---
+
+## GO-LIVE CHECKLIST (2026-03-11)
+
+> Condensed list of everything needed to launch on `boxxthailand.com`.
+
+### 1. Domain & Hosting
+- [ ] Point `boxxthailand.com` DNS to Vercel
+- [ ] Add custom domain in Vercel project settings
+- [ ] Set `NEXTAUTH_URL=https://boxxthailand.com` env var
+- [ ] Verify HTTPS works on custom domain
+
+### 2. Stripe (Payments)
+- [ ] Connect Bert's Stripe account via `/admin/settings` (Stripe Connect OAuth)
+- [ ] Set production env vars: `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`
+- [ ] Add Stripe webhook endpoint: `https://boxxthailand.com/api/stripe/webhook`
+- [ ] Set `STRIPE_WEBHOOK_SECRET` env var
+- [ ] Map each class pack to a Stripe product/price (via admin Packs page)
+- [ ] Test a real purchase end-to-end (pack → checkout → webhook → credits appear)
+- [ ] Verify billing portal works (`/api/stripe/portal`)
+
+### 3. Email (Resend)
+- [ ] Verify `boxxthailand.com` domain on Resend (add SPF, DKIM, DMARC DNS records)
+- [ ] Set `RESEND_API_KEY` env var (production key)
+- [ ] Set `EMAIL_FROM` env var to `BOXX Thailand <noreply@boxxthailand.com>`
+- [ ] Send a test email to confirm delivery to inbox (not spam)
+- [ ] Test password reset flow end-to-end
+
+### 4. Database (Supabase)
+- [ ] Verify production Supabase project is set up
+- [ ] Set `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` env vars
+- [ ] Verify these columns exist (run migrations if not):
+  - `class_types.is_private` (BOOLEAN DEFAULT false)
+  - `class_schedule.is_private` (BOOLEAN DEFAULT false)
+  - `user_credits.expiry_warned` (BOOLEAN DEFAULT false)
+- [ ] Verify these tables exist: `agent_conversations`, `agent_messages`, `agent_memory`, `agent_usage`, `email_log`
+- [ ] Verify these RPC functions exist: `deduct_credit`, `restore_credit`, `increment_agent_usage`
+- [ ] Remove seed/test data from production DB
+- [ ] Create Bert's owner account (set `role = 'owner'` in users table)
+
+### 5. Auth
+- [ ] Set `NEXTAUTH_SECRET` env var (unique production secret)
+- [ ] Configure Google OAuth credentials for production domain (`boxxthailand.com`)
+- [ ] Update Google OAuth authorized redirect URI to `https://boxxthailand.com/api/auth/callback/google`
+- [ ] Test Google login + email/password login
+
+### 6. Cron Jobs
+- [ ] Set `CRON_SECRET` env var
+- [ ] Verify `vercel.json` cron config deploys correctly
+- [ ] After launch, monitor cron logs for: reminders, credit expiry, waitlist processing
+
+### 7. AI Assistant
+- [ ] Set `ANTHROPIC_API_KEY` env var
+- [ ] Verify `agent_usage` table + `increment_agent_usage` RPC exist (from step 4)
+- [ ] Test a conversation works on production
+
+### 8. Other Env Vars
+- [ ] `PLATFORM_OWNER_ID` — Bert's user UUID (for platform limit alerts)
+- [ ] `ENABLE_DIRECT_PURCHASE=true` — enable direct pack purchase flow (if not using Stripe initially)
+
+### 9. Pre-Launch Testing
+- [ ] Book a class as a member (credit deduction, confirmation email)
+- [ ] Cancel a booking (credit refund, cancellation email)
+- [ ] Admin: create a class, add member to roster, cancel a class
+- [ ] Admin: send a direct email to a member
+- [ ] Test on mobile (member dashboard, booking flow, AI chat)
+- [ ] Verify privacy policy and terms pages are accessible
+
+### 10. Post-Launch Monitoring
+- [ ] Watch Vercel function logs for errors in first 24 hours
+- [ ] Verify cron jobs fire on schedule (check email_log table)
+- [ ] Monitor AI assistant usage costs in `agent_usage` table
+- [ ] Check Stripe webhook delivery in Stripe dashboard
+
+---
+
+### Known Limitations (not blockers)
+- In-memory rate limiter resets on Vercel cold starts — DB-backed limits (daily/monthly) provide real protection
+- No instructor photo upload — form field exists but upload not wired
+- No reporting/analytics dashboards — future feature
+- No Google account linking — email + Google are separate identities
+- AI assistant `send_email` tool upgrade contact message needs updating once email is configured
