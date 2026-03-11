@@ -203,9 +203,21 @@ export default function AdminPacksPage() {
                   {pack.credits === null ? 'Unlimited' : `${pack.credits} credit${pack.credits !== 1 ? 's' : ''}`} · {pack.validity_days} days · ฿{pack.price_thb.toLocaleString()}
                 </p>
                 {pack.stripe_price_id ? (
-                  <p className="text-[10px] text-green-400/70 mt-0.5 font-mono">{pack.stripe_price_id}</p>
+                  <a
+                    href={pack.stripe_product_id
+                      ? `https://dashboard.stripe.com/products/${pack.stripe_product_id}`
+                      : `https://dashboard.stripe.com/search#query=${pack.stripe_price_id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[10px] text-green-400/70 hover:text-green-400 mt-0.5 font-mono inline-flex items-center gap-1"
+                  >
+                    Stripe Product Linked
+                    <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                  </a>
                 ) : (
-                  <p className="text-[10px] text-red-400/70 mt-0.5">No Stripe Price ID</p>
+                  <p className="text-[10px] text-red-400/70 mt-0.5">No Stripe product linked</p>
                 )}
               </div>
 
@@ -302,15 +314,15 @@ export default function AdminPacksPage() {
               />
             </div>
             <div>
-              <Label>Stripe Price ID</Label>
+              <Label>Stripe Product</Label>
               <Input
                 value={form.stripe_price_id}
                 onChange={(e) => setForm((f) => ({ ...f, stripe_price_id: e.target.value }))}
-                placeholder="price_xxxxxxxxxxxx"
+                placeholder="Paste product ID, price ID, or Stripe URL"
                 className="mt-1 font-mono text-xs"
               />
               <p className="text-[10px] text-muted mt-1">
-                From Stripe Dashboard → Products → select product → copy Price ID
+                Paste a Product ID (prod_...), Price ID (price_...), or product URL from Stripe Dashboard
               </p>
             </div>
             <div className="flex items-center gap-6">

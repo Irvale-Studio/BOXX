@@ -1,7 +1,54 @@
 import { auth } from '@/lib/auth'
+import { getStripeAsync } from '@/lib/stripe'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
+
+/**
+ * Resolve a Stripe input (price ID, product ID, or product URL) to { priceId, productId }.
+ * Accepts: price_xxx, prod_xxx, or https://dashboard.stripe.com/.../products/prod_xxx
+ */
+async function resolveStripeInput(input) {
+  if (!input) return { priceId: null, productId: null }
+  const trimmed = input.trim()
+  if (!trimmed) return { priceId: null, productId: null }
+
+  const stripe = await getStripeAsync()
+  if (!stripe) {
+    throw new Error('Stripe is not configured. Set up your Stripe key in Settings first.')
+  }
+
+  // Already a price ID — look up the product it belongs to
+  if (trimmed.startsWith('price_')) {
+    const price = await stripe.prices.retrieve(trimmed)
+    return { priceId: trimmed, productId: price.product }
+  }
+
+  // Extract product ID from URL or direct input
+  let productId = null
+  if (trimmed.startsWith('prod_')) {
+    productId = trimmed
+  } else {
+    const match = trimmed.match(/prod_[A-Za-z0-9]+/)
+    if (match) productId = match[0]
+  }
+
+  if (!productId) {
+    throw new Error('Invalid Stripe ID. Paste a Product ID (prod_...), Price ID (price_...), or Stripe product URL.')
+  }
+
+  // Look up the default price for this product
+  const product = await stripe.products.retrieve(productId)
+  if (!product || !product.default_price) {
+    throw new Error(`Product "${product?.name || productId}" has no default price. Add a price in Stripe Dashboard first.`)
+  }
+
+  const priceId = typeof product.default_price === 'string'
+    ? product.default_price
+    : product.default_price.id
+
+  return { priceId, productId }
+}
 
 /**
  * GET /api/admin/packs — Get all class packs (admin)
@@ -44,6 +91,7 @@ const createPackSchema = z.object({
   is_intro: z.boolean().optional(),
   badge_text: z.string().nullable().optional(),
   display_order: z.number().int().optional(),
+  stripe_price_id: z.string().nullable().optional(),
 })
 
 /**
@@ -73,12 +121,21 @@ export async function POST(request) {
       return NextResponse.json({ error: packReason }, { status: 403 })
     }
 
+    // Resolve Stripe input (product ID, URL, or price ID) to actual price ID
+    const insertData = { ...parsed.data, active: true }
+    if (insertData.stripe_price_id) {
+      try {
+        const { priceId, productId } = await resolveStripeInput(insertData.stripe_price_id)
+        insertData.stripe_price_id = priceId
+        if (productId) insertData.stripe_product_id = productId
+      } catch (err) {
+        return NextResponse.json({ error: err.message }, { status: 400 })
+      }
+    }
+
     const { data: pack, error } = await supabaseAdmin
       .from('class_packs')
-      .insert({
-        ...parsed.data,
-        active: true,
-      })
+      .insert(insertData)
       .select()
       .single()
 
@@ -130,6 +187,17 @@ export async function PUT(request) {
     }
 
     const { id, ...updates } = parsed.data
+
+    // Resolve Stripe input (product ID, URL, or price ID) to actual price ID
+    if (updates.stripe_price_id) {
+      try {
+        const { priceId, productId } = await resolveStripeInput(updates.stripe_price_id)
+        updates.stripe_price_id = priceId
+        if (productId) updates.stripe_product_id = productId
+      } catch (err) {
+        return NextResponse.json({ error: err.message }, { status: 400 })
+      }
+    }
 
     // K4: Prevent deactivating if members have active credits from this pack
     if (updates.active === false) {

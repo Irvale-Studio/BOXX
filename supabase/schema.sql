@@ -96,6 +96,7 @@ CREATE TABLE class_packs (
   validity_days     INT,
   price_thb         INT NOT NULL,
   stripe_price_id   TEXT,
+  stripe_product_id TEXT,
   is_membership     BOOLEAN DEFAULT false,
   is_intro          BOOLEAN DEFAULT false,
   badge_text        TEXT,
