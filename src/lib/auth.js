@@ -6,6 +6,7 @@ import { cookies } from 'next/headers'
 import bcrypt from 'bcryptjs'
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  debug: true,
   providers: [
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID,
