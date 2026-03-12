@@ -102,12 +102,39 @@ export default auth(async (req) => {
   const tenant = await resolveTenantFromHost(req)
   const response = NextResponse.next()
 
+  const baseDomain = process.env.NEXT_PUBLIC_BASE_DOMAIN || 'localhost:3000'
+  const host = req.headers.get('host') || ''
+  const isRootDomain = host === baseDomain || host === `www.${baseDomain}`
+
   if (tenant) {
     // Subdomain-resolved tenant ID — this is the source of truth for pre-auth pages
     response.headers.set('x-tenant-id', tenant.tenantId)
     if (tenant.slug) {
       response.headers.set('x-tenant-slug', tenant.slug)
     }
+  } else if (isRootDomain && session?.user?.tenantSlug) {
+    // Authenticated user on root domain — redirect to their tenant subdomain
+    // (This happens after Google OAuth callback lands on zatrovo.com)
+    const slug = session.user.tenantSlug
+    const role = session.user.role
+    const isStaff = ['owner', 'admin', 'employee'].includes(role)
+
+    // Only redirect for pages that should be tenant-scoped (not /onboarding, /auth/redirect, etc.)
+    const shouldRedirect = pathname === '/dashboard' || pathname.startsWith('/admin') ||
+      pathname === '/book' || pathname === '/buy-classes' || pathname === '/my-bookings' ||
+      pathname === '/profile'
+
+    if (shouldRedirect) {
+      const targetPath = pathname === '/dashboard' && isStaff ? '/admin' : pathname
+      return NextResponse.redirect(new URL(`https://${slug}.${baseDomain}${targetPath}`))
+    }
+
+    // For login/register on root domain with error params, redirect to subdomain login
+    if ((pathname === '/login' || pathname === '/register') && req.nextUrl.search) {
+      return NextResponse.redirect(new URL(`https://${slug}.${baseDomain}${pathname}${req.nextUrl.search}`))
+    }
+
+    response.headers.set('x-tenant-id', session.user.tenantId)
   } else if (session?.user?.tenantId) {
     // Authenticated user's tenant from JWT (for non-subdomain access like vercel.app)
     response.headers.set('x-tenant-id', session.user.tenantId)
@@ -163,6 +190,7 @@ export const config = {
     '/my-bookings/:path*',
     '/confirmation/:path*',
     '/admin/:path*',
+    '/auth/:path*',
     '/api/:path*',
   ],
 }

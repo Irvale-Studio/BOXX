@@ -50,11 +50,23 @@ export default function RegisterForm({ tenantId, tenantSlug }) {
         password,
         tenantId: tenantId || undefined,
         redirect: false,
-        callbackUrl: '/dashboard',
       })
 
-      if (result?.url) {
-        window.location.href = result.url
+      if (result?.ok || result?.url) {
+        // Members always go to /dashboard, but make sure we stay on the right subdomain
+        const baseDomain = process.env.NEXT_PUBLIC_BASE_DOMAIN || ''
+        const hostname = window.location.hostname
+        const isOnSubdomain = baseDomain && hostname.endsWith(`.${baseDomain}`)
+
+        if (isOnSubdomain) {
+          // Already on tenant subdomain — stay here
+          window.location.href = '/dashboard'
+        } else if (tenantSlug && baseDomain && !baseDomain.includes('localhost')) {
+          // Root domain — redirect to tenant subdomain
+          window.location.href = `https://${tenantSlug}.${baseDomain}/dashboard`
+        } else {
+          window.location.href = '/dashboard'
+        }
       }
     } catch {
       setError('Something went wrong. Please try again.')
