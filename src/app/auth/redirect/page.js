@@ -27,6 +27,13 @@ export default async function AuthRedirectPage() {
 
   const session = await auth()
 
+  console.log('[auth/redirect] DEBUG session:', JSON.stringify({
+    id: session?.user?.id,
+    role: session?.user?.role,
+    tenantId: session?.user?.tenantId,
+    tenantSlug: session?.user?.tenantSlug,
+  }))
+
   if (!session?.user) {
     redirect('/login')
   }
@@ -36,6 +43,8 @@ export default async function AuthRedirectPage() {
   const targetPath = isStaff ? '/admin' : '/dashboard'
 
   const baseDomain = process.env.NEXT_PUBLIC_BASE_DOMAIN || ''
+
+  console.log('[auth/redirect] DEBUG redirecting to:', tenantSlug, targetPath)
 
   if (tenantSlug && baseDomain && !baseDomain.includes('localhost')) {
     redirect(`https://${tenantSlug}.${baseDomain}${targetPath}`)
