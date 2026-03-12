@@ -64,10 +64,19 @@ export default function RegisterForm({ tenantId, tenantSlug }) {
 
   const handleGoogleRegister = () => {
     // Set cookie so the OAuth callback can associate with this tenant
+    // Use root domain so the cookie is readable at zatrovo.com (where OAuth callback lands)
     if (tenantId) {
-      document.cookie = `pending_tenant_id=${tenantId};path=/;max-age=600;samesite=lax`
+      const baseDomain = process.env.NEXT_PUBLIC_BASE_DOMAIN || ''
+      const domainAttr = baseDomain && !baseDomain.includes('localhost') ? `;domain=.${baseDomain}` : ''
+      document.cookie = `pending_tenant_id=${tenantId};path=/;max-age=600;samesite=lax${domainAttr}`
     }
-    signIn('google', { callbackUrl: '/dashboard' })
+    // Build full callback URL with tenant subdomain so user lands back on the right tenant
+    const baseDomain = process.env.NEXT_PUBLIC_BASE_DOMAIN || ''
+    let fullCallbackUrl = '/dashboard'
+    if (tenantSlug && baseDomain && !baseDomain.includes('localhost')) {
+      fullCallbackUrl = `https://${tenantSlug}.${baseDomain}/dashboard`
+    }
+    signIn('google', { callbackUrl: fullCallbackUrl })
   }
 
   return (

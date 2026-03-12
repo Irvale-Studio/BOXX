@@ -104,6 +104,29 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           // cookies() may not be available in all contexts
         }
 
+        // Check if a user with this email already exists on the target tenant
+        const { data: existingByEmail } = await supabaseAdmin
+          .from('users')
+          .select('*')
+          .eq('email', user.email.toLowerCase())
+          .eq('tenant_id', tenantId)
+          .single()
+
+        if (existingByEmail) {
+          // Link Google account to existing email user
+          if (existingByEmail.role === 'frozen') return false
+          await supabaseAdmin
+            .from('users')
+            .update({ google_id: account.providerAccountId, avatar_url: user.image })
+            .eq('id', existingByEmail.id)
+
+          user.id = existingByEmail.id
+          user.role = existingByEmail.role
+          user.tenantId = existingByEmail.tenant_id
+          return true
+        }
+
+        // Truly new user — create account
         const { data: newUser, error } = await supabaseAdmin
           .from('users')
           .insert({
@@ -118,8 +141,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           .single()
 
         if (error) {
-          // Email might already exist with password auth
-          // Don't auto-link — security risk
           console.error('[auth] Google signup failed:', error.message)
           return false
         }

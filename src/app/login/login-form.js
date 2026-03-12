@@ -54,10 +54,21 @@ function LoginFormInner({ tenantId, tenantSlug }) {
 
   const handleGoogleLogin = () => {
     // Set cookie so the OAuth callback can associate with this tenant
+    // Use root domain so the cookie is readable at zatrovo.com (where OAuth callback lands)
     if (tenantId) {
-      document.cookie = `pending_tenant_id=${tenantId};path=/;max-age=600;samesite=lax`
+      const baseDomain = process.env.NEXT_PUBLIC_BASE_DOMAIN || ''
+      const domainAttr = baseDomain && !baseDomain.includes('localhost') ? `;domain=.${baseDomain}` : ''
+      document.cookie = `pending_tenant_id=${tenantId};path=/;max-age=600;samesite=lax${domainAttr}`
     }
-    signIn('google', { callbackUrl })
+    // Build full callback URL with tenant subdomain so user lands back on the right tenant
+    let fullCallbackUrl = callbackUrl
+    if (tenantSlug) {
+      const baseDomain = process.env.NEXT_PUBLIC_BASE_DOMAIN || ''
+      if (baseDomain && !baseDomain.includes('localhost')) {
+        fullCallbackUrl = `https://${tenantSlug}.${baseDomain}${callbackUrl}`
+      }
+    }
+    signIn('google', { callbackUrl: fullCallbackUrl })
   }
 
   return (
