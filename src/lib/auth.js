@@ -71,8 +71,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (!credentials?.email || !credentials?.password) return null
         if (!supabaseAdmin) return null
 
-        console.log('[auth] authorize called. email:', credentials.email, 'tenantId:', credentials.tenantId)
-
         // Tenant-scoped login: if tenantId provided, scope lookup
         const query = supabaseAdmin
           .from('users')
@@ -85,10 +83,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         const { data: user, error } = await query.single()
 
-        if (error || !user || !user.password_hash) {
-          console.log('[auth] authorize failed. error:', error?.message, 'user found:', !!user)
-          return null
-        }
+        if (error || !user || !user.password_hash) return null
 
         const valid = await bcrypt.compare(credentials.password, user.password_hash)
         if (!valid) return null
@@ -107,7 +102,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           tenantSlug = tenant?.slug
         }
 
-        console.log('[auth] authorize success. userId:', user.id, 'tenant_id:', user.tenant_id, 'role:', user.role)
         return {
           id: user.id,
           email: user.email,
@@ -142,9 +136,21 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           const cookieStore = await cookies()
           const pendingTenant = cookieStore.get('pending_tenant_id')?.value
           if (pendingTenant) targetTenantId = pendingTenant
-          console.log('[auth] Google signIn: targetTenantId from cookie:', targetTenantId)
-        } catch (e) {
-          console.log('[auth] Google signIn: cookies() failed:', e.message)
+
+          // Clear pending cookies immediately so they don't leak into the next OAuth attempt
+          const baseDomain = process.env.NEXT_PUBLIC_BASE_DOMAIN
+          const cookieOpts = {
+            path: '/',
+            ...(baseDomain ? { domain: `.${baseDomain}` } : {}),
+          }
+          if (pendingTenant) {
+            cookieStore.delete({ name: 'pending_tenant_id', ...cookieOpts })
+          }
+          if (cookieStore.get('pending_tenant_slug')?.value) {
+            cookieStore.delete({ name: 'pending_tenant_slug', ...cookieOpts })
+          }
+        } catch {
+          // cookies() may not be available in all contexts
         }
 
         // Helper to populate user fields + tenant slug
@@ -169,9 +175,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
               .single()
 
             if (onTenant) {
-              if (onTenant.role === 'frozen') { console.log('[auth] Google signIn: user frozen on target tenant'); return false }
+              if (onTenant.role === 'frozen') return false
               await setUserFields(onTenant)
-              console.log('[auth] Google signIn: found by google_id on target tenant', onTenant.id)
               return true
             }
 
@@ -184,19 +189,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
               .single()
 
             if (byEmail) {
-              if (byEmail.role === 'frozen') { console.log('[auth] Google signIn: user frozen (email match)'); return false }
+              if (byEmail.role === 'frozen') return false
               const { error: linkError } = await supabaseAdmin
                 .from('users')
                 .update({ google_id: account.providerAccountId, avatar_url: user.image })
                 .eq('id', byEmail.id)
-              if (linkError) console.error('[auth] Google signIn: link error:', linkError.message)
+              if (linkError) console.error('[auth] link error:', linkError.message)
               await setUserFields(byEmail)
-              console.log('[auth] Google signIn: linked google to existing email user', byEmail.id)
               return true
             }
 
             // New user on target tenant — create account
-            console.log('[auth] Google signIn: creating new user on target tenant', targetTenantId)
             const { data: newUser, error } = await supabaseAdmin
               .from('users')
               .insert({
@@ -211,12 +214,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
               .single()
 
             if (error) {
-              console.error('[auth] Google signIn: create failed:', error.message)
+              console.error('[auth] create user failed:', error.message)
               return false
             }
 
             await setUserFields(newUser)
-            console.log('[auth] Google signIn: created new user', newUser.id)
             return true
           }
 
@@ -229,9 +231,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             .single()
 
           if (existing) {
-            if (existing.role === 'frozen') { console.log('[auth] Google signIn: global user frozen'); return false }
+            if (existing.role === 'frozen') return false
             await setUserFields(existing)
-            console.log('[auth] Google signIn: found globally by google_id', existing.id)
             return true
           }
 
@@ -244,19 +245,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             .single()
 
           if (byEmailGlobal) {
-            if (byEmailGlobal.role === 'frozen') { console.log('[auth] Google signIn: global email user frozen'); return false }
+            if (byEmailGlobal.role === 'frozen') return false
             await supabaseAdmin
               .from('users')
               .update({ google_id: account.providerAccountId, avatar_url: user.image })
               .eq('id', byEmailGlobal.id)
             await setUserFields(byEmailGlobal)
-            console.log('[auth] Google signIn: linked globally by email', byEmailGlobal.id)
             return true
           }
 
           // 4. Completely new user, no target tenant — use default
           const defaultTenantId = process.env.DEFAULT_TENANT_ID || 'a0000000-0000-0000-0000-000000000001'
-          console.log('[auth] Google signIn: creating new user on default tenant', defaultTenantId)
           const { data: newUser, error } = await supabaseAdmin
             .from('users')
             .insert({
@@ -271,14 +270,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             .single()
 
           if (error) {
-            console.error('[auth] Google signIn: create on default failed:', error.message)
+            console.error('[auth] create on default failed:', error.message)
             return false
           }
 
           await setUserFields(newUser)
-          console.log('[auth] Google signIn: created on default tenant', newUser.id)
         } catch (err) {
-          console.error('[auth] Google signIn: UNHANDLED ERROR:', err.message, err.stack)
+          console.error('[auth] Google signIn error:', err.message)
           return false
         }
       }

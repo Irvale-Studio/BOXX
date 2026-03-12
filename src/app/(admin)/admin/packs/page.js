@@ -281,7 +281,7 @@ export default function AdminPacksPage() {
           </div>
           <div className="flex items-start gap-2">
             <span className="text-accent font-bold mt-0.5 shrink-0">2.</span>
-            <span>Click <strong className="text-foreground">&quot;+ New&quot;</strong> to create a coupon (e.g. 20% off, or ฿500 off)</span>
+            <span>Click <strong className="text-foreground">&quot;+ New&quot;</strong> to create a coupon (e.g. 20% off, or a fixed amount off)</span>
           </div>
           <div className="flex items-start gap-2">
             <span className="text-accent font-bold mt-0.5 shrink-0">3.</span>

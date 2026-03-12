@@ -15,16 +15,18 @@ const PUBLIC_KEYS = [
  * GET /api/settings/public — Public studio settings (no auth required)
  * Cached for 60 seconds to avoid hammering DB on every page load
  */
-export async function GET() {
+export async function GET(request) {
   try {
     if (!supabaseAdmin) {
       return NextResponse.json({ settings: {} })
     }
 
+    const tenantId = request.headers.get('x-tenant-id') || DEFAULT_TENANT_ID
+
     const { data } = await supabaseAdmin
       .from('studio_settings')
       .select('key, value')
-      .eq('tenant_id', DEFAULT_TENANT_ID)
+      .eq('tenant_id', tenantId)
       .in('key', PUBLIC_KEYS)
 
     const settings = Object.fromEntries((data || []).map((r) => [r.key, r.value]))

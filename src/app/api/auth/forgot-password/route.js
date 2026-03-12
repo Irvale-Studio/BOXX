@@ -9,7 +9,7 @@ const DEFAULT_TENANT_ID = process.env.DEFAULT_TENANT_ID || 'a0000000-0000-0000-0
 
 const schema = z.object({
   email: z.string().email(),
-  tenantId: z.string().uuid().optional(),
+  tenantId: z.string().min(1).optional(),
 })
 
 /**
@@ -71,9 +71,25 @@ export async function POST(request) {
         tenant_id: tenantId,
       })
 
-    // Send reset email
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || 'https://boxxthailand.com'
-    const resetUrl = `${baseUrl}/reset-password/${rawToken}?email=${encodeURIComponent(email)}`
+    // Build tenant-aware reset URL (use subdomain if available)
+    let resetBaseUrl
+    const baseDomain = process.env.NEXT_PUBLIC_BASE_DOMAIN
+    if (baseDomain && !baseDomain.includes('localhost')) {
+      // Look up tenant slug for subdomain URL
+      const { data: tenant } = await supabaseAdmin
+        .from('tenants')
+        .select('slug')
+        .eq('id', tenantId)
+        .single()
+      if (tenant?.slug) {
+        resetBaseUrl = `https://${tenant.slug}.${baseDomain}`
+      } else {
+        resetBaseUrl = `https://${baseDomain}`
+      }
+    } else {
+      resetBaseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || 'http://localhost:3000'
+    }
+    const resetUrl = `${resetBaseUrl}/reset-password/${rawToken}?email=${encodeURIComponent(email)}`
 
     try {
       const { sendPasswordResetEmail } = await import('@/lib/email')

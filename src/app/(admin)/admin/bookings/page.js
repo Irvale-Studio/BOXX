@@ -116,7 +116,7 @@ export default function AdminEventsPage() {
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `boxx-activity-${new Date().toISOString().split('T')[0]}.csv`
+      a.download = `activity-${new Date().toISOString().split('T')[0]}.csv`
       a.click()
       URL.revokeObjectURL(url)
     } catch (err) {
