@@ -213,7 +213,7 @@ export async function POST(request) {
     }
 
     const systemPrompt = await buildSystemPrompt(session.user.name, tenantId)
-    const context = { adminId: session.user.id, adminName: session.user.name }
+    const context = { adminId: session.user.id, adminName: session.user.name, tenantId }
 
     // Truncate message history to last 40 messages to prevent unbounded token growth
     const MAX_HISTORY = 40

@@ -2,6 +2,8 @@
  * Agent Tool Executor — Resolves tool calls into actual database operations.
  * Uses supabaseAdmin directly (same as admin API routes) since the agent
  * API route already validates auth.
+ *
+ * ALL queries are scoped to context.tenantId for multi-tenant safety.
  */
 import { supabaseAdmin } from '@/lib/supabase/admin'
 
@@ -31,21 +33,25 @@ function normaliseTime(raw) {
  * Execute a single tool call. Returns { success, data } or { success: false, error }.
  */
 export async function executeTool(toolName, input, context) {
+  if (!context.tenantId) {
+    return { success: false, error: 'Missing tenant context. Please try again.' }
+  }
+
   try {
     switch (toolName) {
       case 'create_class': return await createClass(input, context)
       case 'create_recurring_classes': return await createRecurringClasses(input, context)
       case 'cancel_class': return await cancelClass(input, context)
       case 'delete_class': return await deleteClass(input, context)
-      case 'get_schedule': return await getSchedule(input)
+      case 'get_schedule': return await getSchedule(input, context)
       case 'add_member_to_class': return await addMemberToClass(input, context)
-      case 'search_members': return await searchMembers(input)
-      case 'get_member_detail': return await getMemberDetail(input)
+      case 'search_members': return await searchMembers(input, context)
+      case 'get_member_detail': return await getMemberDetail(input, context)
       case 'grant_credits': return await grantCredits(input, context)
       case 'create_instructor': return await createInstructor(input, context)
       case 'update_instructor': return await updateInstructor(input, context)
       case 'send_email': return await sendEmail(input, context)
-      case 'get_dashboard': return await getDashboard()
+      case 'get_dashboard': return await getDashboard(context)
       default:
         return { success: false, error: `Unknown tool: ${toolName}` }
     }
@@ -55,12 +61,13 @@ export async function executeTool(toolName, input, context) {
   }
 }
 
-// ── Resolvers (fuzzy name → ID) ────────────────────
+// ── Resolvers (fuzzy name → ID, tenant-scoped) ────────────────────
 
-async function resolveClassType(name) {
+async function resolveClassType(name, tenantId) {
   const { data } = await supabaseAdmin
     .from('class_types')
     .select('id, name, duration_mins, color, is_private')
+    .eq('tenant_id', tenantId)
     .eq('active', true)
 
   const match = (data || []).find(
@@ -76,10 +83,11 @@ async function resolveClassType(name) {
   return match
 }
 
-async function resolveInstructor(name) {
+async function resolveInstructor(name, tenantId) {
   const { data } = await supabaseAdmin
     .from('instructors')
     .select('id, name')
+    .eq('tenant_id', tenantId)
     .eq('active', true)
 
   const match = (data || []).find(
@@ -95,13 +103,14 @@ async function resolveInstructor(name) {
   return match
 }
 
-async function resolveMember(nameOrEmail) {
+async function resolveMember(nameOrEmail, tenantId) {
   const q = nameOrEmail.toLowerCase()
 
   // Try exact email match first
   const { data: byEmail } = await supabaseAdmin
     .from('users')
     .select('id, name, email')
+    .eq('tenant_id', tenantId)
     .ilike('email', q)
     .limit(1)
 
@@ -111,6 +120,7 @@ async function resolveMember(nameOrEmail) {
   const { data: byName } = await supabaseAdmin
     .from('users')
     .select('id, name, email')
+    .eq('tenant_id', tenantId)
     .ilike('name', `%${q}%`)
     .limit(5)
 
@@ -123,10 +133,11 @@ async function resolveMember(nameOrEmail) {
   throw new Error(`Member "${nameOrEmail}" not found.`)
 }
 
-async function resolvePack(name) {
+async function resolvePack(name, tenantId) {
   const { data } = await supabaseAdmin
     .from('class_packs')
     .select('id, name, credits, validity_days, price_thb')
+    .eq('tenant_id', tenantId)
     .eq('active', true)
 
   const match = (data || []).find(
@@ -142,8 +153,8 @@ async function resolvePack(name) {
   return match
 }
 
-async function resolveClass(classTypeName, date, startTime, { allowStatus } = {}) {
-  const ct = await resolveClassType(classTypeName)
+async function resolveClass(classTypeName, date, startTime, tenantId, { allowStatus } = {}) {
+  const ct = await resolveClassType(classTypeName, tenantId)
 
   const dayStart = `${date}T00:00:00+07:00`
   const dayEnd = `${date}T23:59:59+07:00`
@@ -151,6 +162,7 @@ async function resolveClass(classTypeName, date, startTime, { allowStatus } = {}
   let query = supabaseAdmin
     .from('class_schedule')
     .select('id, starts_at, ends_at, capacity, status, instructors(name)')
+    .eq('tenant_id', tenantId)
     .eq('class_type_id', ct.id)
     .gte('starts_at', dayStart)
     .lte('starts_at', dayEnd)
@@ -189,8 +201,9 @@ async function resolveClass(classTypeName, date, startTime, { allowStatus } = {}
 // ── Tool Implementations ───────────────────────────
 
 async function createClass(input, context) {
-  const ct = await resolveClassType(input.class_type)
-  const instructor = await resolveInstructor(input.instructor)
+  const { tenantId } = context
+  const ct = await resolveClassType(input.class_type, tenantId)
+  const instructor = await resolveInstructor(input.instructor, tenantId)
   const duration = input.duration_mins || ct.duration_mins || 60
   const capacity = input.capacity || 6
 
@@ -208,6 +221,7 @@ async function createClass(input, context) {
   const { data: clashes } = await supabaseAdmin
     .from('class_schedule')
     .select('id')
+    .eq('tenant_id', tenantId)
     .eq('instructor_id', instructor.id)
     .eq('status', 'active')
     .lt('starts_at', endsAt)
@@ -220,6 +234,7 @@ async function createClass(input, context) {
   const { data: cls, error } = await supabaseAdmin
     .from('class_schedule')
     .insert({
+      tenant_id: tenantId,
       class_type_id: ct.id,
       instructor_id: instructor.id,
       starts_at: startsAt,
@@ -235,6 +250,7 @@ async function createClass(input, context) {
 
   // Audit log
   await supabaseAdmin.from('admin_audit_log').insert({
+    tenant_id: tenantId,
     admin_id: context.adminId,
     action: 'create_class',
     target_type: 'class_schedule',
@@ -253,8 +269,9 @@ async function createClass(input, context) {
 }
 
 async function createRecurringClasses(input, context) {
-  const ct = await resolveClassType(input.class_type)
-  const instructor = await resolveInstructor(input.instructor)
+  const { tenantId } = context
+  const ct = await resolveClassType(input.class_type, tenantId)
+  const instructor = await resolveInstructor(input.instructor, tenantId)
   const duration = input.duration_mins || ct.duration_mins || 60
   const capacity = input.capacity || 6
   const weeks = input.weeks || 4
@@ -283,6 +300,7 @@ async function createRecurringClasses(input, context) {
       endsAtD.setMinutes(endsAtD.getMinutes() + duration)
 
       classesToCreate.push({
+        tenant_id: tenantId,
         class_type_id: ct.id,
         instructor_id: instructor.id,
         starts_at: startsAt,
@@ -303,6 +321,7 @@ async function createRecurringClasses(input, context) {
   const { data: existing } = await supabaseAdmin
     .from('class_schedule')
     .select('starts_at, ends_at')
+    .eq('tenant_id', tenantId)
     .eq('instructor_id', instructor.id)
     .eq('status', 'active')
     .gte('starts_at', classesToCreate[0].starts_at)
@@ -324,6 +343,7 @@ async function createRecurringClasses(input, context) {
   const dayNames = input.days.map((d) => d.charAt(0).toUpperCase() + d.slice(1)).join(', ')
 
   await supabaseAdmin.from('admin_audit_log').insert({
+    tenant_id: tenantId,
     admin_id: context.adminId,
     action: 'create_recurring',
     target_type: 'class_schedule',
@@ -339,15 +359,17 @@ async function createRecurringClasses(input, context) {
 }
 
 async function cancelClass(input, context) {
-  const { classId, cls, classType } = await resolveClass(input.class_type, input.date, input.start_time)
+  const { tenantId } = context
+  const { classId, cls, classType } = await resolveClass(input.class_type, input.date, input.start_time, tenantId)
 
   // Cancel the class
-  await supabaseAdmin.from('class_schedule').update({ status: 'cancelled' }).eq('id', classId)
+  await supabaseAdmin.from('class_schedule').update({ status: 'cancelled' }).eq('id', classId).eq('tenant_id', tenantId)
 
   // Cancel bookings (confirmed + invited) and refund credits for confirmed
   const { data: bookings } = await supabaseAdmin
     .from('bookings')
     .select('id, user_id, credit_id, status')
+    .eq('tenant_id', tenantId)
     .eq('class_schedule_id', classId)
     .in('status', ['confirmed', 'invited'])
 
@@ -361,9 +383,10 @@ async function cancelClass(input, context) {
   }
 
   // Clear waitlist
-  await supabaseAdmin.from('waitlist').delete().eq('class_schedule_id', classId)
+  await supabaseAdmin.from('waitlist').delete().eq('class_schedule_id', classId).eq('tenant_id', tenantId)
 
   await supabaseAdmin.from('admin_audit_log').insert({
+    tenant_id: tenantId,
     admin_id: context.adminId,
     action: 'cancel_class',
     target_type: 'class_schedule',
@@ -381,14 +404,16 @@ async function cancelClass(input, context) {
 }
 
 async function deleteClass(input, context) {
+  const { tenantId } = context
   // Find cancelled class specifically
-  const ct = await resolveClassType(input.class_type)
+  const ct = await resolveClassType(input.class_type, tenantId)
   const dayStart = `${input.date}T00:00:00+07:00`
   const dayEnd = `${input.date}T23:59:59+07:00`
 
   const { data: classes } = await supabaseAdmin
     .from('class_schedule')
     .select('id, starts_at, status, instructors(name)')
+    .eq('tenant_id', tenantId)
     .eq('class_type_id', ct.id)
     .eq('status', 'cancelled')
     .gte('starts_at', dayStart)
@@ -399,6 +424,7 @@ async function deleteClass(input, context) {
     const { data: active } = await supabaseAdmin
       .from('class_schedule')
       .select('id, status')
+      .eq('tenant_id', tenantId)
       .eq('class_type_id', ct.id)
       .eq('status', 'active')
       .gte('starts_at', dayStart)
@@ -421,14 +447,15 @@ async function deleteClass(input, context) {
     if (match) target = match
   }
 
-  // Delete related records first (cascade should handle this but be explicit)
-  await supabaseAdmin.from('bookings').delete().eq('class_schedule_id', target.id)
-  await supabaseAdmin.from('waitlist').delete().eq('class_schedule_id', target.id)
+  // Delete related records first
+  await supabaseAdmin.from('bookings').delete().eq('class_schedule_id', target.id).eq('tenant_id', tenantId)
+  await supabaseAdmin.from('waitlist').delete().eq('class_schedule_id', target.id).eq('tenant_id', tenantId)
 
-  const { error } = await supabaseAdmin.from('class_schedule').delete().eq('id', target.id)
+  const { error } = await supabaseAdmin.from('class_schedule').delete().eq('id', target.id).eq('tenant_id', tenantId)
   if (error) throw new Error(`Failed to delete class: ${error.message}`)
 
   await supabaseAdmin.from('admin_audit_log').insert({
+    tenant_id: tenantId,
     admin_id: context.adminId,
     action: 'delete_class',
     target_type: 'class_schedule',
@@ -443,7 +470,8 @@ async function deleteClass(input, context) {
   }
 }
 
-async function getSchedule(input) {
+async function getSchedule(input, context) {
+  const { tenantId } = context
   const startDate = input?.start_date || new Date().toISOString().split('T')[0]
   const endDateObj = new Date(startDate + 'T00:00:00+07:00')
   endDateObj.setDate(endDateObj.getDate() + 7)
@@ -452,6 +480,7 @@ async function getSchedule(input) {
   const { data: classes } = await supabaseAdmin
     .from('class_schedule')
     .select('id, starts_at, ends_at, capacity, status, notes, class_types(name, color), instructors(name)')
+    .eq('tenant_id', tenantId)
     .gte('starts_at', `${startDate}T00:00:00+07:00`)
     .lte('starts_at', `${endDate}T23:59:59+07:00`)
     .order('starts_at')
@@ -465,6 +494,7 @@ async function getSchedule(input) {
   const { data: bookings } = await supabaseAdmin
     .from('bookings')
     .select('class_schedule_id')
+    .eq('tenant_id', tenantId)
     .in('class_schedule_id', classIds)
     .eq('status', 'confirmed')
 
@@ -494,13 +524,15 @@ async function getSchedule(input) {
 }
 
 async function addMemberToClass(input, context) {
-  const member = await resolveMember(input.member)
-  const { classId, cls, classType } = await resolveClass(input.class_type, input.date, input.start_time)
+  const { tenantId } = context
+  const member = await resolveMember(input.member, tenantId)
+  const { classId, cls, classType } = await resolveClass(input.class_type, input.date, input.start_time, tenantId)
 
   // Check not already booked or invited
   const { data: existing } = await supabaseAdmin
     .from('bookings')
     .select('id, status')
+    .eq('tenant_id', tenantId)
     .eq('user_id', member.id)
     .eq('class_schedule_id', classId)
     .in('status', ['confirmed', 'invited'])
@@ -514,6 +546,7 @@ async function addMemberToClass(input, context) {
   const { data: allCredits } = await supabaseAdmin
     .from('user_credits')
     .select('id, credits_remaining')
+    .eq('tenant_id', tenantId)
     .eq('user_id', member.id)
     .eq('status', 'active')
     .gt('expires_at', new Date().toISOString())
@@ -538,7 +571,7 @@ async function addMemberToClass(input, context) {
 
   const { error } = await supabaseAdmin
     .from('bookings')
-    .insert({ user_id: member.id, class_schedule_id: classId, credit_id: creditId, status: bookingStatus })
+    .insert({ tenant_id: tenantId, user_id: member.id, class_schedule_id: classId, credit_id: creditId, status: bookingStatus })
 
   if (error) {
     if (creditId && credits[0].credits_remaining !== null) {
@@ -548,10 +581,10 @@ async function addMemberToClass(input, context) {
   }
 
   // Remove from waitlist if present
-  await supabaseAdmin.from('waitlist').delete().eq('user_id', member.id).eq('class_schedule_id', classId)
+  await supabaseAdmin.from('waitlist').delete().eq('user_id', member.id).eq('class_schedule_id', classId).eq('tenant_id', tenantId)
 
   // Send appropriate email
-  const { data: emailUser } = await supabaseAdmin.from('users').select('email, name').eq('id', member.id).single()
+  const { data: emailUser } = await supabaseAdmin.from('users').select('email, name').eq('id', member.id).eq('tenant_id', tenantId).single()
   if (emailUser?.email) {
     const { sendBookingConfirmation, sendClassInvitationNeedsCredits } = await import('@/lib/email')
     const startDate = new Date(cls.starts_at)
@@ -571,6 +604,7 @@ async function addMemberToClass(input, context) {
   }
 
   await supabaseAdmin.from('admin_audit_log').insert({
+    tenant_id: tenantId,
     admin_id: context.adminId,
     action: 'add_to_roster',
     target_type: 'bookings',
@@ -585,13 +619,14 @@ async function addMemberToClass(input, context) {
   return { success: true, data: { message: statusMsg } }
 }
 
-async function searchMembers(input) {
+async function searchMembers(input, context) {
+  const { tenantId } = context
   const q = input.query.toLowerCase()
 
-  // Fetch all members and filter in JS to avoid PostgREST .or() injection issues
   const { data: allMembers } = await supabaseAdmin
     .from('users')
     .select('id, name, email, role, created_at')
+    .eq('tenant_id', tenantId)
     .order('name')
 
   const members = (allMembers || []).filter(
@@ -607,12 +642,13 @@ async function searchMembers(input) {
   const { data: credits } = await supabaseAdmin
     .from('user_credits')
     .select('user_id, credits_remaining')
+    .eq('tenant_id', tenantId)
     .in('user_id', userIds)
     .eq('status', 'active')
     .gt('expires_at', new Date().toISOString())
 
-  const creditMap = {}     // total finite credits
-  const unlimitedSet = new Set() // users with unlimited packs
+  const creditMap = {}
+  const unlimitedSet = new Set()
   ;(credits || []).forEach((c) => {
     if (c.credits_remaining === null) {
       unlimitedSet.add(c.user_id)
@@ -643,19 +679,22 @@ async function searchMembers(input) {
   }
 }
 
-async function getMemberDetail(input) {
-  const member = await resolveMember(input.member)
+async function getMemberDetail(input, context) {
+  const { tenantId } = context
+  const member = await resolveMember(input.member, tenantId)
 
   const [creditsRes, bookingsRes] = await Promise.all([
     supabaseAdmin
       .from('user_credits')
       .select('credits_remaining, expires_at, status, class_packs(name)')
+      .eq('tenant_id', tenantId)
       .eq('user_id', member.id)
       .eq('status', 'active')
       .gt('expires_at', new Date().toISOString()),
     supabaseAdmin
       .from('bookings')
       .select('id, status, created_at, class_schedule(starts_at, class_types(name))')
+      .eq('tenant_id', tenantId)
       .eq('user_id', member.id)
       .order('created_at', { ascending: false })
       .limit(10),
@@ -685,13 +724,15 @@ async function getMemberDetail(input) {
 }
 
 async function grantCredits(input, context) {
-  const member = await resolveMember(input.member)
-  const pack = await resolvePack(input.pack)
+  const { tenantId } = context
+  const member = await resolveMember(input.member, tenantId)
+  const pack = await resolvePack(input.pack, tenantId)
 
   const expiresAt = new Date()
   expiresAt.setDate(expiresAt.getDate() + pack.validity_days)
 
   const { error } = await supabaseAdmin.from('user_credits').insert({
+    tenant_id: tenantId,
     user_id: member.id,
     class_pack_id: pack.id,
     credits_total: pack.credits,
@@ -704,6 +745,7 @@ async function grantCredits(input, context) {
   if (error) throw new Error(`Failed to grant credits: ${error.message}`)
 
   await supabaseAdmin.from('admin_audit_log').insert({
+    tenant_id: tenantId,
     admin_id: context.adminId,
     action: 'grant_credits',
     target_type: 'user_credits',
@@ -719,10 +761,13 @@ async function grantCredits(input, context) {
 }
 
 async function createInstructor(input, context) {
-  // Check if name already exists
+  const { tenantId } = context
+
+  // Check if name already exists on this tenant
   const { data: existing } = await supabaseAdmin
     .from('instructors')
     .select('id, name')
+    .eq('tenant_id', tenantId)
     .ilike('name', input.name)
     .limit(1)
 
@@ -738,6 +783,7 @@ async function createInstructor(input, context) {
   const { data: instructor, error } = await supabaseAdmin
     .from('instructors')
     .insert({
+      tenant_id: tenantId,
       name: input.name,
       bio: input.bio || null,
       active: true,
@@ -748,6 +794,7 @@ async function createInstructor(input, context) {
   if (error) throw new Error(`Failed to create instructor: ${error.message}`)
 
   await supabaseAdmin.from('admin_audit_log').insert({
+    tenant_id: tenantId,
     admin_id: context.adminId,
     action: 'create_instructor',
     target_type: 'instructors',
@@ -762,7 +809,8 @@ async function createInstructor(input, context) {
 }
 
 async function updateInstructor(input, context) {
-  const instructor = await resolveInstructor(input.instructor)
+  const { tenantId } = context
+  const instructor = await resolveInstructor(input.instructor, tenantId)
 
   const updates = {}
   if (input.name !== undefined) updates.name = input.name
@@ -778,6 +826,7 @@ async function updateInstructor(input, context) {
     const { count } = await supabaseAdmin
       .from('class_schedule')
       .select('id', { count: 'exact', head: true })
+      .eq('tenant_id', tenantId)
       .eq('instructor_id', instructor.id)
       .eq('status', 'active')
       .gt('starts_at', new Date().toISOString())
@@ -791,10 +840,12 @@ async function updateInstructor(input, context) {
     .from('instructors')
     .update(updates)
     .eq('id', instructor.id)
+    .eq('tenant_id', tenantId)
 
   if (error) throw new Error(`Failed to update instructor: ${error.message}`)
 
   await supabaseAdmin.from('admin_audit_log').insert({
+    tenant_id: tenantId,
     admin_id: context.adminId,
     action: 'update_instructor',
     target_type: 'instructors',
@@ -809,7 +860,8 @@ async function updateInstructor(input, context) {
 }
 
 async function sendEmail(input, context) {
-  const member = await resolveMember(input.to)
+  const { tenantId } = context
+  const member = await resolveMember(input.to, tenantId)
   const { sendAdminDirectEmail } = await import('@/lib/email')
 
   await sendAdminDirectEmail({
@@ -820,6 +872,7 @@ async function sendEmail(input, context) {
   })
 
   await supabaseAdmin.from('admin_audit_log').insert({
+    tenant_id: tenantId,
     admin_id: context.adminId,
     action: 'send_email',
     target_type: 'email',
@@ -832,7 +885,8 @@ async function sendEmail(input, context) {
   }
 }
 
-async function getDashboard() {
+async function getDashboard(context) {
+  const { tenantId } = context
   const now = new Date()
   const sevenDaysAgo = new Date(now)
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
@@ -845,11 +899,11 @@ async function getDashboard() {
   const todayEnd = new Date(`${bangkokDate}T23:59:59+07:00`)
 
   const [membersRes, todayClassesRes, weekBookingsRes, monthRevenueRes] = await Promise.all([
-    supabaseAdmin.from('users').select('id', { count: 'exact', head: true }).eq('role', 'member'),
+    supabaseAdmin.from('users').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId).eq('role', 'member'),
     supabaseAdmin.from('class_schedule').select('id, starts_at, capacity, status, class_types(name), instructors(name)')
-      .gte('starts_at', todayStart.toISOString()).lte('starts_at', todayEnd.toISOString()).eq('status', 'active'),
-    supabaseAdmin.from('bookings').select('id', { count: 'exact', head: true }).eq('status', 'confirmed').gte('created_at', sevenDaysAgo.toISOString()),
-    supabaseAdmin.from('user_credits').select('id, class_packs(price_thb)').gte('purchased_at', monthStart.toISOString()),
+      .eq('tenant_id', tenantId).gte('starts_at', todayStart.toISOString()).lte('starts_at', todayEnd.toISOString()).eq('status', 'active'),
+    supabaseAdmin.from('bookings').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId).eq('status', 'confirmed').gte('created_at', sevenDaysAgo.toISOString()),
+    supabaseAdmin.from('user_credits').select('id, class_packs(price_thb)').eq('tenant_id', tenantId).gte('purchased_at', monthStart.toISOString()),
   ])
 
   const revenue = (monthRevenueRes.data || []).reduce((sum, uc) => sum + (uc.class_packs?.price_thb || 0), 0)
