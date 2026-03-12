@@ -2,6 +2,7 @@ import NextAuth from 'next-auth'
 import Google from 'next-auth/providers/google'
 import Credentials from 'next-auth/providers/credentials'
 import { supabaseAdmin } from '@/lib/supabase/admin'
+import { cookies } from 'next/headers'
 import bcrypt from 'bcryptjs'
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
@@ -93,8 +94,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         }
 
         // New Google user — create account
-        // Resolve tenant from the request context (stored in account metadata)
-        const tenantId = account.tenantId || process.env.DEFAULT_TENANT_ID || 'a0000000-0000-0000-0000-000000000001'
+        // Read tenant from cookie set by login/register page before OAuth redirect
+        let tenantId = process.env.DEFAULT_TENANT_ID || 'a0000000-0000-0000-0000-000000000001'
+        try {
+          const cookieStore = await cookies()
+          const pendingTenant = cookieStore.get('pending_tenant_id')?.value
+          if (pendingTenant) tenantId = pendingTenant
+        } catch {
+          // cookies() may not be available in all contexts
+        }
 
         const { data: newUser, error } = await supabaseAdmin
           .from('users')

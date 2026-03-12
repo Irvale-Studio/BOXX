@@ -8,11 +8,12 @@ const DEFAULT_TENANT_ID = process.env.DEFAULT_TENANT_ID || 'a0000000-0000-0000-0
  * GET /api/tenant/theme — Returns tenant branding (colors, fonts, logo, name)
  * Used by ThemeProvider to apply tenant-specific styling.
  */
-export async function GET() {
+export async function GET(request) {
   try {
     const session = await auth()
-    const tenantId = session?.user?.tenantId || DEFAULT_TENANT_ID
-    console.log('[tenant/theme] session tenantId:', session?.user?.tenantId, '→ resolved:', tenantId)
+    // Prefer middleware-resolved tenant (from subdomain), then session, then default
+    const headerTenantId = request.headers.get('x-tenant-id')
+    const tenantId = headerTenantId || session?.user?.tenantId || DEFAULT_TENANT_ID
 
     if (!supabaseAdmin) {
       return NextResponse.json({ theme: null })
