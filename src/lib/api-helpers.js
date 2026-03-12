@@ -22,14 +22,14 @@ const _planCache = new Map()
 const PLAN_CACHE_TTL = 60_000 // 1 minute
 
 function getTenantId(session, request) {
-  // 1. From JWT/session (primary source of truth)
-  if (session?.user?.tenantId) return session.user.tenantId
-
-  // 2. From middleware-injected header
+  // 1. From middleware-injected header (subdomain-resolved — most accurate for current request)
   if (request) {
     const headerTenantId = request.headers.get('x-tenant-id')
     if (headerTenantId) return headerTenantId
   }
+
+  // 2. From JWT/session (fallback when no middleware header, e.g. localhost)
+  if (session?.user?.tenantId) return session.user.tenantId
 
   // 3. Fallback to default (Bert's tenant) during migration
   return DEFAULT_TENANT_ID
