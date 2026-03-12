@@ -15,9 +15,9 @@ export const viewport = {
 }
 
 export const metadata = {
-  metadataBase: new URL("https://www.boxxthailand.com"),
-  title: "BOXX Platform",
-  description: "Studio management platform by BOXX",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://www.boxxthailand.com"),
+  title: "Studio Platform",
+  description: "Studio management platform",
 }
 
 export default function RootLayout({ children }) {

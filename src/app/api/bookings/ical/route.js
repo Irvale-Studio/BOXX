@@ -37,7 +37,7 @@ export async function GET(request) {
     const escapeIcal = (s) => s.replace(/[\\;,\n]/g, (c) => '\\' + c)
 
     const cls = booking.class_schedule
-    const className = escapeIcal(cls.class_types?.name || 'BOXX Class')
+    const className = escapeIcal(cls.class_types?.name || 'Class')
     const instructor = escapeIcal(cls.instructors?.name || '')
     const start = new Date(cls.starts_at)
     const end = new Date(start.getTime() + (cls.duration_minutes || 55) * 60000)
@@ -45,13 +45,14 @@ export async function GET(request) {
     const formatDate = (d) =>
       d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')
 
-    const uid = `booking-${booking.id}@boxxthailand.com`
+    const domain = (process.env.NEXT_PUBLIC_APP_URL || 'https://boxxthailand.com').replace(/^https?:\/\//, '')
+    const uid = `booking-${booking.id}@${domain}`
     const now = formatDate(new Date())
 
     const ics = [
       'BEGIN:VCALENDAR',
       'VERSION:2.0',
-      'PRODID:-//BOXX Thailand//Booking//EN',
+      'PRODID:-//Studio Platform//Booking//EN',
       'CALSCALE:GREGORIAN',
       'METHOD:PUBLISH',
       'BEGIN:VEVENT',
@@ -60,13 +61,12 @@ export async function GET(request) {
       `DTSTART:${formatDate(start)}`,
       `DTEND:${formatDate(end)}`,
       `SUMMARY:${className}${instructor ? ` with ${instructor}` : ''}`,
-      'DESCRIPTION:BOXX Boxing Studio — Chiang Mai',
-      'LOCATION:89/2 Bumruang Road\\, Wat Ket\\, Chiang Mai 50000',
+      'DESCRIPTION:Class booking',
       'STATUS:CONFIRMED',
       'BEGIN:VALARM',
       'TRIGGER:-PT60M',
       'ACTION:DISPLAY',
-      'DESCRIPTION:Your BOXX class starts in 1 hour',
+      'DESCRIPTION:Your class starts in 1 hour',
       'END:VALARM',
       'END:VEVENT',
       'END:VCALENDAR',

@@ -122,7 +122,7 @@ export async function POST(request) {
       const emailData = {
         to: addedUser.email,
         name: addedUser.name,
-        className: rosterClass.class_types?.name || 'BOXX Class',
+        className: rosterClass.class_types?.name || 'Class',
         instructor: rosterClass.instructors?.name,
         date: startDate.toLocaleDateString('en-US', {
           weekday: 'long', month: 'long', day: 'numeric', timeZone: 'Asia/Bangkok',
@@ -299,7 +299,7 @@ export async function DELETE(request) {
       sendRemovedFromClass({
         to: removedUser.email,
         name: removedUser.name,
-        className: removeClass.class_types?.name || 'BOXX Class',
+        className: removeClass.class_types?.name || 'Class',
         date: startDate.toLocaleDateString('en-US', {
           weekday: 'long', month: 'long', day: 'numeric', timeZone: 'Asia/Bangkok',
         }),

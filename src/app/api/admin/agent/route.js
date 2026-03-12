@@ -17,11 +17,14 @@ const DAILY_MESSAGE_LIMIT = 200
  * Build system prompt with live studio context (class types, instructors, packs)
  */
 async function buildSystemPrompt(adminName, tenantId) {
-  const [classTypesRes, instructorsRes, packsRes] = await Promise.all([
+  const [classTypesRes, instructorsRes, packsRes, studioNameRes] = await Promise.all([
     supabaseAdmin.from('class_types').select('name, duration_mins, is_private').eq('tenant_id', tenantId).eq('active', true),
     supabaseAdmin.from('instructors').select('name').eq('tenant_id', tenantId).eq('active', true),
     supabaseAdmin.from('class_packs').select('name, credits, validity_days, price_thb').eq('tenant_id', tenantId).eq('active', true),
+    supabaseAdmin.from('studio_settings').select('value').eq('tenant_id', tenantId).eq('key', 'studio_name').single(),
   ])
+
+  const studioName = studioNameRes.data?.value || 'the studio'
 
   const classTypes = (classTypesRes.data || []).map((ct) =>
     `- ${ct.name} (${ct.duration_mins}min${ct.is_private ? ', private' : ''})`
@@ -30,7 +33,7 @@ async function buildSystemPrompt(adminName, tenantId) {
   const instructors = (instructorsRes.data || []).map((i) => `- ${i.name}`).join('\n')
 
   const packs = (packsRes.data || []).map((p) =>
-    `- ${p.name}: ${p.credits || 'unlimited'} credits, ${p.validity_days} days, ฿${p.price_thb}`
+    `- ${p.name}: ${p.credits || 'unlimited'} credits, ${p.validity_days} days, ${p.price_thb}`
   ).join('\n')
 
   const today = new Date().toLocaleDateString('en-US', {
@@ -38,7 +41,7 @@ async function buildSystemPrompt(adminName, tenantId) {
     timeZone: 'Asia/Bangkok',
   })
 
-  return `You are the BOXX Studio Assistant — an AI helper for managing BOXX Boxing Studio in Chiang Mai, Thailand.
+  return `You are the Studio Assistant — an AI helper for managing ${studioName}.
 
 You help ${adminName || 'the admin'} manage the studio by executing actions through the available tools. You are friendly, concise, and professional.
 

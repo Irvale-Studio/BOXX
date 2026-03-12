@@ -24,7 +24,7 @@ const EMAIL_EVENTS = [
   { slug: 'class_reminder', name: 'Class Reminder (1hr)', description: 'Sent 1 hour before a class starts', trigger: 'Cron every 15min', defaultSubject: 'Reminder: {{class}} in 1 hour' },
   { slug: 'waitlist_promotion', name: 'Waitlist Promotion', description: 'Sent when a member is promoted from the waitlist', trigger: 'Spot opens up', defaultSubject: 'Spot Available — {{class}}' },
   { slug: 'credit_expiry_warning', name: 'Credit Expiry Warning', description: 'Sent when credits are about to expire', trigger: 'Cron daily', defaultSubject: 'Credits Expiring Soon — {{pack}}' },
-  { slug: 'welcome', name: 'Welcome Email', description: 'Sent when a new member registers', trigger: 'User registers', defaultSubject: 'Welcome to BOXX' },
+  { slug: 'welcome', name: 'Welcome Email', description: 'Sent when a new member registers', trigger: 'User registers', defaultSubject: 'Welcome!' },
   { slug: 'cancellation_confirmation', name: 'Cancellation Confirmation', description: 'Sent when a member cancels a booking', trigger: 'Member cancels', defaultSubject: 'Booking Cancelled — {{class}}' },
   { slug: 'class_cancelled_admin', name: 'Class Cancelled by Admin', description: 'Sent to all booked members when admin cancels a class', trigger: 'Admin cancels class', defaultSubject: 'Class Cancelled — {{class}}' },
   { slug: 'pack_purchase_confirmation', name: 'Pack Purchase Confirmation', description: 'Sent after successful pack purchase', trigger: 'Stripe webhook', defaultSubject: 'Pack Purchased — {{pack}}' },
@@ -620,7 +620,7 @@ function ComposeTab() {
     <Card>
       <CardHeader>
         <CardTitle className="text-base">Send Email</CardTitle>
-        <CardDescription>Send a direct email to a member using the BOXX branded template</CardDescription>
+        <CardDescription>Send a direct email to a member using your branded template</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSend} className="space-y-4">

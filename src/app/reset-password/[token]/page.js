@@ -3,7 +3,7 @@
 import { useState, Suspense } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import Image from 'next/image'
+
 
 export default function ResetPasswordPage() {
   return (
@@ -67,19 +67,6 @@ function ResetPasswordForm() {
   return (
     <div className="min-h-screen bg-background flex items-center justify-center px-4">
       <div className="w-full max-w-md">
-        {/* Logo */}
-        <div className="flex justify-center mb-10">
-          <Link href="/">
-            <Image
-              src="/images/brand/logo-primary-white.png"
-              alt="BOXX"
-              width={120}
-              height={48}
-              className="h-10 w-auto"
-            />
-          </Link>
-        </div>
-
         <div className="bg-card border border-card-border rounded-lg p-8">
           {success ? (
             <div className="text-center">

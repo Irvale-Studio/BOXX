@@ -81,7 +81,7 @@ export async function confirmPendingInvitations(userId, tenantId) {
         sendBookingConfirmation({
           to: user.email,
           name: user.name,
-          className: inv.class_schedule.class_types?.name || 'BOXX Class',
+          className: inv.class_schedule.class_types?.name || 'Class',
           instructor: inv.class_schedule.instructors?.name,
           date: startDate.toLocaleDateString('en-US', {
             weekday: 'long', month: 'long', day: 'numeric', timeZone: 'Asia/Bangkok',

@@ -153,7 +153,8 @@ async function getWebAnalytics(tenantId, currentStart, currentEnd, prevStart, pr
     if (!v.referrer) continue
     try {
       const hostname = new URL(v.referrer).hostname
-      if (!hostname || hostname.includes('boxxthailand') || hostname.includes('localhost')) continue
+      const appHost = (process.env.NEXT_PUBLIC_APP_URL || '').replace(/^https?:\/\//, '').split('/')[0]
+      if (!hostname || hostname.includes('localhost') || (appHost && hostname.includes(appHost))) continue
       refCounts[hostname] = (refCounts[hostname] || 0) + 1
     } catch {
       // Skip malformed URLs

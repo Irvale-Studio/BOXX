@@ -8,6 +8,8 @@ import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
+import { useTheme } from '@/components/ThemeProvider'
+import { getCurrencySymbol } from '@/lib/currency'
 import { X, ExternalLink, Trash2, Tag } from 'lucide-react'
 
 const emptyForm = {
@@ -24,6 +26,8 @@ const emptyForm = {
 }
 
 export default function AdminPacksPage() {
+  const { theme } = useTheme()
+  const cs = getCurrencySymbol(theme?.currency)
   const [packs, setPacks] = useState([])
   const [loading, setLoading] = useState(true)
   const [toast, setToast] = useState(null)
@@ -220,7 +224,7 @@ export default function AdminPacksPage() {
                   )}
                 </div>
                 <p className="text-xs text-muted mt-0.5">
-                  {pack.credits === null ? 'Unlimited' : `${pack.credits} credit${pack.credits !== 1 ? 's' : ''}`} · {pack.validity_days} days · ฿{pack.price_thb.toLocaleString()}
+                  {pack.credits === null ? 'Unlimited' : `${pack.credits} credit${pack.credits !== 1 ? 's' : ''}`} · {pack.validity_days} days · {cs}{pack.price_thb.toLocaleString()}
                 </p>
                 {pack.stripe_price_id ? (
                   <a
@@ -370,7 +374,7 @@ export default function AdminPacksPage() {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <Label>Price (THB)</Label>
+                <Label>Price ({theme?.currency || 'THB'})</Label>
                 <Input
                   type="number"
                   value={form.price_thb}

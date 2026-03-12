@@ -5,7 +5,7 @@ import { createContext, useContext, useEffect, useState } from 'react'
 const ThemeContext = createContext(null)
 
 export function useTheme() {
-  return useContext(ThemeContext)
+  return useContext(ThemeContext) || { theme: null }
 }
 
 /**
@@ -91,7 +91,7 @@ export default function ThemeProvider({ children }) {
   }, [theme?.titleFont, theme?.bodyFont])
 
   return (
-    <ThemeContext.Provider value={theme}>
+    <ThemeContext.Provider value={{ theme }}>
       {theme?.bodyFont && (
         <style>{`
           .tenant-body { font-family: var(--font-tenant-body, inherit); }

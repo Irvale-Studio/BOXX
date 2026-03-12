@@ -124,7 +124,7 @@ export async function promoteFromWaitlist(classScheduleId) {
           await sendWaitlistPromotion({
             to: user.email,
             name: user.name,
-            className: cls.class_types?.name || 'BOXX Class',
+            className: cls.class_types?.name || 'Class',
             date,
             time,
           })

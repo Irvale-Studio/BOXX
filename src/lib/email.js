@@ -3,6 +3,7 @@ import { Resend } from 'resend'
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null
 
 const FROM = process.env.EMAIL_FROM || 'BOXX Thailand <noreply@boxxthailand.com>'
+const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://boxxthailand.com'
 
 const DEFAULT_TENANT_ID = process.env.DEFAULT_TENANT_ID || 'a0000000-0000-0000-0000-000000000001'
 
@@ -237,8 +238,8 @@ export function renderEmailPreview(slug, customSubject, customBody) {
       heading: "You're In",
       body: s.customBody
         ? `<p>${s.customBody.replace(/\n/g, '</p><p>')}</p>${detailTable([['Class', s.className], ['Coach', s.instructor], ['Date', s.date], ['Time', s.time]])}`
-        : `<p>Hey ${s.name},</p><p>Your spot is confirmed.</p>${detailTable([['Class', s.className], ['Coach', s.instructor], ['Date', s.date], ['Time', s.time]])}<p style="color:#888;font-size:14px;">See you at 89/2 Bumruang Road, Wat Ket, Chiang Mai.</p>`,
-      ctaUrl: 'https://boxxthailand.com/dashboard',
+        : `<p>Hey ${s.name},</p><p>Your spot is confirmed.</p>${detailTable([['Class', s.className], ['Coach', s.instructor], ['Date', s.date], ['Time', s.time]])}<p style="color:#888;font-size:14px;">See you there!</p>`,
+      ctaUrl: '${BASE_URL}/dashboard',
       ctaText: 'View My Bookings',
     }),
     class_reminder: (s) => ({
@@ -252,7 +253,7 @@ export function renderEmailPreview(slug, customSubject, customBody) {
       body: s.customBody
         ? `<p>${s.customBody.replace(/\n/g, '</p><p>')}</p>`
         : `<p>Hey ${s.name},</p><p>A spot opened up in <strong>${s.className}</strong> on <strong>${s.date}</strong> at <strong>${s.time}</strong>.</p><p>You've been automatically booked in. A credit has been deducted from your pack.</p><p style="color:#888;font-size:14px;">If you can no longer make it, cancel from your dashboard before the class starts.</p>`,
-      ctaUrl: 'https://boxxthailand.com/dashboard',
+      ctaUrl: '${BASE_URL}/dashboard',
       ctaText: 'View My Bookings',
     }),
     credit_expiry_warning: (s) => ({
@@ -260,15 +261,15 @@ export function renderEmailPreview(slug, customSubject, customBody) {
       body: s.customBody
         ? `<p>${s.customBody.replace(/\n/g, '</p><p>')}</p>`
         : `<p>Hey ${s.name},</p><p>Your <strong>${s.packName}</strong> pack has <strong>${s.creditsRemaining} credits</strong> remaining and expires on <strong>${s.expiresAt}</strong>.</p><p>Book a class before they expire!</p>`,
-      ctaUrl: 'https://boxxthailand.com/dashboard',
+      ctaUrl: '${BASE_URL}/dashboard',
       ctaText: 'Book a Class',
     }),
     welcome: (s) => ({
-      heading: 'Welcome to BOXX',
+      heading: 'Welcome!',
       body: s.customBody
         ? `<p>${s.customBody.replace(/\n/g, '</p><p>')}</p>`
-        : `<p>Hey ${s.name},</p><p>Thanks for joining BOXX Boxing Studio — Chiang Mai's first luxury boutique boxing and personal training studio.</p><p>Here's how to get started:</p><table style="margin:20px 0;border-collapse:collapse;"><tr><td style="padding:8px 12px 8px 0;color:#c8a750;font-weight:700;font-size:18px;vertical-align:top;">1</td><td style="padding:8px 0;color:#e0e0e0;">Browse available classes on your dashboard</td></tr><tr><td style="padding:8px 12px 8px 0;color:#c8a750;font-weight:700;font-size:18px;vertical-align:top;">2</td><td style="padding:8px 0;color:#e0e0e0;">Purchase a class pack to get credits</td></tr><tr><td style="padding:8px 12px 8px 0;color:#c8a750;font-weight:700;font-size:18px;vertical-align:top;">3</td><td style="padding:8px 0;color:#e0e0e0;">Book your first class and show up ready</td></tr></table><p style="color:#888;font-size:14px;">Questions? Reply to this email or reach us at hello@boxxthailand.com.</p>`,
-      ctaUrl: 'https://boxxthailand.com/dashboard',
+        : `<p>Hey ${s.name},</p><p>Thanks for joining! Your account is all set up and ready to go.</p><p>Here's how to get started:</p><table style="margin:20px 0;border-collapse:collapse;"><tr><td style="padding:8px 12px 8px 0;color:#c8a750;font-weight:700;font-size:18px;vertical-align:top;">1</td><td style="padding:8px 0;color:#e0e0e0;">Browse available classes on your dashboard</td></tr><tr><td style="padding:8px 12px 8px 0;color:#c8a750;font-weight:700;font-size:18px;vertical-align:top;">2</td><td style="padding:8px 0;color:#e0e0e0;">Purchase a class pack to get credits</td></tr><tr><td style="padding:8px 12px 8px 0;color:#c8a750;font-weight:700;font-size:18px;vertical-align:top;">3</td><td style="padding:8px 0;color:#e0e0e0;">Book your first class and show up ready</td></tr></table>`,
+      ctaUrl: '${BASE_URL}/dashboard',
       ctaText: 'Go to Dashboard',
     }),
     cancellation_confirmation: (s) => ({
@@ -276,7 +277,7 @@ export function renderEmailPreview(slug, customSubject, customBody) {
       body: s.customBody
         ? `<p>${s.customBody.replace(/\n/g, '</p><p>')}</p>${detailTable([['Class', s.className], ['Date', s.date], ['Time', s.time], ['Credit', 'Refunded to your pack']])}`
         : `<p>Hey ${s.name},</p><p>Your booking has been cancelled.</p>${detailTable([['Class', s.className], ['Date', s.date], ['Time', s.time], ['Credit', 'Refunded to your pack']])}`,
-      ctaUrl: 'https://boxxthailand.com/dashboard',
+      ctaUrl: '${BASE_URL}/dashboard',
       ctaText: 'Book Another Class',
     }),
     class_cancelled_admin: (s) => ({
@@ -284,7 +285,7 @@ export function renderEmailPreview(slug, customSubject, customBody) {
       body: s.customBody
         ? `<p>${s.customBody.replace(/\n/g, '</p><p>')}</p>`
         : `<p>Hey ${s.name},</p><p>Unfortunately, <strong>${s.className}</strong> on <strong>${s.date}</strong> at <strong>${s.time}</strong> has been cancelled.</p><p>Your credit has been automatically refunded to your pack.</p><p style="color:#888;font-size:14px;">We apologise for the inconvenience. Check the schedule for other available classes.</p>`,
-      ctaUrl: 'https://boxxthailand.com/dashboard',
+      ctaUrl: '${BASE_URL}/dashboard',
       ctaText: 'View Schedule',
     }),
     pack_purchase_confirmation: (s) => ({
@@ -292,7 +293,7 @@ export function renderEmailPreview(slug, customSubject, customBody) {
       body: s.customBody
         ? `<p>${s.customBody.replace(/\n/g, '</p><p>')}</p>${detailTable([['Pack', s.packName], ['Credits', `${s.credits} classes`], ['Valid for', `${s.validityDays} days`], ['Expires', s.expiresAt]])}`
         : `<p>Hey ${s.name},</p><p>Your purchase is confirmed.</p>${detailTable([['Pack', s.packName], ['Credits', `${s.credits} classes`], ['Valid for', `${s.validityDays} days`], ['Expires', s.expiresAt]])}<p>You're all set — book your next class now!</p>`,
-      ctaUrl: 'https://boxxthailand.com/dashboard',
+      ctaUrl: '${BASE_URL}/dashboard',
       ctaText: 'Book a Class',
     }),
     credits_low_warning: (s) => ({
@@ -300,7 +301,7 @@ export function renderEmailPreview(slug, customSubject, customBody) {
       body: s.customBody
         ? `<p>${s.customBody.replace(/\n/g, '</p><p>')}</p>`
         : `<p>Hey ${s.name},</p><p>You have <strong>${s.creditsRemaining} credit</strong> remaining in your <strong>${s.packName}</strong> pack.</p><p>Top up now so you don't miss out on classes.</p>`,
-      ctaUrl: 'https://boxxthailand.com/buy-classes',
+      ctaUrl: '${BASE_URL}/buy-classes',
       ctaText: 'Buy More Credits',
     }),
     class_changed: (s) => ({
@@ -308,23 +309,23 @@ export function renderEmailPreview(slug, customSubject, customBody) {
       body: s.customBody
         ? `<p>${s.customBody.replace(/\n/g, '</p><p>')}</p>`
         : `<p>Hey ${s.name},</p><p>There's been an update to your upcoming class:</p>${detailTable([['Class', s.className], ['Date', s.date], ['Time', s.time]])}<p><strong>What changed:</strong></p><ul style="padding-left:20px;color:#e0e0e0;">${s.changes.map(c => `<li style="padding:2px 0;">${c}</li>`).join('')}</ul><p style="color:#888;font-size:14px;">If you can no longer make it, you can cancel from your dashboard.</p>`,
-      ctaUrl: 'https://boxxthailand.com/dashboard',
+      ctaUrl: '${BASE_URL}/dashboard',
       ctaText: 'View My Bookings',
     }),
     removed_from_class: (s) => ({
       heading: 'Booking Removed',
       body: s.customBody
         ? `<p>${s.customBody.replace(/\n/g, '</p><p>')}</p>`
-        : `<p>Hey ${s.name},</p><p>You have been removed from <strong>${s.className}</strong> on <strong>${s.date}</strong> at <strong>${s.time}</strong>.</p><p>Your credit has been refunded to your pack.</p><p style="color:#888;font-size:14px;">If you have questions, contact us at hello@boxxthailand.com.</p>`,
-      ctaUrl: 'https://boxxthailand.com/dashboard',
+        : `<p>Hey ${s.name},</p><p>You have been removed from <strong>${s.className}</strong> on <strong>${s.date}</strong> at <strong>${s.time}</strong>.</p><p>Your credit has been refunded to your pack.</p><p style="color:#888;font-size:14px;">If you have questions, contact the studio.</p>`,
+      ctaUrl: '${BASE_URL}/dashboard',
       ctaText: 'View Schedule',
     }),
     admin_cancelled_booking: (s) => ({
       heading: 'Booking Cancelled',
       body: s.customBody
         ? `<p>${s.customBody.replace(/\n/g, '</p><p>')}</p>`
-        : `<p>Hey ${s.name},</p><p>Your booking for <strong>${s.className}</strong> on <strong>${s.date}</strong> at <strong>${s.time}</strong> has been cancelled by the studio.</p><p>Your credit has been refunded to your pack.</p><p style="color:#888;font-size:14px;">If you have questions, contact us at hello@boxxthailand.com.</p>`,
-      ctaUrl: 'https://boxxthailand.com/dashboard',
+        : `<p>Hey ${s.name},</p><p>Your booking for <strong>${s.className}</strong> on <strong>${s.date}</strong> at <strong>${s.time}</strong> has been cancelled by the studio.</p><p>Your credit has been refunded to your pack.</p><p style="color:#888;font-size:14px;">If you have questions, contact the studio.</p>`,
+      ctaUrl: '${BASE_URL}/dashboard',
       ctaText: 'View Schedule',
     }),
     admin_direct: (s) => ({
@@ -337,8 +338,8 @@ export function renderEmailPreview(slug, customSubject, customBody) {
       heading: "You're Invited",
       body: s.customBody
         ? `<p>${s.customBody.replace(/\n/g, '</p><p>')}</p>${detailTable([['Class', s.className], ['Coach', s.instructor], ['Date', s.date], ['Time', s.time]])}`
-        : `<p>Hey ${s.name},</p><p>You've been added to a private class:</p>${detailTable([['Class', s.className], ['Coach', s.instructor], ['Date', s.date], ['Time', s.time]])}<p style="color:#888;font-size:14px;">This is a private session. See you at 89/2 Bumruang Road, Wat Ket, Chiang Mai.</p>`,
-      ctaUrl: 'https://boxxthailand.com/dashboard',
+        : `<p>Hey ${s.name},</p><p>You've been added to a private class:</p>${detailTable([['Class', s.className], ['Coach', s.instructor], ['Date', s.date], ['Time', s.time]])}<p style="color:#888;font-size:14px;">This is a private session.</p>`,
+      ctaUrl: '${BASE_URL}/dashboard',
       ctaText: 'View My Bookings',
     }),
   }
@@ -384,9 +385,9 @@ export async function sendBookingConfirmation({ to, name, className, instructor,
           ['Date', date],
           ['Time', time],
         ])}
-        <p style="color:#888;font-size:14px;">See you at 89/2 Bumruang Road, Wat Ket, Chiang Mai.</p>
+        <p style="color:#888;font-size:14px;">See you there!</p>
       `,
-      ctaUrl: 'https://boxxthailand.com/dashboard',
+      ctaUrl: '${BASE_URL}/dashboard',
       ctaText: 'View My Bookings',
     }),
   })
@@ -435,7 +436,7 @@ export async function sendWaitlistPromotion({ to, name, className, date, time })
         <p>You've been automatically booked in. A credit has been deducted from your pack.</p>
         <p style="color:#888;font-size:14px;">If you can no longer make it, cancel from your dashboard before the class starts.</p>
       `,
-      ctaUrl: 'https://boxxthailand.com/dashboard',
+      ctaUrl: '${BASE_URL}/dashboard',
       ctaText: 'View My Bookings',
     }),
   })
@@ -460,7 +461,7 @@ export async function sendCreditExpiryWarning({ to, name, packName, creditsRemai
         <p>Your <strong>${packName}</strong> pack has <strong>${creditsRemaining} credit${creditsRemaining !== 1 ? 's' : ''}</strong> remaining and expires on <strong>${expiresAt}</strong>.</p>
         <p>Book a class before they expire!</p>
       `,
-      ctaUrl: 'https://boxxthailand.com/dashboard',
+      ctaUrl: '${BASE_URL}/dashboard',
       ctaText: 'Book a Class',
     }),
   })
@@ -473,7 +474,7 @@ export async function sendWelcomeEmail({ to, name, studioName, dashboardUrl, bra
   const custom = await getCustomMessage('welcome')
   const studio = studioName || 'BOXX'
   const subject = custom.subject || `Welcome to ${studio}`
-  const url = dashboardUrl || 'https://boxxthailand.com/dashboard'
+  const url = dashboardUrl || '${BASE_URL}/dashboard'
   const emailBrand = { studioName: studio, ...brand }
   const accentColor = emailBrand.primaryColor || '#c8a750'
   await sendAndLog({
@@ -526,7 +527,7 @@ export async function sendCancellationConfirmation({ to, name, className, date, 
         ])}
         ${!creditRefunded ? '<p style="color:#888;font-size:14px;">Cancellations within 24 hours of class time do not receive a credit refund.</p>' : ''}
       `,
-      ctaUrl: 'https://boxxthailand.com/dashboard',
+      ctaUrl: '${BASE_URL}/dashboard',
       ctaText: 'Book Another Class',
     }),
   })
@@ -552,7 +553,7 @@ export async function sendClassCancelledByAdmin({ to, name, className, date, tim
         <p>Your credit has been automatically refunded to your pack.</p>
         <p style="color:#888;font-size:14px;">We apologise for the inconvenience. Check the schedule for other available classes.</p>
       `,
-      ctaUrl: 'https://boxxthailand.com/dashboard',
+      ctaUrl: '${BASE_URL}/dashboard',
       ctaText: 'View Schedule',
     }),
   })
@@ -583,7 +584,7 @@ export async function sendPackPurchaseConfirmation({ to, name, packName, credits
         ])}
         <p>You're all set — book your next class now!</p>
       `,
-      ctaUrl: 'https://boxxthailand.com/dashboard',
+      ctaUrl: '${BASE_URL}/dashboard',
       ctaText: 'Book a Class',
     }),
   })
@@ -608,7 +609,7 @@ export async function sendCreditsLowWarning({ to, name, creditsRemaining, packNa
         <p>You have <strong>${creditsRemaining} credit${creditsRemaining !== 1 ? 's' : ''}</strong> remaining${packName ? ` in your <strong>${packName}</strong> pack` : ''}.</p>
         <p>Top up now so you don't miss out on classes.</p>
       `,
-      ctaUrl: 'https://boxxthailand.com/buy-classes',
+      ctaUrl: '${BASE_URL}/buy-classes',
       ctaText: 'Buy More Credits',
     }),
   })
@@ -641,7 +642,7 @@ export async function sendClassChanged({ to, name, className, changes, date, tim
         <ul style="padding-left:20px;color:#e0e0e0;">${changesList}</ul>
         <p style="color:#888;font-size:14px;">If you can no longer make it, you can cancel from your dashboard.</p>
       `,
-      ctaUrl: 'https://boxxthailand.com/dashboard',
+      ctaUrl: '${BASE_URL}/dashboard',
       ctaText: 'View My Bookings',
     }),
   })
@@ -665,9 +666,9 @@ export async function sendRemovedFromClass({ to, name, className, date, time, cr
         <p>Hey ${name || 'there'},</p>
         <p>You have been removed from <strong>${className}</strong> on <strong>${date}</strong> at <strong>${time}</strong>.</p>
         ${creditRefunded ? '<p>Your credit has been refunded to your pack.</p>' : ''}
-        <p style="color:#888;font-size:14px;">If you have questions, contact us at hello@boxxthailand.com.</p>
+        <p style="color:#888;font-size:14px;">If you have questions, contact the studio.</p>
       `,
-      ctaUrl: 'https://boxxthailand.com/dashboard',
+      ctaUrl: '${BASE_URL}/dashboard',
       ctaText: 'View Schedule',
     }),
   })
@@ -691,9 +692,9 @@ export async function sendAdminCancelledBooking({ to, name, className, date, tim
         <p>Hey ${name || 'there'},</p>
         <p>Your booking for <strong>${className}</strong> on <strong>${date}</strong> at <strong>${time}</strong> has been cancelled by the studio.</p>
         ${creditRefunded ? '<p>Your credit has been refunded to your pack.</p>' : '<p>No credit was refunded for this cancellation.</p>'}
-        <p style="color:#888;font-size:14px;">If you have questions, contact us at hello@boxxthailand.com.</p>
+        <p style="color:#888;font-size:14px;">If you have questions, contact the studio.</p>
       `,
-      ctaUrl: 'https://boxxthailand.com/dashboard',
+      ctaUrl: '${BASE_URL}/dashboard',
       ctaText: 'View Schedule',
     }),
   })
@@ -757,9 +758,9 @@ export async function sendPrivateClassInvitation({ to, name, className, instruct
           ['Date', date],
           ['Time', time],
         ])}
-        <p style="color:#888;font-size:14px;">This is a private session. See you at 89/2 Bumruang Road, Wat Ket, Chiang Mai.</p>
+        <p style="color:#888;font-size:14px;">This is a private session.</p>
       `,
-      ctaUrl: 'https://boxxthailand.com/dashboard',
+      ctaUrl: '${BASE_URL}/dashboard',
       ctaText: 'View My Bookings',
     }),
   })
@@ -787,7 +788,7 @@ export async function sendClassInvitationNeedsCredits({ to, name, className, ins
         ])}
         <p style="color:#888;font-size:14px;">Your spot will be confirmed automatically when you purchase credits.</p>
       `,
-      ctaUrl: 'https://boxxthailand.com/buy-classes',
+      ctaUrl: '${BASE_URL}/buy-classes',
       ctaText: 'Buy Credits to Confirm',
     }),
   })

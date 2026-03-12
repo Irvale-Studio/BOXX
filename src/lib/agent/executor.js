@@ -816,7 +816,7 @@ async function sendEmail(input, context) {
     to: member.email,
     subject: input.subject,
     body: input.body,
-    fromName: 'BOXX Thailand',
+    fromName: context.studioName || 'Studio',
   })
 
   await supabaseAdmin.from('admin_audit_log').insert({
@@ -865,7 +865,7 @@ async function getDashboard() {
       message: 'Dashboard overview',
       total_members: membersRes.count || 0,
       bookings_this_week: weekBookingsRes.count || 0,
-      revenue_this_month: `฿${revenue.toLocaleString()}`,
+      revenue_this_month: revenue.toLocaleString(),
       today_classes: todayClasses,
     },
   }

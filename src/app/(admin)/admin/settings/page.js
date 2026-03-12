@@ -963,7 +963,7 @@ function PaymentsTab() {
               </>
             )}
             <li>
-              Go to your <a href="https://dashboard.stripe.com/products" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">Stripe Product Catalogue</a> and create a <strong className="text-foreground">Product</strong> for each class pack (e.g. &quot;5 Class Pack — ฿2,750&quot;). Set the price when creating the product.
+              Go to your <a href="https://dashboard.stripe.com/products" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">Stripe Product Catalogue</a> and create a <strong className="text-foreground">Product</strong> for each class pack (e.g. &quot;5 Class Pack&quot;). Set the price when creating the product.
             </li>
             <li>
               Copy the <strong className="text-foreground">product URL</strong> from your browser address bar (it looks like <code className="text-xs bg-white/5 px-1.5 py-0.5 rounded">https://dashboard.stripe.com/products/prod_...</code>)

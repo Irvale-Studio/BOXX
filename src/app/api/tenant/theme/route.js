@@ -21,7 +21,7 @@ export async function GET() {
     // Fetch tenant record (logo, primary_color, name)
     const { data: tenant } = await supabaseAdmin
       .from('tenants')
-      .select('name, slug, logo_url, primary_color')
+      .select('name, slug, logo_url, primary_color, currency')
       .eq('id', tenantId)
       .single()
 
@@ -53,6 +53,7 @@ export async function GET() {
         studioName: nameSetting?.value || tenant?.name || 'Studio',
         logoUrl: tenant?.logo_url || null,
         primaryColor: tenant?.primary_color || '#c8a750',
+        currency: tenant?.currency || 'USD',
         ...theme,
       },
     }, {

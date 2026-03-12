@@ -9,6 +9,8 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
+import { useTheme } from '@/components/ThemeProvider'
+import { getCurrencySymbol } from '@/lib/currency'
 
 export default function BuyClassesPage() {
   return (
@@ -20,6 +22,8 @@ export default function BuyClassesPage() {
 
 function BuyClassesContent() {
   const { data: session } = useSession()
+  const { theme } = useTheme()
+  const cs = getCurrencySymbol(theme?.currency)
   const searchParams = useSearchParams()
   const router = useRouter()
   const [packs, setPacks] = useState([])
@@ -230,7 +234,7 @@ function BuyClassesContent() {
                     <div className="mt-5 mb-1">
                       <div className="flex items-baseline gap-1">
                         <span className="text-4xl font-extrabold text-foreground">
-                          ฿{pack.price_thb.toLocaleString()}
+                          {cs}{pack.price_thb.toLocaleString()}
                         </span>
                         {isMembership && <span className="text-sm text-muted">/month</span>}
                       </div>
@@ -238,7 +242,7 @@ function BuyClassesContent() {
                       {/* Per-class price */}
                       {pricePerClass && (
                         <p className="text-sm text-muted mt-1">
-                          ฿{pricePerClass.toLocaleString()} per class
+                          {cs}{pricePerClass.toLocaleString()} per class
                           {savingsPercent > 0 && (
                             <span className="ml-2 text-green-400 font-medium">Save {savingsPercent}%</span>
                           )}
@@ -327,7 +331,7 @@ function BuyClassesContent() {
               <div className="p-4 bg-card border border-card-border rounded-lg">
                 <div className="flex items-center justify-between">
                   <span className="font-semibold text-foreground">{confirmPack.name}</span>
-                  <span className="text-2xl font-bold text-foreground">฿{confirmPack.price_thb.toLocaleString()}</span>
+                  <span className="text-2xl font-bold text-foreground">{cs}{confirmPack.price_thb.toLocaleString()}</span>
                 </div>
                 <div className="text-sm text-muted mt-2 space-y-1">
                   <p>
@@ -397,7 +401,7 @@ function BuyClassesContent() {
                   </div>
                   <div className="text-right shrink-0">
                     <p className="text-sm font-medium text-foreground">
-                      {purchase.class_packs?.price_thb ? `฿${purchase.class_packs.price_thb.toLocaleString()}` : '—'}
+                      {purchase.class_packs?.price_thb ? `${cs}${purchase.class_packs.price_thb.toLocaleString()}` : '—'}
                     </p>
                     <p className="text-xs text-muted">
                       {isUnlimited ? 'Unlimited' : `${purchase.credits_remaining}/${purchase.credits_total} left`}

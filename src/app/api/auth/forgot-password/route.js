@@ -72,7 +72,7 @@ export async function POST(request) {
       })
 
     // Send reset email
-    const baseUrl = process.env.NEXTAUTH_URL || 'https://boxxthailand.com'
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || 'https://boxxthailand.com'
     const resetUrl = `${baseUrl}/reset-password/${rawToken}?email=${encodeURIComponent(email)}`
 
     try {

@@ -3,11 +3,13 @@
 import { useState, useEffect } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
+import { useTheme } from '@/components/ThemeProvider'
+import { getCurrencySymbol } from '@/lib/currency'
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
-function fmtCurrency(v) {
-  return '฿' + Number(v || 0).toLocaleString('en-US')
+function fmtCurrency(v, symbol = '$') {
+  return symbol + Number(v || 0).toLocaleString('en-US')
 }
 
 function fmtNumber(v) {
@@ -194,6 +196,8 @@ function DeviceBreakdown({ data }) {
 // ─── Main Page ──────────────────────────────────────────────────────────────
 
 export default function AdminAnalyticsPage() {
+  const { theme } = useTheme()
+  const cs = getCurrencySymbol(theme?.currency)
   const [range, setRange] = useState('30d')
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -340,7 +344,7 @@ export default function AdminAnalyticsPage() {
         />
         <StatCard
           label="Revenue"
-          value={fmtCurrency(biz.revenue?.current)}
+          value={fmtCurrency(biz.revenue?.current, cs)}
           change={biz.revenue?.change}
         />
       </div>
@@ -500,7 +504,7 @@ export default function AdminAnalyticsPage() {
                     <tr key={i} className="hover:bg-white/[0.02] transition-colors">
                       <td className="py-1.5 text-foreground">{p.name}</td>
                       <td className="py-1.5 text-right text-muted tabular-nums">{p.count}</td>
-                      <td className="py-1.5 text-right text-foreground tabular-nums">{fmtCurrency(p.revenue)}</td>
+                      <td className="py-1.5 text-right text-foreground tabular-nums">{fmtCurrency(p.revenue, cs)}</td>
                     </tr>
                   ))}
                 </tbody>

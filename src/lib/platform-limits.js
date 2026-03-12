@@ -257,21 +257,21 @@ async function sendPlatformAlert(type, details) {
       class_limit: 'Class Limit Reached',
     }
 
-    const subject = `[BOXX Platform] ${labels[type] || type}`
+    const subject = `[Studio Platform] ${labels[type] || type}`
 
     const detailRows = Object.entries(details)
       .map(([k, v]) => `<tr><td style="padding:4px 12px 4px 0;color:#888;">${k}</td><td style="font-weight:600;">${v}</td></tr>`)
       .join('')
 
     await resend.emails.send({
-      from: 'BOXX Platform <noreply@boxxthailand.com>',
+      from: process.env.EMAIL_FROM || 'BOXX Thailand <noreply@boxxthailand.com>',
       to: PLATFORM_ALERT_EMAIL,
       subject,
       html: `
         <div style="font-family:sans-serif;max-width:500px;margin:0 auto;padding:24px;background:#0a0a0a;color:#f5f5f5;">
           <h2 style="color:#c8a750;margin:0 0 16px;">${labels[type] || type}</h2>
           <table style="border-collapse:collapse;">${detailRows}</table>
-          <p style="color:#888;font-size:13px;margin-top:20px;">This is an automated alert from the BOXX platform. Review your usage at the admin dashboard.</p>
+          <p style="color:#888;font-size:13px;margin-top:20px;">This is an automated platform alert. Review your usage at the admin dashboard.</p>
         </div>
       `,
     })

@@ -15,7 +15,7 @@ const memberLinks = [
 function MemberLayoutInner({ children }) {
   const pathname = usePathname()
   const { data: session } = useSession()
-  const theme = useTheme()
+  const { theme } = useTheme()
 
   const studioName = theme?.studioName || 'Studio'
   const logoUrl = theme?.logoUrl

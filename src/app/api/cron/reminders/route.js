@@ -60,7 +60,7 @@ export async function GET(request) {
           await sendClassReminder({
             to: b.users.email,
             name: b.users.name,
-            className: cls.class_types?.name || 'BOXX Class',
+            className: cls.class_types?.name || 'Class',
             instructor: cls.instructors?.name,
             time,
           })

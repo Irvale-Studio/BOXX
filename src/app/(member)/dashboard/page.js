@@ -853,7 +853,7 @@ function ScheduleSection({ credits, onUpdate, sharedClassId, view, onViewChange,
     const url = `${window.location.origin}/dashboard?class=${classId}`
     if (navigator.share) {
       try {
-        await navigator.share({ title: 'Check out this class at BOXX', url })
+        await navigator.share({ title: 'Check out this class', url })
         return
       } catch { /* user cancelled share dialog */ }
     }
@@ -1071,8 +1071,8 @@ function ScheduleSection({ credits, onUpdate, sharedClassId, view, onViewChange,
         const calStart = new Date(cls.starts_at)
         const calEnd = cls.ends_at ? new Date(cls.ends_at) : new Date(calStart.getTime() + 60 * 60 * 1000)
         const fmtCal = (d) => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')
-        const calTitle = `${cls.class_types?.name || 'BOXX Class'}${cls.instructors?.name ? ` with ${cls.instructors.name}` : ''}`
-        googleCalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(calTitle)}&dates=${fmtCal(calStart)}/${fmtCal(calEnd)}&details=${encodeURIComponent('BOXX Boxing Studio — Chiang Mai')}&location=${encodeURIComponent('89/2 Bumruang Road, Wat Ket, Chiang Mai 50000')}`
+        const calTitle = `${cls.class_types?.name || 'Class'}${cls.instructors?.name ? ` with ${cls.instructors.name}` : ''}`
+        googleCalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(calTitle)}&dates=${fmtCal(calStart)}/${fmtCal(calEnd)}&details=${encodeURIComponent('Class booking')}`
       } catch {}
     }
 
@@ -1603,8 +1603,8 @@ function ScheduleSection({ credits, onUpdate, sharedClassId, view, onViewChange,
                       const calStart = new Date(cls.starts_at)
                       const calEnd = cls.ends_at ? new Date(cls.ends_at) : new Date(calStart.getTime() + 60 * 60 * 1000)
                       const fmtCal = (d) => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')
-                      const calTitle = `${cls.class_types?.name || 'BOXX Class'}${cls.instructors?.name ? ` with ${cls.instructors.name}` : ''}`
-                      calUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(calTitle)}&dates=${fmtCal(calStart)}/${fmtCal(calEnd)}&details=${encodeURIComponent('BOXX Boxing Studio — Chiang Mai')}&location=${encodeURIComponent('89/2 Bumruang Road, Wat Ket, Chiang Mai 50000')}`
+                      const calTitle = `${cls.class_types?.name || 'Class'}${cls.instructors?.name ? ` with ${cls.instructors.name}` : ''}`
+                      calUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(calTitle)}&dates=${fmtCal(calStart)}/${fmtCal(calEnd)}&details=${encodeURIComponent('Class booking')}`
                     } catch {}
                   }
                   return (
@@ -1725,7 +1725,7 @@ function BookingsSection({ upcoming, past, waitlist = [], credits = [], onUpdate
     const url = `${window.location.origin}/dashboard?class=${classScheduleId}`
     if (navigator.share) {
       try {
-        await navigator.share({ title: 'Check out this class at BOXX', url })
+        await navigator.share({ title: 'Check out this class', url })
         return
       } catch { /* user cancelled */ }
     }
@@ -1789,8 +1789,8 @@ function BookingsSection({ upcoming, past, waitlist = [], credits = [], onUpdate
         const calStart = new Date(cls.starts_at)
         const calEnd = cls.ends_at ? new Date(cls.ends_at) : new Date(calStart.getTime() + 60 * 60 * 1000)
         const fmtCal = (d) => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')
-        const calTitle = `${cls.class_types?.name || 'BOXX Class'}${cls.instructors?.name ? ` with ${cls.instructors.name}` : ''}`
-        googleCalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(calTitle)}&dates=${fmtCal(calStart)}/${fmtCal(calEnd)}&details=${encodeURIComponent('BOXX Boxing Studio — Chiang Mai')}&location=${encodeURIComponent('89/2 Bumruang Road, Wat Ket, Chiang Mai 50000')}`
+        const calTitle = `${cls.class_types?.name || 'Class'}${cls.instructors?.name ? ` with ${cls.instructors.name}` : ''}`
+        googleCalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(calTitle)}&dates=${fmtCal(calStart)}/${fmtCal(calEnd)}&details=${encodeURIComponent('Class booking')}`
       } catch {}
     }
 

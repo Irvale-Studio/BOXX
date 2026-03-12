@@ -41,7 +41,7 @@ const allSidebarLinks = [
 function AdminLayoutInner({ children }) {
   const pathname = usePathname()
   const { data: session } = useSession()
-  const theme = useTheme()
+  const { theme } = useTheme()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
 

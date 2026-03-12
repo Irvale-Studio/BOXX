@@ -4,7 +4,6 @@ import { useState, Suspense } from 'react'
 import { signIn } from 'next-auth/react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import Image from 'next/image'
 
 export default function LoginPage() {
   return (
@@ -55,25 +54,12 @@ function LoginForm() {
   return (
     <div className="min-h-screen bg-background flex items-center justify-center px-4">
       <div className="w-full max-w-md">
-        {/* Logo */}
-        <div className="flex justify-center mb-10">
-          <Link href="/">
-            <Image
-              src="/images/brand/logo-primary-white.png"
-              alt="BOXX"
-              width={120}
-              height={48}
-              className="h-10 w-auto"
-            />
-          </Link>
-        </div>
-
         <div className="bg-card border border-card-border rounded-lg p-8">
           <h1 className="text-2xl font-bold text-foreground text-center mb-2">
             Welcome back
           </h1>
           <p className="text-muted text-sm text-center mb-8">
-            Sign in to your BOXX account
+            Sign in to your account
           </p>
 
           {error && (

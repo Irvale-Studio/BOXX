@@ -6,6 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
 import { CalendarDays, Users, Tag, Package, ClipboardList, Dumbbell, Mail, Settings, Loader2, ChevronDown } from 'lucide-react'
+import { useTheme } from '@/components/ThemeProvider'
+import { getCurrencySymbol } from '@/lib/currency'
 
 function toDateStr(d) {
   return d.toLocaleDateString('en-CA') // YYYY-MM-DD
@@ -32,6 +34,8 @@ function TrendIndicator({ current, previous, period }) {
 
 export default function AdminDashboard() {
   const { data: session } = useSession()
+  const { theme } = useTheme()
+  const cs = getCurrencySymbol(theme?.currency)
   const isAdmin = session?.user?.role === 'admin' || session?.user?.role === 'owner'
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -116,8 +120,9 @@ export default function AdminDashboard() {
   async function sendReminderEmail(member) {
     setSendingEmail(member.id)
     try {
-      const subject = `We miss you at BOXX!`
-      const body = `Hi ${member.name || 'there'},\n\nWe noticed it's been a while since your last session at BOXX${member.credits_remaining ? ` and you still have ${member.credits_remaining} credit${member.credits_remaining !== 1 ? 's' : ''} remaining` : ''}.\n\nWe'd love to see you back — come check out our upcoming classes and book your next session!\n\nSee you soon,\nThe BOXX Team`
+      const studioName = theme?.studioName || 'the studio'
+      const subject = `We miss you at ${studioName}!`
+      const body = `Hi ${member.name || 'there'},\n\nWe noticed it's been a while since your last session${member.credits_remaining ? ` and you still have ${member.credits_remaining} credit${member.credits_remaining !== 1 ? 's' : ''} remaining` : ''}.\n\nWe'd love to see you back — come check out our upcoming classes and book your next session!\n\nSee you soon,\nThe ${studioName} Team`
       const res = await fetch('/api/admin/emails', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -167,7 +172,7 @@ export default function AdminDashboard() {
     ...(isAdmin ? [{
       title: 'Revenue (Month)',
       value: (stats.revenueThisMonth || 0).toLocaleString(),
-      prefix: '฿',
+      prefix: cs,
       trend: trends.revenue ? { current: trends.revenue.thisMonth, previous: trends.revenue.lastMonth } : null,
       period: 'month',
     }] : []),
