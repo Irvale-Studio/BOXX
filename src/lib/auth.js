@@ -344,12 +344,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
     async redirect({ url, baseUrl }) {
       // Allow redirects to any subdomain of our base domain
+      // IMPORTANT: always return absolute URLs — NextAuth client does new URL(data.url)
+      // which throws on relative paths
       const baseDomain = process.env.NEXT_PUBLIC_BASE_DOMAIN
       if (baseDomain) {
         try {
           const parsed = new URL(url, baseUrl)
           if (parsed.hostname === baseDomain || parsed.hostname.endsWith(`.${baseDomain}`)) {
-            return url
+            return parsed.href
           }
         } catch {
           // Invalid URL — fall through to default
