@@ -63,22 +63,30 @@ export default function RegisterForm({ tenantId, tenantSlug }) {
         redirect: false,
       })
 
-      if (result?.ok || result?.url) {
-        setAuthenticating(true)
-        // Members always go to /dashboard, but make sure we stay on the right subdomain
-        const baseDomain = process.env.NEXT_PUBLIC_BASE_DOMAIN || ''
-        const hostname = window.location.hostname
-        const isOnSubdomain = baseDomain && hostname.endsWith(`.${baseDomain}`)
+      if (result?.error) {
+        setError('Account created but sign-in failed. Please go to the login page.')
+        setLoading(false)
+        return
+      }
 
-        if (isOnSubdomain) {
-          // Already on tenant subdomain — stay here
-          window.location.href = '/dashboard'
-        } else if (tenantSlug && baseDomain && !baseDomain.includes('localhost')) {
-          // Root domain — redirect to tenant subdomain
-          window.location.href = `https://${tenantSlug}.${baseDomain}/dashboard`
-        } else {
-          window.location.href = '/dashboard'
-        }
+      if (!result?.ok && !result?.url) {
+        setError('Account created but sign-in failed. Please go to the login page.')
+        setLoading(false)
+        return
+      }
+
+      setAuthenticating(true)
+      // Members always go to /dashboard, but make sure we stay on the right subdomain
+      const baseDomain = process.env.NEXT_PUBLIC_BASE_DOMAIN || ''
+      const hostname = window.location.hostname
+      const isOnSubdomain = baseDomain && hostname.endsWith(`.${baseDomain}`)
+
+      if (isOnSubdomain) {
+        window.location.href = '/dashboard'
+      } else if (tenantSlug && baseDomain && !baseDomain.includes('localhost')) {
+        window.location.href = `https://${tenantSlug}.${baseDomain}/dashboard`
+      } else {
+        window.location.href = '/dashboard'
       }
     } catch {
       setError('Something went wrong. Please try again.')

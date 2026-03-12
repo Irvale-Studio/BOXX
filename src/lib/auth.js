@@ -9,6 +9,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   cookies: {
     // Set all auth cookies on the root domain so they work across subdomains
     // (OAuth starts on slug.zatrovo.com but callback lands on zatrovo.com)
+    // CSRF token must NOT use __Host- prefix (which forbids domain attribute)
+    csrfToken: {
+      name: 'authjs.csrf-token',
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: process.env.NODE_ENV === 'production',
+        domain: process.env.NEXT_PUBLIC_BASE_DOMAIN ? `.${process.env.NEXT_PUBLIC_BASE_DOMAIN}` : undefined,
+      },
+    },
     pkceCodeVerifier: {
       name: 'authjs.pkce.code_verifier',
       options: {

@@ -47,18 +47,27 @@ function LoginFormInner({ tenantId, tenantSlug }) {
     setLoading(true)
     setError('')
 
-    const result = await signIn('credentials', {
-      email,
-      password,
-      tenantId: tenantId || undefined,
-      redirect: false,
-      callbackUrl,
-    })
+    try {
+      const result = await signIn('credentials', {
+        email,
+        password,
+        tenantId: tenantId || undefined,
+        redirect: false,
+        callbackUrl,
+      })
 
-    if (result?.error) {
-      setError('Invalid email or password')
-      setLoading(false)
-    } else if (result?.ok || result?.url) {
+      if (result?.error) {
+        setError('Invalid email or password')
+        setLoading(false)
+        return
+      }
+
+      if (!result?.ok && !result?.url) {
+        setError('Sign in failed. Please try again.')
+        setLoading(false)
+        return
+      }
+
       setAuthenticating(true)
       // Fetch session to determine role and tenant slug for smart redirect
       try {
@@ -74,19 +83,19 @@ function LoginFormInner({ tenantId, tenantSlug }) {
         const isOnSubdomain = baseDomain && hostname.endsWith(`.${baseDomain}`)
 
         if (!isOnSubdomain && slug && baseDomain && !baseDomain.includes('localhost')) {
-          // Root domain login — redirect to tenant subdomain
           window.location.href = `https://${slug}.${baseDomain}${targetPath}`
         } else if (isOnSubdomain) {
-          // Subdomain login — stay on this subdomain
           window.location.href = targetPath
         } else {
-          // Fallback (localhost or no baseDomain)
           window.location.href = targetPath
         }
       } catch {
-        // Fallback if session fetch fails
         window.location.href = result?.url || '/dashboard'
       }
+    } catch (err) {
+      console.error('[login] signIn error:', err)
+      setError('Something went wrong. Please try again.')
+      setLoading(false)
     }
   }
 
