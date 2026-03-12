@@ -331,5 +331,23 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
       return session
     },
+    async redirect({ url, baseUrl }) {
+      // Allow redirects to any subdomain of our base domain
+      const baseDomain = process.env.NEXT_PUBLIC_BASE_DOMAIN
+      if (baseDomain) {
+        try {
+          const parsed = new URL(url, baseUrl)
+          if (parsed.hostname === baseDomain || parsed.hostname.endsWith(`.${baseDomain}`)) {
+            return url
+          }
+        } catch {
+          // Invalid URL — fall through to default
+        }
+      }
+      // Default: allow relative URLs and same-origin
+      if (url.startsWith('/')) return `${baseUrl}${url}`
+      if (url.startsWith(baseUrl)) return url
+      return baseUrl
+    },
   },
 })
