@@ -8,6 +8,10 @@ import { supabaseAdmin } from '@/lib/supabase/admin'
  * All helpers return { session, tenantId, ... } on success,
  * or { response } with an error Response on failure.
  *
+ * IMPORTANT: When the user is on a different subdomain than they logged in on,
+ * these helpers look up the user's ACTUAL record on the current tenant from the DB.
+ * This ensures the correct userId, role, and tenantId are used for all queries.
+ *
  * Usage:
  *   const result = await requireAuth()
  *   if (result.response) return result.response
@@ -21,18 +25,70 @@ const DEFAULT_TENANT_ID = process.env.DEFAULT_TENANT_ID || 'a0000000-0000-0000-0
 const _planCache = new Map()
 const PLAN_CACHE_TTL = 60_000 // 1 minute
 
-function getTenantId(session, request) {
-  // 1. From middleware-injected header (subdomain-resolved — most accurate for current request)
+function getRequestTenantId(request) {
   if (request) {
     const headerTenantId = request.headers.get('x-tenant-id')
     if (headerTenantId) return headerTenantId
   }
+  return null
+}
 
-  // 2. From JWT/session (fallback when no middleware header, e.g. localhost)
-  if (session?.user?.tenantId) return session.user.tenantId
+/**
+ * Resolve the correct user identity for the current tenant.
+ *
+ * If the JWT tenant matches the subdomain tenant → use JWT data (fast path, no DB call).
+ * If they differ → look up the user by email on the current tenant (slow path, 1 DB call).
+ *
+ * Returns { userId, role, tenantId } or null if user doesn't exist on this tenant.
+ */
+async function resolveUser(session, request) {
+  const headerTenantId = getRequestTenantId(request)
+  const jwtTenantId = session.user.tenantId
+  const tenantId = headerTenantId || jwtTenantId || DEFAULT_TENANT_ID
 
-  // 3. Fallback to default (Bert's tenant) during migration
-  return DEFAULT_TENANT_ID
+  // Fast path: JWT tenant matches request tenant (or no subdomain header)
+  if (!headerTenantId || headerTenantId === jwtTenantId) {
+    return {
+      userId: session.user.id,
+      role: session.user.role,
+      tenantId,
+    }
+  }
+
+  // Slow path: user is on a different tenant's subdomain — look up their record
+  const email = session.user.email
+  if (!email || !supabaseAdmin) return null
+
+  const { data: user } = await supabaseAdmin
+    .from('users')
+    .select('id, role')
+    .eq('email', email.toLowerCase())
+    .eq('tenant_id', tenantId)
+    .single()
+
+  if (!user) return null
+
+  return {
+    userId: user.id,
+    role: user.role,
+    tenantId,
+  }
+}
+
+/**
+ * Patch the session object with the resolved user data for the current tenant.
+ * This ensures session.user.id and session.user.role are correct for downstream code.
+ */
+function patchSession(session, resolved) {
+  return {
+    ...session,
+    user: {
+      ...session.user,
+      id: resolved.userId,
+      role: resolved.role,
+      tenantId: resolved.tenantId,
+    },
+  }
 }
 
 /**
@@ -44,14 +100,17 @@ export async function requireAuth(request) {
     return { response: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) }
   }
 
+  const resolved = await resolveUser(session, request)
+  if (!resolved) {
+    return { response: NextResponse.json({ error: 'No account on this studio' }, { status: 401 }) }
+  }
+
   // Block frozen users
-  if (session.user.role === 'frozen') {
+  if (resolved.role === 'frozen') {
     return { response: NextResponse.json({ error: 'Account frozen' }, { status: 403 }) }
   }
 
-  const tenantId = getTenantId(session, request)
-
-  return { session, tenantId }
+  return { session: patchSession(session, resolved), tenantId: resolved.tenantId }
 }
 
 /**
@@ -59,21 +118,23 @@ export async function requireAuth(request) {
  */
 export async function requireStaff(request) {
   const session = await auth()
-  console.log('[requireStaff] session:', session ? { id: session.user?.id, role: session.user?.role, tenantId: session.user?.tenantId } : 'NULL')
   if (!session) {
     return { response: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) }
   }
 
-  const role = session.user.role
+  const resolved = await resolveUser(session, request)
+  if (!resolved) {
+    return { response: NextResponse.json({ error: 'No account on this studio' }, { status: 401 }) }
+  }
+
+  const { role } = resolved
   if (role !== 'owner' && role !== 'admin' && role !== 'employee') {
     return { response: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) }
   }
 
-  const tenantId = getTenantId(session, request)
-
   return {
-    session,
-    tenantId,
+    session: patchSession(session, resolved),
+    tenantId: resolved.tenantId,
     isOwner: role === 'owner',
     isAdmin: role === 'admin' || role === 'owner',
     isEmployee: role === 'employee',
@@ -85,15 +146,25 @@ export async function requireStaff(request) {
  */
 export async function requireAdmin(request) {
   const session = await auth()
-  const role = session?.user?.role
-  console.log('[requireAdmin] session:', session ? { id: session.user?.id, role, tenantId: session.user?.tenantId } : 'NULL')
-  if (!session || (role !== 'admin' && role !== 'owner')) {
+  if (!session) {
     return { response: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) }
   }
 
-  const tenantId = getTenantId(session, request)
+  const resolved = await resolveUser(session, request)
+  if (!resolved) {
+    return { response: NextResponse.json({ error: 'No account on this studio' }, { status: 401 }) }
+  }
 
-  return { session, tenantId, isOwner: role === 'owner' }
+  const { role } = resolved
+  if (role !== 'admin' && role !== 'owner') {
+    return { response: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) }
+  }
+
+  return {
+    session: patchSession(session, resolved),
+    tenantId: resolved.tenantId,
+    isOwner: role === 'owner',
+  }
 }
 
 /**
@@ -101,13 +172,19 @@ export async function requireAdmin(request) {
  */
 export async function requireOwner(request) {
   const session = await auth()
-  if (!session || session.user.role !== 'owner') {
+  if (!session) {
     return { response: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) }
   }
 
-  const tenantId = getTenantId(session, request)
+  const resolved = await resolveUser(session, request)
+  if (!resolved || resolved.role !== 'owner') {
+    return { response: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) }
+  }
 
-  return { session, tenantId }
+  return {
+    session: patchSession(session, resolved),
+    tenantId: resolved.tenantId,
+  }
 }
 
 /**
