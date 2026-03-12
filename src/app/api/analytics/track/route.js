@@ -54,8 +54,11 @@ export async function POST(request) {
 
     const deviceType = getDeviceType(body.screen_width)
 
+    // Use tenant from middleware header (subdomain), fall back to default
+    const tenantId = headersList.get('x-tenant-id') || DEFAULT_TENANT_ID
+
     await supabaseAdmin.from('page_views').insert({
-      tenant_id: DEFAULT_TENANT_ID,
+      tenant_id: tenantId,
       path: body.path,
       referrer: body.referrer || null,
       utm_source: body.utm_source || null,

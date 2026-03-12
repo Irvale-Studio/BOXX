@@ -15,11 +15,12 @@ function escapeHtml(str) {
 
 // ─── Email logging helper ───────────────────────────────────────────────────
 
-async function logEmail({ emailType, recipient, subject, status, error, resendId }) {
+async function logEmail({ emailType, recipient, subject, status, error, resendId, tenantId }) {
   try {
     const { supabaseAdmin } = await import('@/lib/supabase/admin')
     if (!supabaseAdmin) return
     await supabaseAdmin.from('email_log').insert({
+      tenant_id: tenantId || null,
       email_type: emailType,
       recipient,
       subject: subject || null,
@@ -32,9 +33,9 @@ async function logEmail({ emailType, recipient, subject, status, error, resendId
   }
 }
 
-async function sendAndLog({ emailType, to, subject, html }) {
+async function sendAndLog({ emailType, to, subject, html, tenantId }) {
   if (!resend) {
-    await logEmail({ emailType, recipient: to, subject, status: 'skipped', error: 'No RESEND_API_KEY' })
+    await logEmail({ emailType, recipient: to, subject, status: 'skipped', error: 'No RESEND_API_KEY', tenantId })
     return
   }
 
@@ -43,7 +44,7 @@ async function sendAndLog({ emailType, to, subject, html }) {
     const { checkEmailLimit } = await import('@/lib/platform-limits')
     const { allowed, reason } = await checkEmailLimit()
     if (!allowed) {
-      await logEmail({ emailType, recipient: to, subject, status: 'rate_limited', error: reason })
+      await logEmail({ emailType, recipient: to, subject, status: 'rate_limited', error: reason, tenantId })
       console.warn(`[email] Rate limited: ${reason}`)
       return
     }
@@ -56,10 +57,10 @@ async function sendAndLog({ emailType, to, subject, html }) {
     if (result?.error) {
       const errMsg = result.error.message || JSON.stringify(result.error)
       console.error(`[email] Resend error for ${emailType}:`, errMsg)
-      await logEmail({ emailType, recipient: to, subject, status: 'failed', error: errMsg })
+      await logEmail({ emailType, recipient: to, subject, status: 'failed', error: errMsg, tenantId })
       return
     }
-    await logEmail({ emailType, recipient: to, subject, status: 'sent', resendId: result?.data?.id })
+    await logEmail({ emailType, recipient: to, subject, status: 'sent', resendId: result?.data?.id, tenantId })
     // Track the send for platform limits
     try {
       const { trackEmailSent } = await import('@/lib/platform-limits')
@@ -68,7 +69,7 @@ async function sendAndLog({ emailType, to, subject, html }) {
       // Non-critical
     }
   } catch (err) {
-    await logEmail({ emailType, recipient: to, subject, status: 'failed', error: err.message || String(err) })
+    await logEmail({ emailType, recipient: to, subject, status: 'failed', error: err.message || String(err), tenantId })
     throw err
   }
 }
@@ -364,14 +365,15 @@ export { EMAIL_DEFAULTS }
 
 // ─── 1. Booking Confirmation ─────────────────────────────────────────────────
 
-export async function sendBookingConfirmation({ to, name, className, instructor, date, time }) {
-  if (!(await isEmailEnabled('booking_confirmation'))) return
-  const custom = await getCustomMessage('booking_confirmation')
+export async function sendBookingConfirmation({ to, name, className, instructor, date, time, tenantId }) {
+  if (!(await isEmailEnabled('booking_confirmation', tenantId))) return
+  const custom = await getCustomMessage('booking_confirmation', tenantId)
   const subject = custom.subject || `Booking Confirmed — ${className}`
   await sendAndLog({
     emailType: 'booking_confirmation',
     to,
     subject,
+    tenantId,
     html: emailTemplate({
       heading: "You're In",
       body: custom.body
@@ -395,14 +397,15 @@ export async function sendBookingConfirmation({ to, name, className, instructor,
 
 // ─── 2. Class Reminder (1 hour before) ───────────────────────────────────────
 
-export async function sendClassReminder({ to, name, className, instructor, time }) {
-  if (!(await isEmailEnabled('class_reminder'))) return
-  const custom = await getCustomMessage('class_reminder')
+export async function sendClassReminder({ to, name, className, instructor, time, tenantId }) {
+  if (!(await isEmailEnabled('class_reminder', tenantId))) return
+  const custom = await getCustomMessage('class_reminder', tenantId)
   const subject = custom.subject || `Reminder: ${className} in 1 hour`
   await sendAndLog({
     emailType: 'class_reminder',
     to,
     subject,
+    tenantId,
     html: emailTemplate({
       heading: 'Class in 1 Hour',
       body: custom.body
@@ -418,14 +421,15 @@ export async function sendClassReminder({ to, name, className, instructor, time 
 
 // ─── 3. Waitlist Promotion ───────────────────────────────────────────────────
 
-export async function sendWaitlistPromotion({ to, name, className, date, time }) {
-  if (!(await isEmailEnabled('waitlist_promotion'))) return
-  const custom = await getCustomMessage('waitlist_promotion')
+export async function sendWaitlistPromotion({ to, name, className, date, time, tenantId }) {
+  if (!(await isEmailEnabled('waitlist_promotion', tenantId))) return
+  const custom = await getCustomMessage('waitlist_promotion', tenantId)
   const subject = custom.subject || `Spot Available — ${className}`
   await sendAndLog({
     emailType: 'waitlist_promotion',
     to,
     subject,
+    tenantId,
     html: emailTemplate({
       heading: "You're Off the Waitlist",
       body: custom.body
@@ -444,14 +448,15 @@ export async function sendWaitlistPromotion({ to, name, className, date, time })
 
 // ─── 4. Credit Expiry Warning ────────────────────────────────────────────────
 
-export async function sendCreditExpiryWarning({ to, name, packName, creditsRemaining, expiresAt }) {
-  if (!(await isEmailEnabled('credit_expiry_warning'))) return
-  const custom = await getCustomMessage('credit_expiry_warning')
+export async function sendCreditExpiryWarning({ to, name, packName, creditsRemaining, expiresAt, tenantId }) {
+  if (!(await isEmailEnabled('credit_expiry_warning', tenantId))) return
+  const custom = await getCustomMessage('credit_expiry_warning', tenantId)
   const subject = custom.subject || `Credits Expiring Soon — ${packName}`
   await sendAndLog({
     emailType: 'credit_expiry_warning',
     to,
     subject,
+    tenantId,
     html: emailTemplate({
       heading: 'Credits Expiring',
       body: custom.body
@@ -469,9 +474,9 @@ export async function sendCreditExpiryWarning({ to, name, packName, creditsRemai
 
 // ─── 5. Welcome Email ────────────────────────────────────────────────────────
 
-export async function sendWelcomeEmail({ to, name, studioName, dashboardUrl, brand }) {
-  if (!(await isEmailEnabled('welcome'))) return
-  const custom = await getCustomMessage('welcome')
+export async function sendWelcomeEmail({ to, name, studioName, dashboardUrl, brand, tenantId }) {
+  if (!(await isEmailEnabled('welcome', tenantId))) return
+  const custom = await getCustomMessage('welcome', tenantId)
   const studio = studioName || 'BOXX'
   const subject = custom.subject || `Welcome to ${studio}`
   const url = dashboardUrl || '${BASE_URL}/dashboard'
@@ -481,6 +486,7 @@ export async function sendWelcomeEmail({ to, name, studioName, dashboardUrl, bra
     emailType: 'welcome',
     to,
     subject,
+    tenantId,
     html: emailTemplate({
       heading: `Welcome to ${studio}`,
       body: custom.body
@@ -504,14 +510,15 @@ export async function sendWelcomeEmail({ to, name, studioName, dashboardUrl, bra
 
 // ─── 6. Cancellation Confirmation ────────────────────────────────────────────
 
-export async function sendCancellationConfirmation({ to, name, className, date, time, creditRefunded }) {
-  if (!(await isEmailEnabled('cancellation_confirmation'))) return
-  const custom = await getCustomMessage('cancellation_confirmation')
+export async function sendCancellationConfirmation({ to, name, className, date, time, creditRefunded, tenantId }) {
+  if (!(await isEmailEnabled('cancellation_confirmation', tenantId))) return
+  const custom = await getCustomMessage('cancellation_confirmation', tenantId)
   const subject = custom.subject || `Booking Cancelled — ${className}`
   await sendAndLog({
     emailType: 'cancellation_confirmation',
     to,
     subject,
+    tenantId,
     html: emailTemplate({
       heading: 'Booking Cancelled',
       body: custom.body
@@ -535,14 +542,15 @@ export async function sendCancellationConfirmation({ to, name, className, date, 
 
 // ─── 7. Class Cancelled by Admin ─────────────────────────────────────────────
 
-export async function sendClassCancelledByAdmin({ to, name, className, date, time }) {
-  if (!(await isEmailEnabled('class_cancelled_admin'))) return
-  const custom = await getCustomMessage('class_cancelled_admin')
+export async function sendClassCancelledByAdmin({ to, name, className, date, time, tenantId }) {
+  if (!(await isEmailEnabled('class_cancelled_admin', tenantId))) return
+  const custom = await getCustomMessage('class_cancelled_admin', tenantId)
   const subject = custom.subject || `Class Cancelled — ${className}`
   await sendAndLog({
     emailType: 'class_cancelled_admin',
     to,
     subject,
+    tenantId,
     html: emailTemplate({
       heading: 'Class Cancelled',
       body: custom.body
@@ -561,14 +569,15 @@ export async function sendClassCancelledByAdmin({ to, name, className, date, tim
 
 // ─── 8. Pack Purchase Confirmation ───────────────────────────────────────────
 
-export async function sendPackPurchaseConfirmation({ to, name, packName, credits, validityDays, expiresAt }) {
-  if (!(await isEmailEnabled('pack_purchase_confirmation'))) return
-  const custom = await getCustomMessage('pack_purchase_confirmation')
+export async function sendPackPurchaseConfirmation({ to, name, packName, credits, validityDays, expiresAt, tenantId }) {
+  if (!(await isEmailEnabled('pack_purchase_confirmation', tenantId))) return
+  const custom = await getCustomMessage('pack_purchase_confirmation', tenantId)
   const subject = custom.subject || `Pack Purchased — ${packName}`
   await sendAndLog({
     emailType: 'pack_purchase_confirmation',
     to,
     subject,
+    tenantId,
     html: emailTemplate({
       heading: 'Pack Purchased',
       body: custom.body
@@ -592,14 +601,15 @@ export async function sendPackPurchaseConfirmation({ to, name, packName, credits
 
 // ─── 9. Credits Low Warning ──────────────────────────────────────────────────
 
-export async function sendCreditsLowWarning({ to, name, creditsRemaining, packName }) {
-  if (!(await isEmailEnabled('credits_low_warning'))) return
-  const custom = await getCustomMessage('credits_low_warning')
+export async function sendCreditsLowWarning({ to, name, creditsRemaining, packName, tenantId }) {
+  if (!(await isEmailEnabled('credits_low_warning', tenantId))) return
+  const custom = await getCustomMessage('credits_low_warning', tenantId)
   const subject = custom.subject || `Low Credits — ${creditsRemaining} remaining`
   await sendAndLog({
     emailType: 'credits_low_warning',
     to,
     subject,
+    tenantId,
     html: emailTemplate({
       heading: 'Credits Running Low',
       body: custom.body
@@ -617,15 +627,16 @@ export async function sendCreditsLowWarning({ to, name, creditsRemaining, packNa
 
 // ─── 10. Class Changed Notification ──────────────────────────────────────────
 
-export async function sendClassChanged({ to, name, className, changes, date, time }) {
-  if (!(await isEmailEnabled('class_changed'))) return
-  const custom = await getCustomMessage('class_changed')
+export async function sendClassChanged({ to, name, className, changes, date, time, tenantId }) {
+  if (!(await isEmailEnabled('class_changed', tenantId))) return
+  const custom = await getCustomMessage('class_changed', tenantId)
   const changesList = changes.map(c => `<li style="padding:2px 0;">${c}</li>`).join('')
   const subject = custom.subject || `Class Updated — ${className}`
   await sendAndLog({
     emailType: 'class_changed',
     to,
     subject,
+    tenantId,
     html: emailTemplate({
       heading: 'Class Updated',
       body: custom.body
@@ -650,14 +661,15 @@ export async function sendClassChanged({ to, name, className, changes, date, tim
 
 // ─── 11. Removed from Class (by admin) ───────────────────────────────────────
 
-export async function sendRemovedFromClass({ to, name, className, date, time, creditRefunded }) {
-  if (!(await isEmailEnabled('removed_from_class'))) return
-  const custom = await getCustomMessage('removed_from_class')
+export async function sendRemovedFromClass({ to, name, className, date, time, creditRefunded, tenantId }) {
+  if (!(await isEmailEnabled('removed_from_class', tenantId))) return
+  const custom = await getCustomMessage('removed_from_class', tenantId)
   const subject = custom.subject || `Removed from ${className}`
   await sendAndLog({
     emailType: 'removed_from_class',
     to,
     subject,
+    tenantId,
     html: emailTemplate({
       heading: 'Booking Removed',
       body: custom.body
@@ -676,14 +688,15 @@ export async function sendRemovedFromClass({ to, name, className, date, time, cr
 
 // ─── 12. Admin Cancelled Booking (on behalf of member) ───────────────────────
 
-export async function sendAdminCancelledBooking({ to, name, className, date, time, creditRefunded }) {
-  if (!(await isEmailEnabled('admin_cancelled_booking'))) return
-  const custom = await getCustomMessage('admin_cancelled_booking')
+export async function sendAdminCancelledBooking({ to, name, className, date, time, creditRefunded, tenantId }) {
+  if (!(await isEmailEnabled('admin_cancelled_booking', tenantId))) return
+  const custom = await getCustomMessage('admin_cancelled_booking', tenantId)
   const subject = custom.subject || `Booking Cancelled — ${className}`
   await sendAndLog({
     emailType: 'admin_cancelled_booking',
     to,
     subject,
+    tenantId,
     html: emailTemplate({
       heading: 'Booking Cancelled',
       body: custom.body
@@ -702,10 +715,11 @@ export async function sendAdminCancelledBooking({ to, name, className, date, tim
 
 // ─── 13. Admin Direct / Compose Email ────────────────────────────────────────
 
-export async function sendAdminDirectEmail({ to, subject, body }) {
+export async function sendAdminDirectEmail({ to, subject, body, tenantId }) {
   await sendAndLog({
     emailType: 'admin_direct',
     to,
+    tenantId,
     subject: escapeHtml(subject),
     html: emailTemplate({
       heading: escapeHtml(subject),
@@ -716,11 +730,12 @@ export async function sendAdminDirectEmail({ to, subject, body }) {
 
 // ─── 14. Password Reset ─────────────────────────────────────────────────────
 
-export async function sendPasswordResetEmail({ to, name, resetUrl, brand }) {
+export async function sendPasswordResetEmail({ to, name, resetUrl, brand, tenantId }) {
   const studioName = brand?.studioName || 'BOXX'
   await sendAndLog({
     emailType: 'password_reset',
     to,
+    tenantId,
     subject: `Reset Your Password — ${studioName}`,
     html: emailTemplate({
       heading: 'Reset Your Password',
@@ -737,14 +752,15 @@ export async function sendPasswordResetEmail({ to, name, resetUrl, brand }) {
 
 // ─── 15. Private Class Invitation ────────────────────────────────────────────
 
-export async function sendPrivateClassInvitation({ to, name, className, instructor, date, time }) {
-  if (!(await isEmailEnabled('private_class_invitation'))) return
-  const custom = await getCustomMessage('private_class_invitation')
+export async function sendPrivateClassInvitation({ to, name, className, instructor, date, time, tenantId }) {
+  if (!(await isEmailEnabled('private_class_invitation', tenantId))) return
+  const custom = await getCustomMessage('private_class_invitation', tenantId)
   const subject = custom.subject || `Private Class Invitation — ${className}`
   await sendAndLog({
     emailType: 'private_class_invitation',
     to,
     subject,
+    tenantId,
     html: emailTemplate({
       heading: "You're Invited",
       body: custom.body
@@ -768,13 +784,14 @@ export async function sendPrivateClassInvitation({ to, name, className, instruct
 
 // ─── 11. Class Invitation (needs credits) ────────────────────────────────────
 
-export async function sendClassInvitationNeedsCredits({ to, name, className, instructor, date, time }) {
-  if (!(await isEmailEnabled('private_class_invitation'))) return
+export async function sendClassInvitationNeedsCredits({ to, name, className, instructor, date, time, tenantId }) {
+  if (!(await isEmailEnabled('private_class_invitation', tenantId))) return
   const subject = `You're Invited — ${className}`
   await sendAndLog({
     emailType: 'class_invitation_needs_credits',
     to,
     subject,
+    tenantId,
     html: emailTemplate({
       heading: "You're Invited",
       body: `

@@ -51,10 +51,11 @@ export async function promoteFromWaitlist(classScheduleId) {
     for (const entry of entries) {
       const now = new Date()
 
-      // Check user has valid credits
+      // Check user has valid credits on this tenant
       const { data: credits } = await supabaseAdmin
         .from('user_credits')
         .select('id, credits_remaining')
+        .eq('tenant_id', cls.tenant_id)
         .eq('user_id', entry.user_id)
         .gt('credits_remaining', 0)
         .gt('expires_at', now.toISOString())
