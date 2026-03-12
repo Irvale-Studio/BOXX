@@ -94,7 +94,7 @@ function LoginFormInner({ tenantId, tenantSlug }) {
       }
     } catch (err) {
       console.error('[login] signIn error:', err)
-      setError('Something went wrong. Please try again.')
+      setError(`Sign-in error: ${err?.message || err}`)
       setLoading(false)
     }
   }
