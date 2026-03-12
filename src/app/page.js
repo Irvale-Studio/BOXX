@@ -48,11 +48,22 @@ export default async function Home() {
             >
               Create Your Studio
             </Link>
+          </div>
+
+          {/* Quick studio access */}
+          <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
+            <span className="text-xs text-[#555]">Sign in to:</span>
             <Link
               href="https://boxx.zatrovo.com/login"
-              className="w-full sm:w-auto px-8 py-4 rounded-lg border border-[#1a1a1a] text-white font-medium text-base hover:border-[#333] hover:bg-[#111] transition-colors"
+              className="px-5 py-2.5 rounded-lg border border-[#1a1a1a] text-white text-sm font-medium hover:border-[#333] hover:bg-[#111] transition-colors"
             >
-              BOXX Member? Sign in
+              BOXX
+            </Link>
+            <Link
+              href="https://tenanttest.zatrovo.com/login"
+              className="px-5 py-2.5 rounded-lg border border-[#1a1a1a] text-white text-sm font-medium hover:border-[#333] hover:bg-[#111] transition-colors"
+            >
+              TenantTest
             </Link>
           </div>
 

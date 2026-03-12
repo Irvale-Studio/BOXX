@@ -2,7 +2,7 @@ import NextAuth from 'next-auth'
 import Google from 'next-auth/providers/google'
 import Credentials from 'next-auth/providers/credentials'
 import { supabaseAdmin } from '@/lib/supabase/admin'
-import { cookies } from 'next/headers'
+import { cookies, headers } from 'next/headers'
 import bcrypt from 'bcryptjs'
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
@@ -131,26 +131,31 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         }
 
         // Read target tenant from cookie (set by login/register page before OAuth redirect)
+        // Use raw Cookie header for reliability — cookies() can be unreliable in NextAuth callbacks
         let targetTenantId = null
         try {
-          const cookieStore = await cookies()
-          const pendingTenant = cookieStore.get('pending_tenant_id')?.value
-          if (pendingTenant) targetTenantId = pendingTenant
+          const headersList = await headers()
+          const cookieHeader = headersList.get('cookie') || ''
+          const tidMatch = cookieHeader.match(/pending_tenant_id=([^;]+)/)
+          if (tidMatch) targetTenantId = tidMatch[1].trim()
+          console.log('[auth] DEBUG cookie header:', cookieHeader.substring(0, 200))
+          console.log('[auth] DEBUG targetTenantId:', targetTenantId)
+        } catch (e) {
+          console.error('[auth] headers() failed:', e.message)
+        }
 
-          // Clear pending cookies immediately so they don't leak into the next OAuth attempt
+        // Try to clear pending cookies
+        try {
+          const cookieStore = await cookies()
           const baseDomain = process.env.NEXT_PUBLIC_BASE_DOMAIN
           const cookieOpts = {
             path: '/',
             ...(baseDomain ? { domain: `.${baseDomain}` } : {}),
           }
-          if (pendingTenant) {
-            cookieStore.delete({ name: 'pending_tenant_id', ...cookieOpts })
-          }
-          if (cookieStore.get('pending_tenant_slug')?.value) {
-            cookieStore.delete({ name: 'pending_tenant_slug', ...cookieOpts })
-          }
+          cookieStore.delete({ name: 'pending_tenant_id', ...cookieOpts })
+          cookieStore.delete({ name: 'pending_tenant_slug', ...cookieOpts })
         } catch {
-          // cookies() may not be available in all contexts
+          // Best effort cleanup
         }
 
         // Helper to populate user fields + tenant slug
@@ -165,6 +170,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         try {
           // 1. If we have a target tenant, look for user on THAT tenant first
+          console.log('[auth] DEBUG path: targetTenantId =', targetTenantId, ', google_id =', account.providerAccountId)
           if (targetTenantId) {
             // Check by google_id on target tenant
             const { data: onTenant } = await supabaseAdmin
@@ -177,6 +183,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             if (onTenant) {
               if (onTenant.role === 'frozen') return false
               await setUserFields(onTenant)
+              console.log('[auth] DEBUG: found by google_id on target tenant, slug:', user.tenantSlug)
               return true
             }
 
@@ -233,6 +240,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           if (existing) {
             if (existing.role === 'frozen') return false
             await setUserFields(existing)
+            console.log('[auth] DEBUG: global google_id match, tenant:', existing.tenant_id, 'slug:', user.tenantSlug)
             return true
           }
 
