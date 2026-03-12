@@ -208,7 +208,7 @@ function AdminLayoutInner({ children }) {
               <p className="text-xs text-muted">{session?.user?.email}</p>
             </div>
             <button
-              onClick={() => signOut({ callbackUrl: '/login' })}
+              onClick={() => signOut({ callbackUrl: `${window.location.origin}/login` })}
               className="text-xs text-muted hover:text-foreground transition-colors px-3 py-2 min-h-[36px] border border-card-border rounded"
             >
               Sign out

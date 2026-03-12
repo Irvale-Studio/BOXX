@@ -56,7 +56,7 @@ function MemberLayoutInner({ children }) {
               {session?.user?.name}
             </span>
             <button
-              onClick={() => signOut({ callbackUrl: '/login' })}
+              onClick={() => signOut({ callbackUrl: `${window.location.origin}/login` })}
               className="text-xs text-muted hover:text-foreground transition-colors px-3 py-1.5 border border-card-border rounded"
             >
               Sign out
