@@ -26,37 +26,37 @@ export async function GET(request) {
       .eq('id', tenantId)
       .single()
 
-    // Fetch theme settings from studio_settings
+    // Fetch theme settings + social links + studio name from studio_settings
     const { data: settings } = await supabaseAdmin
       .from('studio_settings')
       .select('key, value')
       .eq('tenant_id', tenantId)
-      .like('key', 'theme_%')
+      .or('key.like.theme_%,key.eq.studio_name,key.like.social_%')
 
     const theme = {}
+    const socials = {}
+    let studioNameSetting = null
     if (settings) {
       for (const row of settings) {
-        const key = row.key.replace('theme_', '')
-        theme[key] = row.value
+        if (row.key.startsWith('theme_')) {
+          theme[row.key.replace('theme_', '')] = row.value
+        } else if (row.key.startsWith('social_')) {
+          socials[row.key] = row.value
+        } else if (row.key === 'studio_name') {
+          studioNameSetting = row.value
+        }
       }
     }
 
-    // Also get studio_name
-    const { data: nameSetting } = await supabaseAdmin
-      .from('studio_settings')
-      .select('value')
-      .eq('tenant_id', tenantId)
-      .eq('key', 'studio_name')
-      .single()
-
     return NextResponse.json({
       theme: {
-        studioName: nameSetting?.value || tenant?.name || 'Studio',
+        studioName: studioNameSetting || tenant?.name || 'Studio',
         logoUrl: tenant?.logo_url || null,
         primaryColor: tenant?.primary_color || '#c8a750',
         currency: tenant?.currency || 'USD',
         vertical: tenant?.vertical || 'fitness',
         ...theme,
+        ...socials,
       },
     }, {
       headers: {
