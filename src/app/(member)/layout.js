@@ -9,6 +9,7 @@ import ThemeProvider, { useTheme } from '@/components/ThemeProvider'
 
 const memberLinks = [
   { name: 'Book Classes', href: '/dashboard' },
+  { name: 'Appointments', href: '/book-appointment' },
   { name: 'Buy Packs', href: '/buy-classes' },
 ]
 
@@ -108,6 +109,7 @@ function MemberLayoutInner({ children }) {
           <div className="flex items-center gap-4 text-xs text-muted">
             <Link href="/" className="hover:text-foreground transition-colors">Home</Link>
             <Link href="/dashboard" className="hover:text-foreground transition-colors">Book Classes</Link>
+            <Link href="/book-appointment" className="hover:text-foreground transition-colors">Appointments</Link>
             <Link href="/buy-classes" className="hover:text-foreground transition-colors">Buy Packs</Link>
           </div>
           <p className="text-[10px] text-muted/50">&copy; {new Date().getFullYear()} {studioName}</p>

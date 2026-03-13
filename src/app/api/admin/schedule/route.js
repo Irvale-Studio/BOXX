@@ -29,7 +29,9 @@ export async function GET(request) {
       .select(`
         *,
         class_types(id, name, description, duration_mins, color, icon, is_private),
-        instructors(id, name, photo_url)
+        instructors(id, name, photo_url),
+        locations(id, name),
+        zones(id, name)
       `)
       .eq('tenant_id', tenantId)
       .gte('starts_at', new Date(start).toISOString())
@@ -113,8 +115,11 @@ const createClassSchema = z.object({
   instructorId: z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i, 'Invalid ID'),
   startsAt: z.string().min(1),
   endsAt: z.string().min(1),
-  capacity: z.number().int().min(1).max(50).optional(),
+  capacity: z.number().int().min(1).max(500).nullable().optional(),
   notes: z.string().nullable().optional(),
+  locationId: z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i, 'Invalid ID').nullable().optional(),
+  zoneId: z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i, 'Invalid ID').nullable().optional(),
+  creditsCost: z.number().min(0).optional(),
 })
 
 /**
@@ -136,7 +141,7 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Invalid input', details: parsed.error.flatten() }, { status: 400 })
     }
 
-    const { classTypeId, instructorId, startsAt, endsAt, capacity, notes } = parsed.data
+    const { classTypeId, instructorId, startsAt, endsAt, capacity, notes, locationId, zoneId, creditsCost } = parsed.data
 
     // Check platform class limit
     const { checkClassLimit, checkTenantPlanLimit } = await import('@/lib/platform-limits')
@@ -180,9 +185,12 @@ export async function POST(request) {
         instructor_id: instructorId,
         starts_at: startsAt,
         ends_at: endsAt,
-        capacity: capacity || 6,
+        capacity: capacity === null ? null : (capacity || 6),
         notes: notes || null,
         status: 'active',
+        location_id: locationId || null,
+        zone_id: zoneId || null,
+        credits_cost: creditsCost ?? 1,
       })
       .select('*, class_types(id, name, color), instructors(id, name)')
       .single()
@@ -215,8 +223,11 @@ const updateClassSchema = z.object({
   instructorId: z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i, 'Invalid ID').optional(),
   startsAt: z.string().min(1).optional(),
   endsAt: z.string().min(1).optional(),
-  capacity: z.number().int().min(1).max(50).optional(),
+  capacity: z.number().int().min(1).max(500).nullable().optional(),
   notes: z.string().nullable().optional(),
+  locationId: z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i, 'Invalid ID').nullable().optional(),
+  zoneId: z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i, 'Invalid ID').nullable().optional(),
+  creditsCost: z.number().min(0).nullable().optional(),
   updateAll: z.boolean().optional(),       // Apply shared fields to all recurring siblings
   unlinkFromRecurring: z.boolean().optional(), // Remove this class from its recurring set
 })
@@ -246,7 +257,7 @@ export async function PUT(request) {
       return NextResponse.json({ error: 'Invalid input' }, { status: 400 })
     }
 
-    const { id, classTypeId, instructorId, startsAt, endsAt, capacity, notes, updateAll, unlinkFromRecurring } = parsed.data
+    const { id, classTypeId, instructorId, startsAt, endsAt, capacity, notes, locationId, zoneId, creditsCost, updateAll, unlinkFromRecurring } = parsed.data
 
     // Fetch existing class for validation
     const { data: existing } = await supabaseAdmin
@@ -265,8 +276,8 @@ export async function PUT(request) {
       return NextResponse.json({ error: 'Class type cannot be changed after creation' }, { status: 400 })
     }
 
-    // Business rule: capacity cannot go below current bookings
-    if (capacity !== undefined) {
+    // Business rule: capacity cannot go below current bookings (skip if unlimited)
+    if (capacity !== undefined && capacity !== null) {
       const { count: bookedCount } = await supabaseAdmin
         .from('bookings')
         .select('id', { count: 'exact', head: true })
@@ -312,6 +323,9 @@ export async function PUT(request) {
     if (endsAt) updates.ends_at = endsAt
     if (capacity !== undefined) updates.capacity = capacity
     if (notes !== undefined) updates.notes = notes
+    if (locationId !== undefined) updates.location_id = locationId || null
+    if (zoneId !== undefined) updates.zone_id = zoneId || null
+    if (creditsCost !== undefined) updates.credits_cost = creditsCost
 
     // If unlinking, clear recurring_id on this class
     if (unlinkFromRecurring) {
@@ -341,6 +355,9 @@ export async function PUT(request) {
       if (instructorId) sharedUpdates.instructor_id = instructorId
       if (capacity !== undefined) sharedUpdates.capacity = capacity
       if (notes !== undefined) sharedUpdates.notes = notes
+      if (locationId !== undefined) sharedUpdates.location_id = locationId || null
+      if (zoneId !== undefined) sharedUpdates.zone_id = zoneId || null
+      if (creditsCost !== undefined) sharedUpdates.credits_cost = creditsCost
 
       // Apply time-of-day change to all siblings (keep each class's date, change the time)
       if (startsAt && endsAt) {

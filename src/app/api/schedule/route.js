@@ -37,7 +37,9 @@ export async function GET(request) {
       .select(`
         *,
         class_types(id, name, description, duration_mins, color, icon, is_private),
-        instructors(id, name, photo_url, bio)
+        instructors(id, name, photo_url, bio),
+        locations(id, name),
+        zones(id, name)
       `)
       .eq('tenant_id', tenantId)
       .in('status', ['active', 'cancelled'])
@@ -115,7 +117,7 @@ export async function GET(request) {
     const enriched = schedule.map((cls) => ({
       ...cls,
       booked_count: bookingCounts[cls.id] || 0,
-      spots_left: cls.capacity - (bookingCounts[cls.id] || 0),
+      spots_left: cls.capacity === null ? null : cls.capacity - (bookingCounts[cls.id] || 0),
       is_booked: !!userBookedMap[cls.id],
       booking_id: userBookedMap[cls.id] || null,
       waitlist_position: userWaitlist[cls.id] || null,

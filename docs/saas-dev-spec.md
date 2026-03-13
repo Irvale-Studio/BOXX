@@ -38,7 +38,7 @@
 ### 1A. New Core Tables
 - [x] `tenants` — id, name, slug, custom_domain, vertical, plan, logo_url, primary_color, timezone, currency, created_at
 - [x] `locations` — id, tenant_id, name, address, city, country, phone, timezone, is_active
-- [ ] `zones` — id, location_id, name, capacity, description (deferred — not needed for MVP)
+- [x] `zones` — id, location_id, name, capacity, description (built with admin CRUD + schedule integration)
 - [x] `staff_tenants` — user_id, tenant_id, role, location_ids[], invited_at, accepted_at
 - [x] `plan_limits` — plan, max_locations, max_members, max_ai_queries, feature flags reference
 - [x] `feature_flags` — key, description, default_enabled, enabled_for_plans[], is_killed, rollout_pct
@@ -378,9 +378,9 @@ These items are currently hardcoded to BOXX but will be resolved when tenant sco
 - [ ] `cron/no-show-processor` — mark no-shows 30min after class
 
 ### 7B. Instructor Management (Growth+)
-- [ ] `instructor_locations` — scope instructors to locations
-- [ ] `instructor_availability` — weekly availability windows
-- [ ] `instructor_unavailability` — holiday exceptions
+- [x] `instructor_locations` — scope instructors to locations (junction table + admin UI)
+- [x] `instructor_availability` — weekly availability windows (admin CRUD + member slot browser)
+- [x] `instructor_unavailability` — holiday exceptions (table + API support)
 
 ### 7C. Messaging Channels (Growth+)
 - [ ] `message_log` table
@@ -859,6 +859,46 @@ Add to CLAUDE.md:
 - [x] Admin activity: CSV export shows success toast with count or error feedback
 
 > **To test:** Disconnect internet/block API calls to verify error states render. Test cancel flow on bookings within and outside the late-cancel window. Test CSV export on activity page.
+
+### Multi-Location, Zones & Availability Booking (2026-03-13)
+
+**Database (migration: `20260313_locations_zones_availability.sql`):**
+- [x] `zones` table — areas within locations (name, capacity, description)
+- [x] `instructor_locations` junction table — scope instructors to locations
+- [x] `instructor_availability` table — weekly recurring availability windows (Calendly-style)
+- [x] `instructor_unavailability` table — holiday/exception periods
+- [x] `class_schedule` additions: `zone_id`, `is_appointment`, `availability_id`
+- [x] `plan_limits.max_zones` column
+- [x] `zones` feature flag
+
+**Admin — Locations & Zones (new page: `/admin/locations`):**
+- [x] Location CRUD with address, city, country, phone, timezone
+- [x] Zone CRUD within locations (expandable cards)
+- [x] Toggle active/inactive for locations and zones
+- [x] Plan limit enforcement on location and zone creation
+
+**Schedule — Location, Zone, Free, Unlimited:**
+- [x] ClassForm: location/zone dropdowns, "Free class" toggle, "Unlimited capacity" toggle, credits cost field
+- [x] API: `locationId`, `zoneId`, `creditsCost` on create/update (single + recurring)
+- [x] API: `capacity: null` = unlimited, `credits_cost: 0` = free
+- [x] Member booking: skip credit deduction for free classes, skip capacity check for unlimited
+- [x] Member UI: "Free" badge, "X booked" for unlimited, location/zone display
+- [x] Admin calendar: location/zone/free badges on event blocks
+
+**Instructor Location Scoping:**
+- [x] `instructor_locations` CRUD via instructor API
+- [x] Admin instructor create/edit with location multi-select
+- [x] Schedule ClassForm filters instructors by selected location
+
+**Availability-Based Booking (Calendly-style):**
+- [x] Admin page (`/admin/availability`): create/edit/delete weekly availability windows per instructor
+- [x] Concurrent slots support (e.g., 10 masseuses = 10 bookings per slot)
+- [x] Member page (`/book-appointment`): week navigation, instructor filter, slot grid, one-click booking
+- [x] API: computes available slots from windows minus existing bookings, respects unavailability
+- [x] Booking: creates `class_schedule` entry (is_appointment=true) + booking atomically
+- [x] Reuses existing class_schedule for concurrent slots
+- [x] Feature-flagged: `appointment_booking`, `instructor_availability`
+- [x] Sidebar links in admin layout (Locations, Availability) and member layout (Appointments)
 
 ### Frontend Component Splitting
 - [ ] Split `src/app/(admin)/admin/schedule/page.js` (~2100 lines) into sub-components: RosterDialog, NotifyDialog, CreateClassDialog, EditClassDialog, DragDropHandler, ScheduleGrid

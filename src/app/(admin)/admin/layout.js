@@ -25,6 +25,8 @@ import {
   Leaf,
   Music,
   Target,
+  MapPin,
+  Clock,
 } from 'lucide-react'
 
 const VERTICAL_ICONS = {
@@ -46,6 +48,8 @@ const allSidebarLinks = [
   { name: 'Products', href: '/admin/packs', icon: Package, adminOnly: true },
   { name: 'Events', href: '/admin/class-types', icon: Tag },
   { name: 'Instructors', href: '/admin/instructors', icon: Dumbbell },
+  { name: 'Locations', href: '/admin/locations', icon: MapPin, adminOnly: true },
+  { name: 'Availability', href: '/admin/availability', icon: Clock, adminOnly: true },
   { name: 'Analytics', href: '/admin/analytics', icon: BarChart3 },
   { name: 'Emails', href: '/admin/emails', icon: Mail },
   { name: 'Settings', href: '/admin/settings', icon: Settings, adminOnly: true },

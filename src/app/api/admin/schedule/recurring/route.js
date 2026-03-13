@@ -8,11 +8,14 @@ const recurringSchema = z.object({
   instructorId: z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i, 'Invalid ID'),
   startTime: z.string().regex(/^\d{2}:\d{2}$/), // HH:MM
   endTime: z.string().regex(/^\d{2}:\d{2}$/),
-  capacity: z.number().int().min(1).max(50).optional(),
+  capacity: z.number().int().min(1).max(500).nullable().optional(),
   days: z.array(z.number().int().min(0).max(6)).min(1), // 0=Sun, 1=Mon, ..., 6=Sat
   weeks: z.number().int().min(1).max(52), // how many weeks to generate (52 = every week for 1 year)
   startDate: z.string().min(1), // YYYY-MM-DD, first date to start from
   notes: z.string().optional(),
+  locationId: z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i, 'Invalid ID').nullable().optional(),
+  zoneId: z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i, 'Invalid ID').nullable().optional(),
+  creditsCost: z.number().min(0).optional(),
 })
 
 /**
@@ -34,7 +37,7 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Invalid input', details: parsed.error.flatten() }, { status: 400 })
     }
 
-    const { classTypeId, instructorId, startTime, endTime, capacity, days, weeks, startDate, notes } = parsed.data
+    const { classTypeId, instructorId, startTime, endTime, capacity, days, weeks, startDate, notes, locationId, zoneId, creditsCost } = parsed.data
 
     // Check platform class limit
     const { checkClassLimit } = await import('@/lib/platform-limits')
@@ -75,10 +78,13 @@ export async function POST(request) {
           instructor_id: instructorId,
           starts_at: startsAt,
           ends_at: endsAt,
-          capacity: capacity || 6,
+          capacity: capacity === null ? null : (capacity || 6),
           status: 'active',
           notes: notes || null,
           recurring_id: recurringId,
+          location_id: locationId || null,
+          zone_id: zoneId || null,
+          credits_cost: creditsCost ?? 1,
         })
       }
     }

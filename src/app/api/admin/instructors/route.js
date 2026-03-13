@@ -18,7 +18,7 @@ export async function GET(request) {
 
     const { data, error } = await supabaseAdmin
       .from('instructors')
-      .select('*')
+      .select('*, instructor_locations(id, location_id, locations(id, name))')
       .eq('tenant_id', tenantId)
       .order('name')
 
@@ -37,6 +37,7 @@ export async function GET(request) {
 const createSchema = z.object({
   name: z.string().min(1),
   bio: z.string().nullable().optional(),
+  locationIds: z.array(z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)).optional(),
 })
 
 /**
@@ -87,7 +88,23 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Failed to create instructor' }, { status: 500 })
     }
 
-    return NextResponse.json({ instructor })
+    if (parsed.data.locationIds?.length) {
+      const rows = parsed.data.locationIds.map(locId => ({
+        tenant_id: tenantId,
+        instructor_id: instructor.id,
+        location_id: locId,
+      }))
+      await supabaseAdmin.from('instructor_locations').insert(rows)
+    }
+
+    const { data: full } = await supabaseAdmin
+      .from('instructors')
+      .select('*, instructor_locations(id, location_id, locations(id, name))')
+      .eq('tenant_id', tenantId)
+      .eq('id', instructor.id)
+      .single()
+
+    return NextResponse.json({ instructor: full || instructor })
   } catch (error) {
     console.error('[admin/instructors] Error:', error)
     return NextResponse.json({ error: 'Something went wrong.' }, { status: 500 })
@@ -99,6 +116,7 @@ const updateSchema = z.object({
   name: z.string().min(1).optional(),
   bio: z.string().nullable().optional(),
   active: z.boolean().optional(),
+  locationIds: z.array(z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)).optional(),
 })
 
 /**
@@ -120,7 +138,7 @@ export async function PUT(request) {
       return NextResponse.json({ error: 'Invalid input' }, { status: 400 })
     }
 
-    const { id, ...updates } = parsed.data
+    const { id, locationIds, ...updates } = parsed.data
 
     // K3: Prevent deactivating if future active classes exist
     if (updates.active === false) {
@@ -153,7 +171,33 @@ export async function PUT(request) {
       return NextResponse.json({ error: 'Failed to update instructor' }, { status: 500 })
     }
 
-    return NextResponse.json({ instructor })
+    if (locationIds !== undefined) {
+      // Delete existing
+      await supabaseAdmin
+        .from('instructor_locations')
+        .delete()
+        .eq('tenant_id', tenantId)
+        .eq('instructor_id', id)
+
+      // Insert new
+      if (locationIds.length > 0) {
+        const rows = locationIds.map(locId => ({
+          tenant_id: tenantId,
+          instructor_id: id,
+          location_id: locId,
+        }))
+        await supabaseAdmin.from('instructor_locations').insert(rows)
+      }
+    }
+
+    const { data: full } = await supabaseAdmin
+      .from('instructors')
+      .select('*, instructor_locations(id, location_id, locations(id, name))')
+      .eq('tenant_id', tenantId)
+      .eq('id', id)
+      .single()
+
+    return NextResponse.json({ instructor: full || instructor })
   } catch (error) {
     console.error('[admin/instructors] Error:', error)
     return NextResponse.json({ error: 'Something went wrong.' }, { status: 500 })

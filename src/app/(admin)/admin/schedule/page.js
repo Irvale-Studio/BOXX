@@ -90,6 +90,7 @@ export default function AdminSchedulePage() {
   const [classes, setClasses] = useState([])
   const [classTypes, setClassTypes] = useState([])
   const [instructors, setInstructors] = useState([])
+  const [locations, setLocations] = useState([])
   const [loading, setLoading] = useState(true)
   const [viewMode, setViewMode] = useState('week') // 'day' | 'week' | 'month'
   const [weekOffset, setWeekOffset] = useState(0)
@@ -112,6 +113,7 @@ export default function AdminSchedulePage() {
   const [form, setForm] = useState({
     classTypeId: '', instructorId: '', date: '', startTime: '07:00', endTime: '08:00', capacity: 6, notes: '',
     recurring: false, days: [], weeks: 4, everyWeek: false,
+    locationId: '', zoneId: '', creditsCost: 1, unlimitedCapacity: false, isFree: false,
   })
 
   // Private class member invite state
@@ -194,8 +196,8 @@ export default function AdminSchedulePage() {
 
   useEffect(() => {
     fetch('/api/admin/schedule/options')
-      .then((res) => res.ok ? res.json() : { classTypes: [], instructors: [] })
-      .then((data) => { setClassTypes(data.classTypes || []); setInstructors(data.instructors || []) })
+      .then((res) => res.ok ? res.json() : { classTypes: [], instructors: [], locations: [] })
+      .then((data) => { setClassTypes(data.classTypes || []); setInstructors(data.instructors || []); setLocations(data.locations || []) })
       .catch(console.error)
   }, [])
 
@@ -251,6 +253,7 @@ export default function AdminSchedulePage() {
       date: date || new Date().toISOString().split('T')[0],
       startTime, endTime, capacity: 6, notes: '',
       recurring: false, days: [dayOfWeek], weeks: 4, everyWeek: false,
+      locationId: locations[0]?.id || '', zoneId: '', creditsCost: 1, unlimitedCapacity: false, isFree: false,
     })
     setInviteMembers([])
     setInviteSearch('')
@@ -267,8 +270,10 @@ export default function AdminSchedulePage() {
       date: startsAt.toLocaleDateString('en-CA', { timeZone: 'Asia/Bangkok' }),
       startTime: startsAt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Bangkok' }),
       endTime: endsAt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Bangkok' }),
-      capacity: cls.capacity, notes: cls.notes || '',
+      capacity: cls.capacity === null ? '' : cls.capacity, notes: cls.notes || '',
       recurring: false, days: [dayOfWeek], weeks: 4, everyWeek: false,
+      locationId: cls.location_id || '', zoneId: cls.zone_id || '',
+      creditsCost: cls.credits_cost ?? 1, unlimitedCapacity: cls.capacity === null, isFree: cls.credits_cost === 0,
     })
     setEditDialog(cls)
   }
@@ -306,8 +311,11 @@ export default function AdminSchedulePage() {
           body: JSON.stringify({
             classTypeId: form.classTypeId, instructorId: form.instructorId,
             startTime: form.startTime, endTime: form.endTime,
-            capacity: form.capacity, notes: form.notes || undefined,
+            capacity: form.unlimitedCapacity ? null : form.capacity,
+            creditsCost: form.isFree ? 0 : form.creditsCost,
+            notes: form.notes || undefined,
             days: form.days, weeks, startDate: form.date,
+            locationId: form.locationId || null, zoneId: form.zoneId || null,
           }),
         })
         const data = await res.json()
@@ -320,7 +328,10 @@ export default function AdminSchedulePage() {
           body: JSON.stringify({
             classTypeId: form.classTypeId, instructorId: form.instructorId,
             startsAt: buildDatetime(form.date, form.startTime), endsAt: buildDatetime(form.date, form.endTime),
-            capacity: form.capacity, notes: form.notes || null,
+            capacity: form.unlimitedCapacity ? null : form.capacity,
+            creditsCost: form.isFree ? 0 : form.creditsCost,
+            notes: form.notes || null,
+            locationId: form.locationId || null, zoneId: form.zoneId || null,
           }),
         })
         const data = await res.json()
@@ -363,7 +374,10 @@ export default function AdminSchedulePage() {
         body: JSON.stringify({
           id: editDialog.id, classTypeId: form.classTypeId, instructorId: form.instructorId,
           startsAt: buildDatetime(form.date, form.startTime), endsAt: buildDatetime(form.date, form.endTime),
-          capacity: form.capacity, notes: form.notes || null,
+          capacity: form.unlimitedCapacity ? null : form.capacity,
+          creditsCost: form.isFree ? 0 : form.creditsCost,
+          notes: form.notes || null,
+          locationId: form.locationId || null, zoneId: form.zoneId || null,
           updateAll, unlinkFromRecurring,
         }),
       })
@@ -380,8 +394,11 @@ export default function AdminSchedulePage() {
           body: JSON.stringify({
             classTypeId: form.classTypeId, instructorId: form.instructorId,
             startTime: form.startTime, endTime: form.endTime,
-            capacity: form.capacity, notes: form.notes || undefined,
+            capacity: form.unlimitedCapacity ? null : form.capacity,
+            creditsCost: form.isFree ? 0 : form.creditsCost,
+            notes: form.notes || undefined,
             days: form.days, weeks, startDate: nextDate.toLocaleDateString('en-CA'),
+            locationId: form.locationId || null, zoneId: form.zoneId || null,
           }),
         })
         const recurData = await recurRes.json()
@@ -1094,10 +1111,12 @@ export default function AdminSchedulePage() {
                       }
 
                       const isCancelled = cls.status === 'cancelled'
-                      const isFull = cls.booked_count >= cls.capacity
+                      const isUnlimited = cls.capacity === null
+                      const isFull = !isUnlimited && cls.booked_count >= cls.capacity
                       const isPrivate = cls.is_private || cls.class_types?.is_private
                       const isRecurring = !!cls.recurring_id
-                      const fillPct = cls.capacity > 0 ? Math.min((cls.booked_count / cls.capacity) * 100, 100) : 0
+                      const fillPct = isUnlimited ? 0 : cls.capacity > 0 ? Math.min((cls.booked_count / cls.capacity) * 100, 100) : 0
+                      const isFreeClass = cls.credits_cost === 0
                       const color = cls.class_types?.color || '#c8a750'
                       const widthPct = 100 / layout.totalLanes
                       const leftPct = layout.lane * widthPct
@@ -1140,15 +1159,19 @@ export default function AdminSchedulePage() {
                               </span>
                               {isRecurring && !isCancelled && <span className="text-[10px] text-purple-400/70 shrink-0">↻</span>}
                               {isPrivate && <Lock className="w-2.5 h-2.5 text-amber-400 shrink-0" />}
+                              {isFreeClass && <span className="text-[8px] px-1 py-0 bg-green-500/20 text-green-400 rounded shrink-0">Free</span>}
                             </div>
                             <p className="text-[10px] text-muted leading-tight">{time}</p>
                             {height >= 45 && cls.instructors?.name && (
                               <p className="text-[9px] text-muted/60 truncate">{cls.instructors.name}</p>
                             )}
+                            {height >= 55 && cls.locations?.name && (
+                              <p className="text-[9px] text-accent/50 truncate">{cls.locations.name}{cls.zones?.name ? ` · ${cls.zones.name}` : ''}</p>
+                            )}
                             {height >= 35 && !isCancelled && (
                               <div className="mt-auto">
                                 <span className={cn('text-[9px] font-semibold', isFull ? 'text-red-400' : fillPct >= 75 ? 'text-amber-400' : 'text-muted')}>
-                                  {cls.booked_count}/{cls.capacity}
+                                  {isUnlimited ? `${cls.booked_count} booked` : `${cls.booked_count}/${cls.capacity}`}
                                 </span>
                               </div>
                             )}
@@ -1349,7 +1372,7 @@ export default function AdminSchedulePage() {
               return <div className="absolute inset-0 opacity-[0.04] pointer-events-none" style={{ background: `linear-gradient(135deg, ${addHue}, transparent 60%)` }} />
             })()}
             <div className="relative">
-              <ClassForm form={form} setForm={setForm} classTypes={classTypes} instructors={instructors} showRecurring />
+              <ClassForm form={form} setForm={setForm} classTypes={classTypes} instructors={instructors} locations={locations} showRecurring />
             </div>
           </div>
           {form.recurring && form.days.length > 0 && (
@@ -1460,8 +1483,9 @@ export default function AdminSchedulePage() {
             const isRecurring = !!editDialog.recurring_id
             const isPrivate = editDialog.class_types?.is_private
             const categoryHue = isRecurring ? '#a78bfa' : isPrivate ? '#fbbf24' : '#38bdf8'
-            const fillPct = editDialog.capacity > 0 ? Math.min(((editDialog.booked_count || 0) / editDialog.capacity) * 100, 100) : 0
-            const isFull = (editDialog.booked_count || 0) >= editDialog.capacity
+            const editIsUnlimited = editDialog.capacity === null
+            const fillPct = editIsUnlimited ? 0 : editDialog.capacity > 0 ? Math.min(((editDialog.booked_count || 0) / editDialog.capacity) * 100, 100) : 0
+            const isFull = !editIsUnlimited && (editDialog.booked_count || 0) >= editDialog.capacity
             const startsAt = new Date(editDialog.starts_at)
             const endsAt = new Date(editDialog.ends_at)
             const dateLabel = startsAt.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', timeZone: 'Asia/Bangkok' })
@@ -1524,7 +1548,7 @@ export default function AdminSchedulePage() {
                           </span>
                         </div>
                       </div>
-                      <p className="text-[10px] text-muted mt-1">{isFull ? 'Full' : `${editDialog.capacity - (editDialog.booked_count || 0)} spots`}</p>
+                      <p className="text-[10px] text-muted mt-1">{editIsUnlimited ? 'Unlimited' : isFull ? 'Full' : `${editDialog.capacity - (editDialog.booked_count || 0)} spots`}</p>
                     </div>
                   </div>
 
@@ -1595,7 +1619,7 @@ export default function AdminSchedulePage() {
                   <div className="absolute inset-0 opacity-[0.04] pointer-events-none" style={{ background: `linear-gradient(135deg, ${categoryHue}, transparent 60%)` }} />
                   <div className="relative">
                     <p className="text-xs font-medium text-muted uppercase tracking-wide mb-3">Edit Details</p>
-                    <ClassForm form={form} setForm={setForm} classTypes={classTypes} instructors={instructors} showRecurring={!isRecurring} recurLabel="Make this recurring" isEditing bookedCount={editDialog.booked_count || 0} />
+                    <ClassForm form={form} setForm={setForm} classTypes={classTypes} instructors={instructors} locations={locations} showRecurring={!isRecurring} recurLabel="Make this recurring" isEditing bookedCount={editDialog.booked_count || 0} />
                     {form.recurring && form.days.length > 0 && !isRecurring && (
                       <p className="text-xs text-muted mt-2">
                         Will create ~{form.everyWeek ? 52 : form.weeks} future classes (every {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][form.days[0]]}) starting after this date
@@ -1773,9 +1797,21 @@ export default function AdminSchedulePage() {
 const selectClass = 'mt-1.5 w-full h-10 rounded-lg bg-background/50 border border-card-border/60 px-3.5 py-2 text-sm text-foreground transition-colors focus:outline-none focus:ring-1 focus:ring-accent/50 focus:border-accent/30 focus:bg-background/80 [color-scheme:dark]'
 const selectDisabled = 'mt-1.5 w-full h-10 rounded-lg bg-card-border/20 border border-card-border/40 px-3.5 py-2 text-sm text-muted cursor-not-allowed'
 
-function ClassForm({ form, setForm, classTypes, instructors, showRecurring, recurLabel, isEditing, bookedCount }) {
+function ClassForm({ form, setForm, classTypes, instructors, locations, showRecurring, recurLabel, isEditing, bookedCount }) {
   const selectedType = classTypes.find((ct) => ct.id === form.classTypeId)
   const isPrivateType = selectedType?.is_private
+
+  // Filter instructors by selected location (if they have location assignments)
+  const filteredInstructors = form.locationId
+    ? instructors.filter((inst) => {
+        const locs = inst.instructor_locations || []
+        return locs.length === 0 || locs.some((il) => il.location_id === form.locationId)
+      })
+    : instructors
+
+  // Get zones for selected location
+  const selectedLocation = locations.find((l) => l.id === form.locationId)
+  const activeZones = (selectedLocation?.zones || []).filter((z) => z.is_active)
 
   return (
     <div className="space-y-4 py-2">
@@ -1816,9 +1852,32 @@ function ClassForm({ form, setForm, classTypes, instructors, showRecurring, recu
         <Label htmlFor="instructor">Instructor</Label>
         <select id="instructor" value={form.instructorId} onChange={(e) => setForm((f) => ({ ...f, instructorId: e.target.value }))} className={selectClass}>
           <option value="">Select instructor</option>
-          {instructors.map((inst) => <option key={inst.id} value={inst.id}>{inst.name}</option>)}
+          {filteredInstructors.map((inst) => <option key={inst.id} value={inst.id}>{inst.name}</option>)}
         </select>
       </div>
+
+      {/* Location & Zone */}
+      {locations.length > 0 && (
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <Label htmlFor="location">Location</Label>
+            <select id="location" value={form.locationId} onChange={(e) => {
+              setForm((f) => ({ ...f, locationId: e.target.value, zoneId: '' }))
+            }} className={selectClass}>
+              <option value="">No location</option>
+              {locations.map((loc) => <option key={loc.id} value={loc.id}>{loc.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <Label htmlFor="zone">Zone / Area</Label>
+            <select id="zone" value={form.zoneId} onChange={(e) => setForm((f) => ({ ...f, zoneId: e.target.value }))} className={selectClass} disabled={!activeZones.length}>
+              <option value="">None</option>
+              {activeZones.map((z) => <option key={z.id} value={z.id}>{z.name}</option>)}
+            </select>
+          </div>
+        </div>
+      )}
+
       <div>
         <Label htmlFor="date">{form.recurring ? 'Start Date' : 'Date'}</Label>
         <Input id="date" type="date" value={form.date} onChange={(e) => {
@@ -1837,19 +1896,42 @@ function ClassForm({ form, setForm, classTypes, instructors, showRecurring, recu
           <Input id="endTime" type="time" value={form.endTime} onChange={(e) => setForm((f) => ({ ...f, endTime: e.target.value }))} className="mt-1.5" />
         </div>
       </div>
-      <div>
-        <div>
-          <Label htmlFor="capacity">Capacity</Label>
-          <Input id="capacity" type="number" min={isEditing ? (bookedCount || 1) : 1} max={50} value={form.capacity} onChange={(e) => {
-            const val = parseInt(e.target.value) || 1
-            const min = isEditing ? (bookedCount || 1) : 1
-            setForm((f) => ({ ...f, capacity: Math.max(val, min) }))
-          }} className="mt-1.5" />
-          {isEditing && bookedCount > 0 && (
-            <p className="text-[10px] text-muted/50 mt-1">Min {bookedCount} (current bookings)</p>
-          )}
+
+      {/* Capacity + toggles */}
+      <div className="space-y-3">
+        <div className="flex items-center gap-3">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" checked={form.unlimitedCapacity} onChange={(e) => setForm((f) => ({ ...f, unlimitedCapacity: e.target.checked }))} className="w-4 h-4 rounded-md border-card-border bg-background/50 accent-accent" />
+            <span className="text-sm text-foreground">Unlimited capacity</span>
+          </label>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" checked={form.isFree} onChange={(e) => setForm((f) => ({ ...f, isFree: e.target.checked, creditsCost: e.target.checked ? 0 : 1 }))} className="w-4 h-4 rounded-md border-card-border bg-background/50 accent-accent" />
+            <span className="text-sm text-foreground">Free class</span>
+          </label>
         </div>
+
+        {!form.unlimitedCapacity && (
+          <div>
+            <Label htmlFor="capacity">Capacity</Label>
+            <Input id="capacity" type="number" min={isEditing ? (bookedCount || 1) : 1} max={500} value={form.capacity} onChange={(e) => {
+              const val = parseInt(e.target.value) || 1
+              const min = isEditing ? (bookedCount || 1) : 1
+              setForm((f) => ({ ...f, capacity: Math.max(val, min) }))
+            }} className="mt-1.5" />
+            {isEditing && bookedCount > 0 && (
+              <p className="text-[10px] text-muted/50 mt-1">Min {bookedCount} (current bookings)</p>
+            )}
+          </div>
+        )}
+
+        {!form.isFree && (
+          <div>
+            <Label htmlFor="creditsCost">Credits Cost</Label>
+            <Input id="creditsCost" type="number" min={1} max={10} value={form.creditsCost} onChange={(e) => setForm((f) => ({ ...f, creditsCost: parseInt(e.target.value) || 1 }))} className="mt-1.5 w-24" />
+          </div>
+        )}
       </div>
+
       <div>
         <Label htmlFor="notes">Notes</Label>
         <Input id="notes" value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} placeholder="e.g. Special event, substitute instructor" className="mt-1.5" />

@@ -45,6 +45,23 @@ CREATE TABLE locations (
 CREATE INDEX idx_locations_tenant_id ON locations(tenant_id);
 
 -- ─────────────────────────────────────
+-- ZONES (areas within a location)
+-- ─────────────────────────────────────
+CREATE TABLE zones (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id   UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  location_id UUID NOT NULL REFERENCES locations(id) ON DELETE CASCADE,
+  name        TEXT NOT NULL,
+  capacity    INT,
+  description TEXT,
+  is_active   BOOLEAN DEFAULT true,
+  created_at  TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX idx_zones_tenant_id ON zones(tenant_id);
+CREATE INDEX idx_zones_location_id ON zones(location_id);
+
+-- ─────────────────────────────────────
 -- USERS
 -- ─────────────────────────────────────
 CREATE TABLE users (
@@ -145,6 +162,64 @@ CREATE TABLE instructors (
 CREATE INDEX idx_instructors_tenant_id ON instructors(tenant_id);
 
 -- ─────────────────────────────────────
+-- INSTRUCTOR ↔ LOCATION
+-- ─────────────────────────────────────
+CREATE TABLE instructor_locations (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id     UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  instructor_id UUID NOT NULL REFERENCES instructors(id) ON DELETE CASCADE,
+  location_id   UUID NOT NULL REFERENCES locations(id) ON DELETE CASCADE,
+  created_at    TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(instructor_id, location_id)
+);
+
+CREATE INDEX idx_instructor_locations_tenant ON instructor_locations(tenant_id);
+CREATE INDEX idx_instructor_locations_instructor ON instructor_locations(instructor_id);
+CREATE INDEX idx_instructor_locations_location ON instructor_locations(location_id);
+
+-- ─────────────────────────────────────
+-- INSTRUCTOR AVAILABILITY (Calendly-style)
+-- ─────────────────────────────────────
+CREATE TABLE instructor_availability (
+  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id         UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  instructor_id     UUID NOT NULL REFERENCES instructors(id) ON DELETE CASCADE,
+  location_id       UUID REFERENCES locations(id) ON DELETE SET NULL,
+  zone_id           UUID REFERENCES zones(id) ON DELETE SET NULL,
+  day_of_week       INT NOT NULL CHECK (day_of_week >= 0 AND day_of_week <= 6),
+  start_time        TIME NOT NULL,
+  end_time          TIME NOT NULL,
+  session_duration  INT NOT NULL DEFAULT 60,
+  concurrent_slots  INT NOT NULL DEFAULT 1,
+  credits_cost      INT NOT NULL DEFAULT 1,
+  is_active         BOOLEAN DEFAULT true,
+  created_at        TIMESTAMPTZ DEFAULT now(),
+  CHECK (end_time > start_time)
+);
+
+CREATE INDEX idx_instructor_availability_tenant ON instructor_availability(tenant_id);
+CREATE INDEX idx_instructor_availability_instructor ON instructor_availability(instructor_id);
+CREATE INDEX idx_instructor_availability_day ON instructor_availability(tenant_id, day_of_week);
+
+-- ─────────────────────────────────────
+-- INSTRUCTOR UNAVAILABILITY (exceptions)
+-- ─────────────────────────────────────
+CREATE TABLE instructor_unavailability (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id     UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  instructor_id UUID NOT NULL REFERENCES instructors(id) ON DELETE CASCADE,
+  start_date    DATE NOT NULL,
+  end_date      DATE NOT NULL,
+  reason        TEXT,
+  created_at    TIMESTAMPTZ DEFAULT now(),
+  CHECK (end_date >= start_date)
+);
+
+CREATE INDEX idx_instructor_unavailability_tenant ON instructor_unavailability(tenant_id);
+CREATE INDEX idx_instructor_unavailability_instructor ON instructor_unavailability(instructor_id);
+CREATE INDEX idx_instructor_unavailability_dates ON instructor_unavailability(instructor_id, start_date, end_date);
+
+-- ─────────────────────────────────────
 -- CLASS SCHEDULE
 -- ─────────────────────────────────────
 CREATE TABLE class_schedule (
@@ -159,14 +234,18 @@ CREATE TABLE class_schedule (
   credits_cost      INT DEFAULT 1,
   status            TEXT DEFAULT 'active',
   notes             TEXT,
+  zone_id           UUID REFERENCES zones(id) ON DELETE SET NULL,
   recurring_id      UUID,
   is_private        BOOLEAN DEFAULT false,
+  is_appointment    BOOLEAN DEFAULT false,
+  availability_id   UUID REFERENCES instructor_availability(id) ON DELETE SET NULL,
   created_at        TIMESTAMPTZ DEFAULT now()
 );
 
 CREATE INDEX idx_class_schedule_starts_at ON class_schedule(starts_at);
 CREATE INDEX idx_class_schedule_tenant_id ON class_schedule(tenant_id);
 CREATE INDEX idx_class_schedule_location_id ON class_schedule(location_id);
+CREATE INDEX idx_class_schedule_zone_id ON class_schedule(zone_id);
 CREATE INDEX idx_class_schedule_tenant_starts ON class_schedule(tenant_id, starts_at);
 
 -- ─────────────────────────────────────
@@ -395,7 +474,8 @@ CREATE TABLE plan_limits (
   max_classes_month INT NOT NULL DEFAULT 9999,
   max_instructors   INT NOT NULL DEFAULT 9999,
   max_class_types   INT NOT NULL DEFAULT 9999,
-  max_packs         INT NOT NULL DEFAULT 9999
+  max_packs         INT NOT NULL DEFAULT 9999,
+  max_zones         INT NOT NULL DEFAULT 0
 );
 
 -- ─────────────────────────────────────
@@ -439,6 +519,10 @@ ALTER TABLE class_packs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE studio_settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE plan_limits ENABLE ROW LEVEL SECURITY;
 ALTER TABLE feature_flags ENABLE ROW LEVEL SECURITY;
+ALTER TABLE zones ENABLE ROW LEVEL SECURITY;
+ALTER TABLE instructor_locations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE instructor_availability ENABLE ROW LEVEL SECURITY;
+ALTER TABLE instructor_unavailability ENABLE ROW LEVEL SECURITY;
 ALTER TABLE tenant_feature_flags ENABLE ROW LEVEL SECURITY;
 
 -- Public read for reference/public data
@@ -452,6 +536,10 @@ CREATE POLICY "public_read_studio_settings" ON studio_settings FOR SELECT USING 
 CREATE POLICY "public_read_plan_limits" ON plan_limits FOR SELECT USING (true);
 CREATE POLICY "public_read_feature_flags" ON feature_flags FOR SELECT USING (true);
 CREATE POLICY "public_read_tenant_flags" ON tenant_feature_flags FOR SELECT USING (true);
+CREATE POLICY "public_read_zones" ON zones FOR SELECT USING (true);
+CREATE POLICY "public_read_instructor_locations" ON instructor_locations FOR SELECT USING (true);
+CREATE POLICY "public_read_instructor_availability" ON instructor_availability FOR SELECT USING (true);
+CREATE POLICY "public_read_instructor_unavailability" ON instructor_unavailability FOR SELECT USING (true);
 
 -- Users can read their own record
 CREATE POLICY "users_own_record" ON users FOR ALL USING (auth.uid() = id);

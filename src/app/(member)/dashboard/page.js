@@ -1122,7 +1122,7 @@ function ScheduleSection({ credits, onUpdate, sharedClassId, view, onViewChange,
               ? 'border-red-500/20 bg-red-500/5 opacity-50 cursor-default'
               : cls.is_booked
                 ? 'border-green-600/30 bg-green-600/8'
-                : cls.spots_left <= 0
+                : cls.spots_left !== null && cls.spots_left <= 0
                   ? 'border-red-500/10 bg-card'
                   : 'border-card-border bg-card hover:border-accent/30',
             isExpanded && !isCancelled && 'ring-1 ring-accent/40'
@@ -1139,8 +1139,9 @@ function ScheduleSection({ credits, onUpdate, sharedClassId, view, onViewChange,
               {startTime}
             </div>
             <div className="flex items-center justify-between mt-1">
-              <span className={cn('text-[10px] font-medium', cls.spots_left <= 1 ? 'text-red-400' : 'text-foreground/60')}>
-                {cls.booked_count}/{cls.capacity}
+              <span className={cn('text-[10px] font-medium', cls.spots_left !== null && cls.spots_left <= 1 ? 'text-red-400' : 'text-foreground/60')}>
+                {cls.capacity === null ? `${cls.booked_count} booked` : `${cls.booked_count}/${cls.capacity}`}
+                {cls.credits_cost === 0 && <span className="ml-1 text-green-400">Free</span>}
               </span>
               {cls.roster?.length > 0 && (
                 <div className="flex -space-x-1.5">
@@ -1212,16 +1213,19 @@ function ScheduleSection({ credits, onUpdate, sharedClassId, view, onViewChange,
                     <Badge variant="success" className="text-[10px] shrink-0">Booked</Badge>
                   ) : cls.waitlist_position ? (
                     <Badge variant="outline" className="text-[10px] shrink-0">Waitlist #{cls.waitlist_position}</Badge>
-                  ) : cls.spots_left <= 0 ? (
+                  ) : cls.spots_left !== null && cls.spots_left <= 0 ? (
                     <Badge variant="destructive" className="text-[10px] shrink-0">Full</Badge>
                   ) : (
-                    <span className={cn('text-[10px] font-medium shrink-0', cls.spots_left <= 2 ? 'text-red-400' : 'text-foreground/50')}>
-                      {cls.booked_count}/{cls.capacity}
+                    <span className={cn('text-[10px] font-medium shrink-0', cls.spots_left !== null && cls.spots_left <= 2 ? 'text-red-400' : 'text-foreground/50')}>
+                      {cls.capacity === null ? `${cls.booked_count} booked` : `${cls.booked_count}/${cls.capacity}`}
                     </span>
+                  )}
+                  {cls.credits_cost === 0 && (
+                    <span className="text-[9px] px-1.5 py-0.5 bg-green-500/15 text-green-400 rounded-full shrink-0">Free</span>
                   )}
                 </div>
                 <div className="flex items-center gap-2 mt-0.5">
-                  <p className="text-xs text-muted">{cls.instructors?.name || 'TBA'}</p>
+                  <p className="text-xs text-muted">{cls.instructors?.name || 'TBA'}{cls.locations?.name ? ` · ${cls.locations.name}` : ''}{cls.zones?.name ? ` · ${cls.zones.name}` : ''}</p>
                   {cls.roster?.length > 0 && (
                     <div className="hidden sm:flex -space-x-1.5">
                       {cls.roster.slice(0, 4).map((m, i) => (
@@ -1280,7 +1284,7 @@ function ScheduleSection({ credits, onUpdate, sharedClassId, view, onViewChange,
 
           {cls.roster?.length > 0 && (
             <div>
-              <p className="text-xs text-muted mb-2">Who&apos;s coming ({cls.booked_count}/{cls.capacity})</p>
+              <p className="text-xs text-muted mb-2">Who&apos;s coming ({cls.capacity === null ? cls.booked_count : `${cls.booked_count}/${cls.capacity}`})</p>
               <div className="flex flex-wrap gap-2">
                 {cls.roster.map((m, i) => (
                   <div key={m.id || i} className="flex items-center gap-1.5 bg-background rounded-full px-2 py-1">
@@ -1382,7 +1386,7 @@ function ScheduleSection({ credits, onUpdate, sharedClassId, view, onViewChange,
                 {leavingWaitlist === cls.id ? 'Leaving...' : 'Leave Waitlist'}
               </Button>
             </div>
-          ) : cls.spots_left <= 0 ? (
+          ) : cls.spots_left !== null && cls.spots_left <= 0 ? (
             <Button
               size="sm"
               variant="outline"
@@ -1391,13 +1395,17 @@ function ScheduleSection({ credits, onUpdate, sharedClassId, view, onViewChange,
             >
               {joiningWaitlist === cls.id ? 'Joining...' : 'Join Waitlist'}
             </Button>
+          ) : cls.credits_cost === 0 ? (
+            <Button size="sm" onClick={() => handleBook(cls.id)} disabled={confirming === cls.id}>
+              {confirming === cls.id ? 'Booking...' : 'Book Free Class'}
+            </Button>
           ) : totalCredits <= 0 ? (
             <Button size="sm" variant="outline" asChild>
               <Link href="/buy-classes">Buy Packs</Link>
             </Button>
           ) : (
             <div className="flex items-center gap-2">
-              <span className="text-[10px] text-muted">{cls.credits_cost} credit</span>
+              <span className="text-[10px] text-muted">{cls.credits_cost} credit{cls.credits_cost !== 1 ? 's' : ''}</span>
               <Button size="sm" onClick={() => handleBook(cls.id)} disabled={confirming === cls.id}>
                 {confirming === cls.id ? 'Booking...' : 'Book This Class'}
               </Button>
@@ -1724,11 +1732,11 @@ function ScheduleSection({ credits, onUpdate, sharedClassId, view, onViewChange,
                                   <Badge variant="success" className="text-[10px] shrink-0">Booked</Badge>
                                 ) : cls.waitlist_position ? (
                                   <Badge variant="outline" className="text-[10px] shrink-0">Waitlist #{cls.waitlist_position}</Badge>
-                                ) : cls.spots_left <= 0 ? (
+                                ) : cls.spots_left !== null && cls.spots_left <= 0 ? (
                                   <Badge variant="destructive" className="text-[10px] shrink-0">Full</Badge>
                                 ) : (
-                                  <span className={cn('text-[10px] font-medium shrink-0', cls.spots_left <= 2 ? 'text-red-400' : 'text-foreground/50')}>
-                                    {cls.booked_count}/{cls.capacity}
+                                  <span className={cn('text-[10px] font-medium shrink-0', cls.spots_left !== null && cls.spots_left <= 2 ? 'text-red-400' : 'text-foreground/50')}>
+                                    {cls.capacity === null ? `${cls.booked_count} booked` : `${cls.booked_count}/${cls.capacity}`}
                                   </span>
                                 )}
                               </div>

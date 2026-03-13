@@ -83,8 +83,62 @@ export async function POST(request) {
       .eq('status', 'confirmed')
 
     const bookedCount = confirmedBookings?.length || 0
-    if (bookedCount >= cls.capacity) {
+    if (cls.capacity !== null && bookedCount >= cls.capacity) {
       return NextResponse.json({ error: 'Class is full. Join the waitlist instead.' }, { status: 400 })
+    }
+
+    // 4a. Skip credit check for free classes (credits_cost === 0)
+    if (cls.credits_cost === 0) {
+      const { data: booking, error: bookingError } = await supabaseAdmin
+        .from('bookings')
+        .insert({
+          tenant_id: tenantId,
+          user_id: userId,
+          class_schedule_id: classScheduleId,
+          credit_id: null,
+          status: 'confirmed',
+        })
+        .select()
+        .single()
+
+      if (bookingError) {
+        console.error('[bookings/create] Booking error:', bookingError)
+        return NextResponse.json({ error: 'Failed to create booking. Please try again.' }, { status: 500 })
+      }
+
+      // Send confirmation email (non-blocking)
+      const { data: emailUser } = await supabaseAdmin
+        .from('users')
+        .select('email, name')
+        .eq('tenant_id', tenantId)
+        .eq('id', userId)
+        .single()
+
+      if (emailUser?.email) {
+        const startDate = new Date(cls.starts_at)
+        sendBookingConfirmation({
+          to: emailUser.email,
+          name: emailUser.name,
+          className: cls.class_types?.name || 'Class',
+          instructor: cls.instructors?.name,
+          date: startDate.toLocaleDateString('en-US', {
+            weekday: 'long',
+            month: 'long',
+            day: 'numeric',
+            timeZone: 'Asia/Bangkok',
+          }),
+          time: startDate.toLocaleTimeString('en-US', {
+            hour: 'numeric',
+            minute: '2-digit',
+            timeZone: 'Asia/Bangkok',
+          }),
+        }).catch((err) => console.error('[bookings/create] Email failed:', err))
+      }
+
+      return NextResponse.json({
+        booking,
+        message: `Booked for ${cls.class_types?.name || 'class'}!`,
+      })
     }
 
     // 4. Find user's best credit (closest to expiry first, active + not expired)
