@@ -216,8 +216,11 @@ function ProfileSection({ user, credits, onUpdate, creditAnimation }) {
     window.open('/api/profile/export', '_blank')
   }
 
+  const [saveMsg, setSaveMsg] = useState(null)
+
   async function handleSave() {
     setSaving(true)
+    setSaveMsg(null)
     try {
       const res = await fetch('/api/profile', {
         method: 'PUT',
@@ -226,10 +229,15 @@ function ProfileSection({ user, credits, onUpdate, creditAnimation }) {
       })
       if (res.ok) {
         setEditing(false)
+        setSaveMsg({ type: 'success', text: 'Profile updated' })
         onUpdate()
+        setTimeout(() => setSaveMsg(null), 3000)
+      } else {
+        const data = await res.json().catch(() => ({}))
+        setSaveMsg({ type: 'error', text: data.error || 'Failed to save' })
       }
-    } catch (err) {
-      console.error('Save failed:', err)
+    } catch {
+      setSaveMsg({ type: 'error', text: 'Failed to save' })
     } finally {
       setSaving(false)
     }
@@ -256,10 +264,12 @@ function ProfileSection({ user, credits, onUpdate, creditAnimation }) {
         onUpdate()
       } else {
         const data = await res.json()
-        alert(data.error || 'Upload failed')
+        setSaveMsg({ type: 'error', text: data.error || 'Upload failed' })
+        setTimeout(() => setSaveMsg(null), 4000)
       }
-    } catch (err) {
-      console.error('Upload failed:', err)
+    } catch {
+      setSaveMsg({ type: 'error', text: 'Upload failed' })
+      setTimeout(() => setSaveMsg(null), 4000)
     } finally {
       setUploading(false)
     }
@@ -587,13 +597,18 @@ function ProfileSection({ user, credits, onUpdate, creditAnimation }) {
                   />
                   <Label>Show me in class rosters</Label>
                 </div>
-                <div className="flex gap-3">
+                <div className="flex items-center gap-3">
                   <Button onClick={handleSave} disabled={saving} size="sm">
                     {saving ? 'Saving...' : 'Save Changes'}
                   </Button>
                   <Button variant="ghost" size="sm" onClick={() => setEditing(false)}>
                     Cancel
                   </Button>
+                  {saveMsg && (
+                    <span className={cn('text-xs', saveMsg.type === 'success' ? 'text-green-400' : 'text-red-400')}>
+                      {saveMsg.text}
+                    </span>
+                  )}
                 </div>
               </div>
             </motion.div>

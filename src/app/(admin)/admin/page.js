@@ -46,6 +46,7 @@ export default function AdminDashboard() {
   const [dayLoading, setDayLoading] = useState(false)
   const [engagementTab, setEngagementTab] = useState('at-risk')
   const [sendingEmail, setSendingEmail] = useState(null)
+  const [emailFeedback, setEmailFeedback] = useState(null)
 
   const selectedDate = new Date()
   selectedDate.setDate(selectedDate.getDate() + dayOffset)
@@ -130,9 +131,11 @@ export default function AdminDashboard() {
         body: JSON.stringify({ to: member.email, subject, body }),
       })
       if (!res.ok) throw new Error('Failed to send')
-      alert(`Reminder sent to ${member.name || member.email}`)
+      setEmailFeedback({ id: member.id, type: 'success', text: 'Sent!' })
+      setTimeout(() => setEmailFeedback(null), 3000)
     } catch {
-      alert('Failed to send email. Please try again.')
+      setEmailFeedback({ id: member.id, type: 'error', text: 'Failed to send' })
+      setTimeout(() => setEmailFeedback(null), 4000)
     } finally {
       setSendingEmail(null)
     }
@@ -724,6 +727,10 @@ export default function AdminDashboard() {
                             <Loader2 className="w-3 h-3 animate-spin" />
                             Sending
                           </>
+                        ) : emailFeedback?.id === member.id ? (
+                          <span className={emailFeedback.type === 'success' ? 'text-green-400' : 'text-red-400'}>
+                            {emailFeedback.text}
+                          </span>
                         ) : (
                           <>
                             <Mail className="w-3 h-3" />
