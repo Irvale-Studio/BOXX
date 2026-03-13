@@ -95,6 +95,10 @@ export default function RegisterForm({ tenantId, tenantSlug }) {
   }
 
   const handleGoogleRegister = () => {
+    if (!consent) {
+      setError('You must agree to the Privacy Policy and Terms of Service')
+      return
+    }
     setAuthenticating(true)
     // Set cookies so the OAuth callback can associate with this tenant
     // Use root domain so cookies are readable at zatrovo.com (where OAuth callback lands)
@@ -196,9 +200,11 @@ export default function RegisterForm({ tenantId, tenantSlug }) {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 minLength={8}
+                autoComplete="new-password"
                 className="w-full px-4 py-3 rounded bg-background border border-card-border text-foreground placeholder-muted/50 focus:outline-none focus:border-accent transition-colors"
                 placeholder="At least 8 characters"
               />
+              <p className="text-xs text-muted mt-1">Minimum 8 characters</p>
             </div>
 
             {/* Consent checkbox */}

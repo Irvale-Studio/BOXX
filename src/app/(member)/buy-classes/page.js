@@ -159,12 +159,30 @@ function BuyClassesContent() {
               {totalCreditsRemaining === Infinity ? '∞' : totalCreditsRemaining}
             </span>
           </div>
-          <div>
+          <div className="flex-1">
             <p className="text-sm text-foreground font-medium">
               {totalCreditsRemaining === Infinity ? 'Unlimited' : totalCreditsRemaining} credit{totalCreditsRemaining !== 1 ? 's' : ''} remaining
             </p>
             <p className="text-xs text-muted">You can purchase additional packs anytime</p>
           </div>
+          {activeCredits.some(c => c.stripe_sub_id) && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="shrink-0"
+              onClick={async () => {
+                try {
+                  const res = await fetch('/api/stripe/portal', { method: 'POST' })
+                  const data = await res.json()
+                  if (data.url) window.location.href = data.url
+                } catch {
+                  setToast({ message: 'Could not open billing portal', type: 'error' })
+                }
+              }}
+            >
+              Manage Subscription
+            </Button>
+          )}
         </div>
       )}
 

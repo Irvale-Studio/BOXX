@@ -194,6 +194,7 @@ function LoginFormInner({ tenantId, tenantSlug }) {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                autoComplete="current-password"
                 className="w-full px-4 py-3 rounded bg-background border border-card-border text-foreground placeholder-muted/50 focus:outline-none focus:border-accent transition-colors"
                 placeholder="••••••••"
               />
