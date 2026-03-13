@@ -836,6 +836,30 @@ Add to CLAUDE.md:
 - [x] `globals.css` — hardcoded scrollbar colors → CSS variables, added `cursor: not-allowed` for disabled elements
 - [x] Updated CLAUDE.md: email count (16→18), Stripe description (Connect→per-tenant), removed Tabs from components list
 
+### UX Review & Improvements (2026-03-13)
+
+**Fetch Error States (all pages now show error + retry instead of silent failure):**
+- [x] Admin dashboard — error card with refresh button on API failure
+- [x] Admin schedule — error state with retry button in calendar area
+- [x] Admin activity/bookings — error state + CSV export success/error toasts
+- [x] Admin members — error state with retry button
+- [x] Admin class types — error state with retry button
+- [x] Admin instructors — error state with retry button
+- [x] Admin packs — error state with retry button
+- [x] Member dashboard — improved error state with retry (was just red text)
+- [x] Member buy-classes — error state with retry button
+
+**Cancel Confirmation Modals (member dashboard):**
+- [x] ScheduleSection: custom cancel modal replacing native `confirm()` with late-cancel warning
+- [x] BookingsSection: same custom cancel modal pattern with late-cancel awareness
+
+**Feedback Improvements:**
+- [x] Member dashboard: avatar upload "Photo updated" success toast
+- [x] Member dashboard: improved empty bookings state with calendar icon
+- [x] Admin activity: CSV export shows success toast with count or error feedback
+
+> **To test:** Disconnect internet/block API calls to verify error states render. Test cancel flow on bookings within and outside the late-cancel window. Test CSV export on activity page.
+
 ### Frontend Component Splitting
 - [ ] Split `src/app/(admin)/admin/schedule/page.js` (~2100 lines) into sub-components: RosterDialog, NotifyDialog, CreateClassDialog, EditClassDialog, DragDropHandler, ScheduleGrid
 - [ ] Split `src/app/(member)/dashboard/page.js` (~2100 lines) into sub-components: ProfileSection, ScheduleSection, BookingsSection, CreditsSection
