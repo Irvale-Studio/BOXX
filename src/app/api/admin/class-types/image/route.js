@@ -84,7 +84,10 @@ export async function POST(request) {
 
     if (uploadError) {
       console.error('[class-types/image] Upload error:', uploadError)
-      return NextResponse.json({ error: 'Failed to upload image. Ensure the class-images storage bucket exists.' }, { status: 500 })
+      const msg = uploadError.message?.includes('maximum allowed size')
+        ? 'Image too large for storage. Try a smaller file or compress it.'
+        : 'Failed to upload image.'
+      return NextResponse.json({ error: msg }, { status: 500 })
     }
 
     const { data: urlData } = supabaseAdmin.storage
