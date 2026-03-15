@@ -695,6 +695,8 @@ Revisit after 50 paying tenants:
 - Member groups / tags (e.g. "VIP", "Trial", "Inactive 30d") for targeted emails
 - Promotional email campaigns with scheduling and templates
 - Email analytics (open rates, click rates per campaign)
+- Unified messaging inbox — link WhatsApp Business, LINE, Instagram DMs, Facebook Messenger into a single admin dashboard view. Admins see and respond to all messages in one place. Explore solutions like Twilio Conversations, MessageBird, or 360dialog for WhatsApp Business API integration.
+- Ad-hoc / one-off events on schedule — allow admins to create a class directly on the schedule without requiring a pre-created event type. Quick "Custom Event" with inline name, duration, capacity. Useful for workshops, pop-ups, guest instructor sessions.
 - Franchise corporate dashboard
 - Wearables integration
 - In-app social/community features
