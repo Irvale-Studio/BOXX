@@ -40,12 +40,14 @@ export async function POST(request) {
       return NextResponse.json({ error: 'File too large. Maximum 5MB.' }, { status: 400 })
     }
 
-    // Look up class type — try tenant-scoped first, then backfill if seed data has NULL tenant_id
-    let { data: ct } = await supabaseAdmin
+    // Look up class type by ID
+    let { data: ct, error: ctErr } = await supabaseAdmin
       .from('class_types')
       .select('id, image_url, tenant_id')
       .eq('id', classTypeId)
       .single()
+
+    console.log('[class-types/image] Lookup:', { classTypeId, tenantId, found: !!ct, ctTenant: ct?.tenant_id, err: ctErr?.message })
 
     if (!ct) {
       return NextResponse.json({ error: 'Event not found' }, { status: 404 })
