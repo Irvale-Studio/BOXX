@@ -53,25 +53,19 @@ export default function AdminLocationsPage() {
     return () => clearTimeout(t)
   }, [toast])
 
-  // Click outside to close inline forms
+  // Click outside to close create forms only (edit uses Cancel/Esc)
   useEffect(() => {
     function handleClickOutside(e) {
       if (showCreateLoc && locFormRef.current && !locFormRef.current.contains(e.target)) {
         cancelCreateLocation()
       }
-      if (editingLocId && locFormRef.current && !locFormRef.current.contains(e.target)) {
-        cancelEditLocation()
-      }
       if (creatingZoneForLoc && zoneFormRef.current && !zoneFormRef.current.contains(e.target)) {
         cancelCreateZone()
-      }
-      if (editingZoneId && zoneFormRef.current && !zoneFormRef.current.contains(e.target)) {
-        cancelEditZone()
       }
     }
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [showCreateLoc, editingLocId, creatingZoneForLoc, editingZoneId])
+  }, [showCreateLoc, creatingZoneForLoc])
 
   async function fetchLocations() {
     setFetchError(null)
