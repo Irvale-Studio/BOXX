@@ -699,44 +699,19 @@ export default function AdminLocationsPage() {
                 {/* Inline edit panel */}
                 {isEditing && (
                   <div ref={locFormRef} className="border-t border-card-border bg-background/50 px-4 py-4 ml-7 mr-4">
-                    <div className="flex items-center gap-3">
-                      <div className="flex-1">
-                        <Label className="text-xs text-muted">Name *</Label>
-                        <Input
-                          ref={editLocNameRef}
-                          value={locForm.name}
-                          onChange={(e) => { setLocForm((f) => ({ ...f, name: e.target.value })); setLocError(null) }}
-                          placeholder="Location name"
-                          className={cn('mt-1 h-8 text-sm bg-background border-card-border', locError && 'border-red-500/50')}
-                          onKeyDown={(e) => handleLocKeyDown(e, 'edit')}
-                        />
-                        {locError && <p className="text-[11px] text-red-400 mt-1">{locError}</p>}
-                      </div>
-                      <div className="flex items-center gap-1 pt-5">
-                        <button
-                          onClick={() => saveLocation('edit')}
-                          disabled={submitting}
-                          className={cn(
-                            'w-8 h-8 rounded-md flex items-center justify-center transition-colors',
-                            submitting
-                              ? 'text-muted cursor-not-allowed'
-                              : 'text-green-400 hover:bg-green-500/10'
-                          )}
-                          title="Save (Enter)"
-                        >
-                          <Check className="w-5 h-5" />
-                        </button>
-                        <button
-                          onClick={cancelEditLocation}
-                          className="w-8 h-8 rounded-md flex items-center justify-center text-muted hover:text-red-400 hover:bg-red-500/10 transition-colors"
-                          title="Cancel (Esc)"
-                        >
-                          <X className="w-5 h-5" />
-                        </button>
-                      </div>
+                    <div>
+                      <Label className="text-xs text-muted">Name *</Label>
+                      <Input
+                        ref={editLocNameRef}
+                        value={locForm.name}
+                        onChange={(e) => { setLocForm((f) => ({ ...f, name: e.target.value })); setLocError(null) }}
+                        placeholder="Location name"
+                        className={cn('mt-1 h-8 text-sm bg-background border-card-border', locError && 'border-red-500/50')}
+                        onKeyDown={(e) => handleLocKeyDown(e, 'edit')}
+                      />
+                      {locError && <p className="text-[11px] text-red-400 mt-1">{locError}</p>}
                     </div>
 
-                    {/* More options toggle */}
                     <button
                       onClick={() => setLocMoreOptions(!locMoreOptions)}
                       className="flex items-center gap-1.5 text-xs text-muted hover:text-foreground transition-colors mt-3"
@@ -746,7 +721,10 @@ export default function AdminLocationsPage() {
                     </button>
 
                     {locMoreOptions && renderLocOptionalFields()}
-                    <p className="text-[10px] text-muted mt-3">Enter to save · Esc to cancel</p>
+                    <div className="flex gap-2 mt-4">
+                      <button onClick={() => saveLocation('edit')} className="flex-1 h-10 rounded-lg bg-accent/10 text-accent hover:bg-accent/20 text-sm font-medium transition-colors flex items-center justify-center gap-2"><Check className="w-4 h-4" /> Save</button>
+                      <button onClick={cancelEditLocation} className="flex-1 h-10 rounded-lg border border-card-border text-muted hover:text-foreground hover:bg-white/[0.03] text-sm transition-colors flex items-center justify-center gap-2"><X className="w-4 h-4" /> Cancel</button>
+                    </div>
                   </div>
                 )}
 
@@ -833,28 +811,6 @@ export default function AdminLocationsPage() {
                                     onKeyDown={(e) => handleZoneKeyDown(e, 'edit')}
                                   />
                                 </div>
-                                <div className="flex items-center gap-1">
-                                  <button
-                                    onClick={() => saveZone('edit')}
-                                    disabled={submitting}
-                                    className={cn(
-                                      'w-7 h-7 rounded-md flex items-center justify-center transition-colors',
-                                      submitting
-                                        ? 'text-muted cursor-not-allowed'
-                                        : 'text-green-400 hover:bg-green-500/10'
-                                    )}
-                                    title="Save (Enter)"
-                                  >
-                                    <Check className="w-4 h-4" />
-                                  </button>
-                                  <button
-                                    onClick={cancelEditZone}
-                                    className="w-7 h-7 rounded-md flex items-center justify-center text-muted hover:text-red-400 hover:bg-red-500/10 transition-colors"
-                                    title="Cancel (Esc)"
-                                  >
-                                    <X className="w-4 h-4" />
-                                  </button>
-                                </div>
                               </div>
 
                               {/* Zone more options */}
@@ -878,6 +834,10 @@ export default function AdminLocationsPage() {
                                   />
                                 </div>
                               )}
+                              <div className="flex gap-2 mt-3">
+                                <button onClick={() => saveZone('edit')} className="flex-1 h-9 rounded-lg bg-accent/10 text-accent hover:bg-accent/20 text-xs font-medium transition-colors flex items-center justify-center gap-1.5"><Check className="w-3.5 h-3.5" /> Save</button>
+                                <button onClick={cancelEditZone} className="flex-1 h-9 rounded-lg border border-card-border text-muted hover:text-foreground hover:bg-white/[0.03] text-xs transition-colors flex items-center justify-center gap-1.5"><X className="w-3.5 h-3.5" /> Cancel</button>
+                              </div>
                             </div>
                           )}
                         </div>
@@ -912,28 +872,6 @@ export default function AdminLocationsPage() {
                               onKeyDown={(e) => handleZoneKeyDown(e, 'create')}
                             />
                           </div>
-                          <div className="flex items-center gap-1">
-                            <button
-                              onClick={() => saveZone('create')}
-                              disabled={submitting}
-                              className={cn(
-                                'w-7 h-7 rounded-md flex items-center justify-center transition-colors',
-                                submitting
-                                  ? 'text-muted cursor-not-allowed'
-                                  : 'text-green-400 hover:bg-green-500/10'
-                              )}
-                              title="Save (Enter)"
-                            >
-                              <Check className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={cancelCreateZone}
-                              className="w-7 h-7 rounded-md flex items-center justify-center text-muted hover:text-red-400 hover:bg-red-500/10 transition-colors"
-                              title="Cancel (Esc)"
-                            >
-                              <X className="w-4 h-4" />
-                            </button>
-                          </div>
                         </div>
 
                         {/* Zone more options */}
@@ -957,6 +895,10 @@ export default function AdminLocationsPage() {
                             />
                           </div>
                         )}
+                        <div className="flex gap-2 mt-3">
+                          <button onClick={() => saveZone('create')} className="flex-1 h-9 rounded-lg bg-accent/10 text-accent hover:bg-accent/20 text-xs font-medium transition-colors flex items-center justify-center gap-1.5"><Check className="w-3.5 h-3.5" /> Save</button>
+                          <button onClick={cancelCreateZone} className="flex-1 h-9 rounded-lg border border-card-border text-muted hover:text-foreground hover:bg-white/[0.03] text-xs transition-colors flex items-center justify-center gap-1.5"><X className="w-3.5 h-3.5" /> Cancel</button>
+                        </div>
                       </div>
                     )}
 
@@ -993,45 +935,25 @@ export default function AdminLocationsPage() {
                   />
                   {locError && <p className="text-[11px] text-red-400 mt-1">{locError}</p>}
                 </div>
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => saveLocation('create')}
-                    disabled={submitting}
-                    className={cn(
-                      'w-8 h-8 rounded-md flex items-center justify-center transition-colors',
-                      submitting
-                        ? 'text-muted cursor-not-allowed'
-                        : 'text-green-400 hover:bg-green-500/10'
-                    )}
-                    title="Save (Enter)"
-                  >
-                    <Check className="w-5 h-5" />
-                  </button>
-                  <button
-                    onClick={cancelCreateLocation}
-                    className="w-8 h-8 rounded-md flex items-center justify-center text-muted hover:text-red-400 hover:bg-red-500/10 transition-colors"
-                    title="Cancel (Esc)"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
               </div>
 
-              {/* More options toggle */}
               <button
                 onClick={() => setLocMoreOptions(!locMoreOptions)}
-                className="flex items-center gap-1.5 text-xs text-muted hover:text-foreground transition-colors mt-3 ml-6"
+                className="flex items-center gap-1.5 text-xs text-muted hover:text-foreground transition-colors mt-3 ml-7"
               >
                 {locMoreOptions ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                 {locMoreOptions ? 'Fewer options' : 'More options'}
               </button>
 
               {locMoreOptions && (
-                <div className="ml-6">
+                <div className="ml-7">
                   {renderLocOptionalFields()}
                 </div>
               )}
-              <p className="text-[10px] text-muted mt-3 ml-6">Enter to save · Esc to cancel</p>
+              <div className="flex gap-2 mt-4">
+                <button onClick={() => saveLocation('create')} className="flex-1 h-10 rounded-lg bg-accent/10 text-accent hover:bg-accent/20 text-sm font-medium transition-colors flex items-center justify-center gap-2"><Check className="w-4 h-4" /> Save</button>
+                <button onClick={cancelCreateLocation} className="flex-1 h-10 rounded-lg border border-card-border text-muted hover:text-foreground hover:bg-white/[0.03] text-sm transition-colors flex items-center justify-center gap-2"><X className="w-4 h-4" /> Cancel</button>
+              </div>
             </div>
           )}
 

@@ -305,27 +305,15 @@ export default function ClassTypesPage() {
             onKeyDown={(e) => handleKeyDown(e, mode)}
           />
         </div>
-        <div className="flex items-center gap-3">
-          <div className="w-20">
-            <Label className="text-xs text-muted">Icon</Label>
-            <Input
-              value={form.icon}
-              onChange={(e) => setForm((f) => ({ ...f, icon: e.target.value }))}
-              placeholder="e.g. 🥊"
-              className="mt-1 h-8 text-sm bg-background border-card-border"
-              onKeyDown={(e) => handleKeyDown(e, mode)}
-            />
-          </div>
-          <label className="flex items-center gap-2 cursor-pointer pt-4">
-            <input
-              type="checkbox"
-              checked={form.is_private}
-              onChange={(e) => setForm((f) => ({ ...f, is_private: e.target.checked }))}
-              className="w-3.5 h-3.5 rounded border-card-border bg-card accent-accent"
-            />
-            <span className="text-xs text-foreground">Private</span>
-          </label>
-        </div>
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={form.is_private}
+            onChange={(e) => setForm((f) => ({ ...f, is_private: e.target.checked }))}
+            className="w-3.5 h-3.5 rounded border-card-border bg-card accent-accent"
+          />
+          <span className="text-xs text-foreground">Private</span>
+        </label>
         <div>
           {(imagePreview || form.image_url) ? (
             <div className="relative rounded-lg overflow-hidden h-20 bg-card border border-card-border group">
@@ -424,9 +412,8 @@ export default function ClassTypesPage() {
               return (
                 <div key={ct.id} data-event-edit className="border-2 border-accent/40 rounded-lg p-3 sm:p-4 bg-card">
                   <div className="flex items-center gap-3">
-                    {/* Color dot */}
                     <div className="w-10 h-10 rounded-full shrink-0 flex items-center justify-center" style={{ backgroundColor: `${editForm.color}25` }}>
-                      {editForm.icon ? <span className="text-base">{editForm.icon}</span> : <div className="w-4 h-4 rounded-full" style={{ backgroundColor: editForm.color }} />}
+                      <div className="w-4 h-4 rounded-full" style={{ backgroundColor: editForm.color }} />
                     </div>
                     <div className="flex-1 min-w-0 space-y-2">
                       <Input
@@ -446,21 +433,16 @@ export default function ClassTypesPage() {
                         {renderColorPicker(editForm, setEditForm)}
                       </div>
                     </div>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <button onClick={handleUpdate} className="w-8 h-8 rounded-md flex items-center justify-center text-green-400 hover:bg-green-500/10 transition-colors" title="Save (Enter)"><Check className="w-5 h-5" /></button>
-                      <button onClick={cancelEdit} className="w-8 h-8 rounded-md flex items-center justify-center text-muted hover:text-red-400 hover:bg-red-500/10 transition-colors" title="Cancel (Esc)"><X className="w-5 h-5" /></button>
-                    </div>
                   </div>
-                  <button onClick={() => setEditMore(!editMore)} className="flex items-center gap-1.5 text-xs text-muted hover:text-foreground transition-colors mt-3 ml-13">
+                  <button onClick={() => setEditMore(!editMore)} className="flex items-center gap-1.5 text-xs text-muted hover:text-foreground transition-colors mt-3">
                     {editMore ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                     {editMore ? 'Fewer options' : 'More options'}
                   </button>
-                  {editMore && (
-                    <div className="ml-13">
-                      {renderMoreFields(editForm, setEditForm, 'edit', editImagePreview, (f) => { setEditImageFile(f); setEditImagePreview(f ? URL.createObjectURL(f) : null) }, editForm.image_url ? () => deleteClassImage(ct.id) : null)}
-                    </div>
-                  )}
-                  <p className="text-[10px] text-muted mt-3 ml-13">Enter to save · Esc to cancel</p>
+                  {editMore && renderMoreFields(editForm, setEditForm, 'edit', editImagePreview, (f) => { setEditImageFile(f); setEditImagePreview(f ? URL.createObjectURL(f) : null) }, editForm.image_url ? () => deleteClassImage(ct.id) : null)}
+                  <div className="flex gap-2 mt-4">
+                    <button onClick={handleUpdate} className="flex-1 h-10 rounded-lg bg-accent/10 text-accent hover:bg-accent/20 text-sm font-medium transition-colors flex items-center justify-center gap-2"><Check className="w-4 h-4" /> Save</button>
+                    <button onClick={cancelEdit} className="flex-1 h-10 rounded-lg border border-card-border text-muted hover:text-foreground hover:bg-white/[0.03] text-sm transition-colors flex items-center justify-center gap-2"><X className="w-4 h-4" /> Cancel</button>
+                  </div>
                 </div>
               )
             }
@@ -503,7 +485,7 @@ export default function ClassTypesPage() {
             <div data-event-create className="border-2 border-dashed border-accent/40 rounded-lg p-3 sm:p-4 bg-card">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full shrink-0 flex items-center justify-center" style={{ backgroundColor: `${createForm.color}25` }}>
-                  {createForm.icon ? <span className="text-base">{createForm.icon}</span> : <div className="w-4 h-4 rounded-full" style={{ backgroundColor: createForm.color }} />}
+                  <div className="w-4 h-4 rounded-full" style={{ backgroundColor: createForm.color }} />
                 </div>
                 <div className="flex-1 min-w-0 space-y-2">
                   <Input
@@ -523,21 +505,16 @@ export default function ClassTypesPage() {
                     {renderColorPicker(createForm, setCreateForm)}
                   </div>
                 </div>
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <button onClick={handleCreate} className="w-8 h-8 rounded-md flex items-center justify-center text-green-400 hover:bg-green-500/10 transition-colors" title="Save (Enter)"><Check className="w-5 h-5" /></button>
-                  <button onClick={cancelCreate} className="w-8 h-8 rounded-md flex items-center justify-center text-muted hover:text-red-400 hover:bg-red-500/10 transition-colors" title="Cancel (Esc)"><X className="w-5 h-5" /></button>
-                </div>
               </div>
-              <button onClick={() => setCreateMore(!createMore)} className="flex items-center gap-1.5 text-xs text-muted hover:text-foreground transition-colors mt-3 ml-13">
+              <button onClick={() => setCreateMore(!createMore)} className="flex items-center gap-1.5 text-xs text-muted hover:text-foreground transition-colors mt-3">
                 {createMore ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                 {createMore ? 'Fewer options' : 'More options'}
               </button>
-              {createMore && (
-                <div className="ml-13">
-                  {renderMoreFields(createForm, setCreateForm, 'create', createImagePreview, (f) => { setCreateImageFile(f); setCreateImagePreview(f ? URL.createObjectURL(f) : null) }, null)}
-                </div>
-              )}
-              <p className="text-[10px] text-muted mt-3 ml-13">Enter to save · Esc to cancel</p>
+              {createMore && renderMoreFields(createForm, setCreateForm, 'create', createImagePreview, (f) => { setCreateImageFile(f); setCreateImagePreview(f ? URL.createObjectURL(f) : null) }, null)}
+              <div className="flex gap-2 mt-4">
+                <button onClick={handleCreate} className="flex-1 h-10 rounded-lg bg-accent/10 text-accent hover:bg-accent/20 text-sm font-medium transition-colors flex items-center justify-center gap-2"><Check className="w-4 h-4" /> Save</button>
+                <button onClick={cancelCreate} className="flex-1 h-10 rounded-lg border border-card-border text-muted hover:text-foreground hover:bg-white/[0.03] text-sm transition-colors flex items-center justify-center gap-2"><X className="w-4 h-4" /> Cancel</button>
+              </div>
             </div>
           ) : (
             (classTypes.length > 0 || showCreate) && (

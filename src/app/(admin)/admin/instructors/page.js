@@ -375,32 +375,11 @@ export default function AdminInstructorsPage() {
                       {editShowBio ? 'Hide bio' : 'More'}
                     </button>
                   </div>
-
-                  {/* Actions */}
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <button
-                      onClick={handleSaveEdit}
-                      disabled={submitting || !editForm.name.trim()}
-                      className={cn(
-                        'w-8 h-8 rounded-md flex items-center justify-center transition-colors',
-                        submitting || !editForm.name.trim()
-                          ? 'text-muted cursor-not-allowed'
-                          : 'text-green-400 hover:bg-green-400/10'
-                      )}
-                      title="Save (Enter)"
-                    >
-                      <Check className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={cancelEdit}
-                      className="w-8 h-8 rounded-md flex items-center justify-center text-muted hover:text-red-400 hover:bg-red-400/10 transition-colors"
-                      title="Cancel (Esc)"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
                 </div>
-                <p className="text-[10px] text-muted mt-2 ml-14">Enter to save · Esc to cancel</p>
+                <div className="flex gap-2 mt-4">
+                  <button onClick={handleSaveEdit} disabled={submitting || !editForm.name.trim()} className={cn('flex-1 h-10 rounded-lg bg-accent/10 text-accent hover:bg-accent/20 text-sm font-medium transition-colors flex items-center justify-center gap-2', (submitting || !editForm.name.trim()) && 'opacity-50 cursor-not-allowed')}><Check className="w-4 h-4" /> Save</button>
+                  <button onClick={cancelEdit} className="flex-1 h-10 rounded-lg border border-card-border text-muted hover:text-foreground hover:bg-white/[0.03] text-sm transition-colors flex items-center justify-center gap-2"><X className="w-4 h-4" /> Cancel</button>
+                </div>
               </div>
             ) : (
               /* Normal display row */
@@ -499,31 +478,11 @@ export default function AdminInstructorsPage() {
                   </button>
                 </div>
 
-                {/* Actions */}
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <button
-                    onClick={handleSaveCreate}
-                    disabled={submitting || !createForm.name.trim()}
-                    className={cn(
-                      'w-8 h-8 rounded-md flex items-center justify-center transition-colors',
-                      submitting || !createForm.name.trim()
-                        ? 'text-muted cursor-not-allowed'
-                        : 'text-green-400 hover:bg-green-400/10'
-                    )}
-                    title="Save (Enter)"
-                  >
-                    <Check className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={cancelCreate}
-                    className="w-8 h-8 rounded-md flex items-center justify-center text-muted hover:text-red-400 hover:bg-red-400/10 transition-colors"
-                    title="Cancel (Esc)"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
               </div>
-              <p className="text-[10px] text-muted mt-2 ml-14">Enter to save · Esc to cancel</p>
+              <div className="flex gap-2 mt-4">
+                <button onClick={handleSaveCreate} disabled={submitting || !createForm.name.trim()} className={cn('flex-1 h-10 rounded-lg bg-accent/10 text-accent hover:bg-accent/20 text-sm font-medium transition-colors flex items-center justify-center gap-2', (submitting || !createForm.name.trim()) && 'opacity-50 cursor-not-allowed')}><Check className="w-4 h-4" /> Save</button>
+                <button onClick={cancelCreate} className="flex-1 h-10 rounded-lg border border-card-border text-muted hover:text-foreground hover:bg-white/[0.03] text-sm transition-colors flex items-center justify-center gap-2"><X className="w-4 h-4" /> Cancel</button>
+              </div>
             </div>
           ) : (
             /* Add instructor button */

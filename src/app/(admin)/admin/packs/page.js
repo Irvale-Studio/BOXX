@@ -312,21 +312,16 @@ export default function AdminPacksPage() {
             if (isEditing) {
               return (
                 <div key={pack.id} data-pack-edit className="border-2 border-accent/40 rounded-lg p-3 sm:p-4 bg-card">
-                  <div className="flex items-start gap-3">
-                    <div className="flex-1 min-w-0">
-                      {renderPrimaryFields(editForm, setEditForm, 'edit', editNameRef)}
-                    </div>
-                    <div className="flex items-center gap-1.5 shrink-0 pt-5">
-                      <button onClick={handleUpdate} className="w-8 h-8 rounded-md flex items-center justify-center text-green-400 hover:bg-green-500/10 transition-colors" title="Save (Enter)"><Check className="w-5 h-5" /></button>
-                      <button onClick={cancelEdit} className="w-8 h-8 rounded-md flex items-center justify-center text-muted hover:text-red-400 hover:bg-red-500/10 transition-colors" title="Cancel (Esc)"><X className="w-5 h-5" /></button>
-                    </div>
-                  </div>
+                  {renderPrimaryFields(editForm, setEditForm, 'edit', editNameRef)}
                   <button onClick={() => setEditMore(!editMore)} className="flex items-center gap-1.5 text-xs text-muted hover:text-foreground transition-colors mt-3">
                     {editMore ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                     {editMore ? 'Fewer options' : 'More options'}
                   </button>
                   {editMore && renderMoreFields(editForm, setEditForm, 'edit')}
-                  <p className="text-[10px] text-muted mt-3">Enter to save · Esc to cancel</p>
+                  <div className="flex gap-2 mt-4">
+                    <button onClick={handleUpdate} className="flex-1 h-10 rounded-lg bg-accent/10 text-accent hover:bg-accent/20 text-sm font-medium transition-colors flex items-center justify-center gap-2"><Check className="w-4 h-4" /> Save</button>
+                    <button onClick={cancelEdit} className="flex-1 h-10 rounded-lg border border-card-border text-muted hover:text-foreground hover:bg-white/[0.03] text-sm transition-colors flex items-center justify-center gap-2"><X className="w-4 h-4" /> Cancel</button>
+                  </div>
                 </div>
               )
             }
@@ -371,21 +366,16 @@ export default function AdminPacksPage() {
           {/* Inline create */}
           {showCreate ? (
             <div data-pack-create className="border-2 border-dashed border-accent/40 rounded-lg p-3 sm:p-4 bg-card">
-              <div className="flex items-start gap-3">
-                <div className="flex-1 min-w-0">
-                  {renderPrimaryFields(createForm, setCreateForm, 'create', createNameRef)}
-                </div>
-                <div className="flex items-center gap-1.5 shrink-0 pt-5">
-                  <button onClick={handleCreate} className="w-8 h-8 rounded-md flex items-center justify-center text-green-400 hover:bg-green-500/10 transition-colors" title="Save (Enter)"><Check className="w-5 h-5" /></button>
-                  <button onClick={cancelCreate} className="w-8 h-8 rounded-md flex items-center justify-center text-muted hover:text-red-400 hover:bg-red-500/10 transition-colors" title="Cancel (Esc)"><X className="w-5 h-5" /></button>
-                </div>
-              </div>
+              {renderPrimaryFields(createForm, setCreateForm, 'create', createNameRef)}
               <button onClick={() => setCreateMore(!createMore)} className="flex items-center gap-1.5 text-xs text-muted hover:text-foreground transition-colors mt-3">
                 {createMore ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                 {createMore ? 'Fewer options' : 'More options'}
               </button>
               {createMore && renderMoreFields(createForm, setCreateForm, 'create')}
-              <p className="text-[10px] text-muted mt-3">Enter to save · Esc to cancel</p>
+              <div className="flex gap-2 mt-4">
+                <button onClick={handleCreate} className="flex-1 h-10 rounded-lg bg-accent/10 text-accent hover:bg-accent/20 text-sm font-medium transition-colors flex items-center justify-center gap-2"><Check className="w-4 h-4" /> Save</button>
+                <button onClick={cancelCreate} className="flex-1 h-10 rounded-lg border border-card-border text-muted hover:text-foreground hover:bg-white/[0.03] text-sm transition-colors flex items-center justify-center gap-2"><X className="w-4 h-4" /> Cancel</button>
+              </div>
             </div>
           ) : (
             (packs.length > 0 || showCreate) && (
