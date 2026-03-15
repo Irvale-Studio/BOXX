@@ -5,7 +5,8 @@ import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import Image from 'next/image'
 import { cn } from '@/lib/utils'
-import { X, Check, User, ChevronDown, ChevronUp } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { X, Check, User, ChevronDown, ChevronUp, Trash2 } from 'lucide-react'
 
 export default function AdminInstructorsPage() {
   const [instructors, setInstructors] = useState([])
@@ -13,6 +14,8 @@ export default function AdminInstructorsPage() {
   const [toast, setToast] = useState(null)
   const [submitting, setSubmitting] = useState(false)
   const [fetchError, setFetchError] = useState(null)
+  const [deletingInst, setDeletingInst] = useState(null)
+  const [deleteSubmitting, setDeleteSubmitting] = useState(false)
 
   // Inline create state
   const [showCreate, setShowCreate] = useState(false)
@@ -187,6 +190,32 @@ export default function AdminInstructorsPage() {
     }
   }
 
+  async function handleDelete(inst) {
+    setDeleteSubmitting(true)
+    // Optimistic remove
+    setInstructors((prev) => prev.filter((i) => i.id !== inst.id))
+    setDeletingInst(null)
+    try {
+      const res = await fetch('/api/admin/instructors', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: inst.id }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        fetchInstructors()
+        setToast({ message: data.error || 'Failed to delete', type: 'error' })
+        return
+      }
+      setToast({ message: 'Instructor deleted', type: 'success' })
+    } catch {
+      fetchInstructors()
+      setToast({ message: 'Something went wrong', type: 'error' })
+    } finally {
+      setDeleteSubmitting(false)
+    }
+  }
+
   const handleCreateKeyDown = useCallback((e) => {
     if (e.key === 'Enter') {
       e.preventDefault()
@@ -240,6 +269,36 @@ export default function AdminInstructorsPage() {
         )}>
           <span className="text-sm flex-1">{toast.message}</span>
           <button onClick={() => setToast(null)} className="opacity-60 hover:opacity-100 shrink-0"><X className="w-3.5 h-3.5" /></button>
+        </div>
+      )}
+
+      {/* Delete confirmation dialog */}
+      {deletingInst && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-card border border-card-border rounded-lg p-6 max-w-sm mx-4 shadow-xl">
+            <h3 className="text-foreground font-semibold mb-2">Delete Instructor</h3>
+            <p className="text-sm text-muted mb-4">
+              Are you sure you want to delete <span className="text-foreground font-medium">{deletingInst.name}</span>? This cannot be undone.
+            </p>
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setDeletingInst(null)}
+                disabled={deleteSubmitting}
+              >
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => handleDelete(deletingInst)}
+                disabled={deleteSubmitting}
+                className="bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20"
+              >
+                {deleteSubmitting ? 'Deleting...' : 'Delete'}
+              </Button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -345,11 +404,14 @@ export default function AdminInstructorsPage() {
               </div>
             ) : (
               /* Normal display row */
-              <button
+              <div
                 key={inst.id}
-                onClick={() => startEdit(inst)}
+                onClick={(e) => {
+                  if (e.target.closest('[data-no-edit]')) return
+                  startEdit(inst)
+                }}
                 className={cn(
-                  'w-full text-left border border-card-border rounded-lg p-3 sm:p-4 transition-colors hover:bg-white/[0.03]',
+                  'w-full text-left border border-card-border rounded-lg p-3 sm:p-4 transition-colors hover:bg-white/[0.03] cursor-pointer',
                   !inst.active && 'opacity-50'
                 )}
               >
@@ -378,15 +440,22 @@ export default function AdminInstructorsPage() {
                     {inst.bio && <p className="text-xs text-muted truncate mt-0.5">{inst.bio}</p>}
                   </div>
 
-                  {/* Toggle */}
-                  <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
+                  {/* Controls */}
+                  <div className="flex items-center gap-2 shrink-0" data-no-edit>
                     <Switch
                       checked={inst.active}
                       onCheckedChange={() => handleToggleActive({ stopPropagation: () => {} }, inst)}
                     />
+                    <button
+                      onClick={() => setDeletingInst(inst)}
+                      className="p-1.5 rounded-md text-muted hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                      title="Delete instructor"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
                   </div>
                 </div>
-              </button>
+              </div>
             )
           ))}
 

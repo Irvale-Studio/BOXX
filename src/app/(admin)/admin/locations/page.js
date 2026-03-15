@@ -752,16 +752,17 @@ export default function AdminLocationsPage() {
 
                 {/* Zones section (expanded) */}
                 {isExpanded && (
-                  <div className="border-t border-card-border bg-background/30 px-4 py-3 space-y-2">
-                    <div className="flex items-center ml-7">
-                      <div className="flex items-center gap-2 text-sm text-muted">
-                        <Layers className="w-3.5 h-3.5" />
-                        <span>Zones / Areas</span>
+                  <div className="border-t border-card-border bg-background/30 px-4 py-3">
+                    <div className="ml-7 pl-4 border-l-2 border-card-border space-y-2">
+                      <div className="flex items-center">
+                        <div className="flex items-center gap-2 text-sm text-muted">
+                          <Layers className="w-3.5 h-3.5" />
+                          <span>Zones / Areas</span>
+                        </div>
                       </div>
-                    </div>
 
                     {zones.length === 0 && creatingZoneForLoc !== loc.id && (
-                      <p className="text-xs text-muted/50 ml-7 py-2">No zones. Add zones to organize different areas within this location.</p>
+                      <p className="text-xs text-muted/50 py-2">No zones. Add zones to organize different areas within this location.</p>
                     )}
 
                     {zones.map((zone) => {
@@ -769,7 +770,7 @@ export default function AdminLocationsPage() {
                       return (
                         <div key={zone.id}>
                           <div className={cn(
-                            'ml-7 flex items-center justify-between py-2 px-3 rounded-md bg-card/50 border border-card-border/50',
+                            'flex items-center justify-between py-2 px-3 rounded-md bg-card/50 border border-card-border/50',
                             !zone.is_active && 'opacity-50'
                           )}>
                             <div className="min-w-0">
@@ -806,7 +807,7 @@ export default function AdminLocationsPage() {
 
                           {/* Inline zone edit */}
                           {isZoneEditing && (
-                            <div ref={zoneFormRef} className="ml-7 mt-1 px-3 py-3 rounded-md bg-background/50 border border-card-border/50">
+                            <div ref={zoneFormRef} className="mt-1 px-3 py-3 rounded-md bg-background/50 border border-card-border/50">
                               <div className="flex items-end gap-2">
                                 <div className="flex-1">
                                   <Label className="text-xs text-muted">Name *</Label>
@@ -885,7 +886,7 @@ export default function AdminLocationsPage() {
 
                     {/* Inline zone create */}
                     {creatingZoneForLoc === loc.id && (
-                      <div ref={zoneFormRef} className="ml-7 px-3 py-3 rounded-md border border-dashed border-card-border bg-background/50">
+                      <div ref={zoneFormRef} className="px-3 py-3 rounded-md border border-dashed border-card-border bg-background/50">
                         <div className="flex items-end gap-2">
                           <div className="flex-1">
                             <Label className="text-xs text-muted">Name *</Label>
@@ -963,12 +964,13 @@ export default function AdminLocationsPage() {
                     {creatingZoneForLoc !== loc.id && (
                       <button
                         onClick={() => startCreateZone(loc.id)}
-                        className="ml-7 w-[calc(100%-1.75rem)] py-2 rounded-md border border-dashed border-card-border text-xs text-muted hover:text-accent hover:border-accent/30 transition-colors flex items-center justify-center gap-1.5"
+                        className="w-full py-2 rounded-md border border-dashed border-card-border text-xs text-muted hover:text-accent hover:border-accent/30 transition-colors flex items-center justify-center gap-1.5"
                       >
                         <Plus className="w-3 h-3" />
                         Add zone
                       </button>
                     )}
+                    </div>{/* end border-l wrapper */}
                   </div>
                 )}
               </div>
