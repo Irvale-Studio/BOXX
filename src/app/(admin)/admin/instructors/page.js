@@ -29,6 +29,7 @@ export default function AdminInstructorsPage() {
   const [editForm, setEditForm] = useState({ name: '', bio: '', locationIds: [] })
   const [editShowMore, setEditShowMore] = useState(false)
   const editNameRef = useRef(null)
+  const [formError, setFormError] = useState(null)
 
   useEffect(() => {
     if (!toast) return
@@ -113,7 +114,9 @@ export default function AdminInstructorsPage() {
   }
 
   async function handleSaveCreate() {
-    if (!createForm.name.trim() || submitting) return
+    if (!createForm.name.trim()) { setFormError('Name is required'); return }
+    setFormError(null)
+    if (submitting) return
 
     // Optimistic: add immediately, close form
     const tempId = `temp-${Date.now()}`
@@ -153,7 +156,9 @@ export default function AdminInstructorsPage() {
   }
 
   async function handleSaveEdit() {
-    if (!editForm.name.trim() || submitting) return
+    if (!editForm.name.trim()) { setFormError('Name is required'); return }
+    setFormError(null)
+    if (submitting) return
 
     // Optimistic: update immediately, close form
     const prevInstructors = [...instructors]
@@ -278,7 +283,7 @@ export default function AdminInstructorsPage() {
           <h1 className="text-2xl font-bold text-foreground">Instructors</h1>
           <p className="text-sm text-muted mt-1">Manage your team of instructors and coaches</p>
         </div>
-        <button onClick={startCreate} className="px-3 py-2 rounded-lg bg-accent/10 text-accent hover:bg-accent/20 text-sm font-medium transition-colors flex items-center gap-1.5"><Plus className="w-4 h-4" /> Add</button>
+        <button onClick={startCreate} className="px-3 py-2 rounded-lg bg-green-500/10 text-green-400 hover:bg-green-500/20 text-sm font-medium transition-colors flex items-center gap-1.5"><Plus className="w-4 h-4" /> Add</button>
       </div>
 
       {/* Toast */}
@@ -437,9 +442,10 @@ export default function AdminInstructorsPage() {
                     )}
                   </div>
                 </div>
+                {formError && <p className="text-[11px] text-red-400 mt-2">{formError}</p>}
                 <div className="flex gap-2 mt-4">
-                  <button onClick={cancelEdit} className="flex-1 h-10 rounded-lg border border-card-border text-muted hover:text-foreground hover:bg-white/[0.03] text-sm transition-colors flex items-center justify-center gap-2"><X className="w-4 h-4" /> Cancel</button>
-                  <button onClick={handleSaveEdit} disabled={submitting || !editForm.name.trim()} className={cn('flex-1 h-10 rounded-lg bg-accent/10 text-accent hover:bg-accent/20 text-sm font-medium transition-colors flex items-center justify-center gap-2', (submitting || !editForm.name.trim()) && 'opacity-50 cursor-not-allowed')}><Check className="w-4 h-4" /> Save</button>
+                  <button onClick={() => { cancelEdit(); setFormError(null) }} className="flex-1 h-10 rounded-lg border border-card-border text-muted hover:text-foreground hover:bg-white/[0.03] text-sm transition-colors flex items-center justify-center gap-2"><X className="w-4 h-4" /> Cancel</button>
+                  <button onClick={handleSaveEdit} disabled={submitting} className={cn('flex-1 h-10 rounded-lg bg-green-500/10 text-green-400 hover:bg-green-500/20 text-sm font-medium transition-colors flex items-center justify-center gap-2', submitting && 'opacity-50 cursor-not-allowed')}><Check className="w-4 h-4" /> Save</button>
                 </div>
               </div>
             ) : (
@@ -587,9 +593,10 @@ export default function AdminInstructorsPage() {
                 </div>
 
               </div>
+              {formError && <p className="text-[11px] text-red-400 mt-2">{formError}</p>}
               <div className="flex gap-2 mt-4">
-                <button onClick={cancelCreate} className="flex-1 h-10 rounded-lg border border-card-border text-muted hover:text-foreground hover:bg-white/[0.03] text-sm transition-colors flex items-center justify-center gap-2"><X className="w-4 h-4" /> Cancel</button>
-                <button onClick={handleSaveCreate} disabled={submitting || !createForm.name.trim()} className={cn('flex-1 h-10 rounded-lg bg-accent/10 text-accent hover:bg-accent/20 text-sm font-medium transition-colors flex items-center justify-center gap-2', (submitting || !createForm.name.trim()) && 'opacity-50 cursor-not-allowed')}><Check className="w-4 h-4" /> Save</button>
+                <button onClick={() => { cancelCreate(); setFormError(null) }} className="flex-1 h-10 rounded-lg border border-card-border text-muted hover:text-foreground hover:bg-white/[0.03] text-sm transition-colors flex items-center justify-center gap-2"><X className="w-4 h-4" /> Cancel</button>
+                <button onClick={handleSaveCreate} disabled={submitting} className={cn('flex-1 h-10 rounded-lg bg-green-500/10 text-green-400 hover:bg-green-500/20 text-sm font-medium transition-colors flex items-center justify-center gap-2', submitting && 'opacity-50 cursor-not-allowed')}><Check className="w-4 h-4" /> Save</button>
               </div>
             </div>
           ) : (

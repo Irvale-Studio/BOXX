@@ -89,6 +89,17 @@ function EmailOverviewTab() {
     return () => clearTimeout(t)
   }, [toast])
 
+  // Click outside to close edit
+  useEffect(() => {
+    if (!editingSlug) return
+    function handleClick(e) {
+      const el = document.querySelector('[data-email-edit]')
+      if (el && !el.contains(e.target)) cancelEdit()
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [editingSlug])
+
   useEffect(() => {
     async function load() {
       try {
@@ -221,7 +232,7 @@ function EmailOverviewTab() {
 
           if (isEditing) {
             return (
-              <div key={event.slug} className="border border-accent/40 rounded-lg p-3 sm:p-4 bg-card">
+              <div key={event.slug} data-email-edit className="border border-accent/40 rounded-lg p-3 sm:p-4 bg-card">
                 <p className="text-sm font-medium text-foreground mb-3">{event.name}</p>
 
                 <div className="space-y-3">
@@ -261,7 +272,7 @@ function EmailOverviewTab() {
 
                 <div className="flex gap-2 mt-4">
                   <button onClick={cancelEdit} className="flex-1 h-10 rounded-lg border border-card-border text-muted hover:text-foreground hover:bg-white/[0.03] text-sm transition-colors flex items-center justify-center gap-2"><X className="w-4 h-4" /> Cancel</button>
-                  <button onClick={saveEdit} disabled={saving === event.slug} className={cn('flex-1 h-10 rounded-lg bg-accent/10 text-accent hover:bg-accent/20 text-sm font-medium transition-colors flex items-center justify-center gap-2', saving === event.slug && 'opacity-50')}><Check className="w-4 h-4" /> {saving === event.slug ? 'Saving...' : 'Save'}</button>
+                  <button onClick={saveEdit} disabled={saving === event.slug} className={cn('flex-1 h-10 rounded-lg bg-green-500/10 text-green-400 hover:bg-green-500/20 text-sm font-medium transition-colors flex items-center justify-center gap-2', saving === event.slug && 'opacity-50')}><Check className="w-4 h-4" /> {saving === event.slug ? 'Saving...' : 'Save'}</button>
                 </div>
               </div>
             )
@@ -270,8 +281,9 @@ function EmailOverviewTab() {
           return (
             <div
               key={event.slug}
+              onClick={(e) => { if (e.target.closest('[data-no-edit]')) return; startEdit(event.slug) }}
               className={cn(
-                'border border-card-border rounded-lg p-3 sm:p-4 transition-colors hover:bg-white/[0.03]',
+                'border border-card-border rounded-lg p-3 sm:p-4 transition-colors hover:bg-white/[0.03] cursor-pointer',
                 !enabled && 'opacity-50'
               )}
             >
@@ -283,9 +295,8 @@ function EmailOverviewTab() {
                   </div>
                   <p className="text-xs text-muted mt-0.5">{event.description}</p>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center gap-2 shrink-0" data-no-edit>
                   <button onClick={() => openPreview(event.slug)} className="px-2 py-1 text-xs text-muted hover:text-foreground transition-colors">Preview</button>
-                  <button onClick={() => startEdit(event.slug)} className="px-2 py-1 text-xs text-muted hover:text-foreground transition-colors">Edit</button>
                   <Switch checked={enabled} onCheckedChange={() => toggleEnabled(event.slug)} />
                 </div>
               </div>
@@ -296,18 +307,18 @@ function EmailOverviewTab() {
 
       {/* Preview Dialog */}
       <Dialog open={!!previewSlug} onOpenChange={() => setPreviewSlug(null)}>
-        <DialogContent className="max-w-2xl max-h-[85vh] p-0 overflow-hidden">
+        <DialogContent className="max-w-4xl max-h-[90vh] p-0 overflow-hidden">
           <DialogHeader className="px-6 pt-6 pb-0">
             <DialogTitle className="text-base">
               {EMAIL_EVENTS.find((e) => e.slug === previewSlug)?.name} — Preview
             </DialogTitle>
             <DialogDescription>Preview with sample data. Actual emails use real member and class information.</DialogDescription>
           </DialogHeader>
-          <div className="px-6 pb-6 overflow-auto" style={{ maxHeight: 'calc(85vh - 100px)' }}>
+          <div className="px-6 pb-6 overflow-auto" style={{ maxHeight: 'calc(90vh - 100px)' }}>
             {previewLoading ? (
               <div className="h-64 flex items-center justify-center text-muted text-sm">Loading preview...</div>
             ) : (
-              <iframe srcDoc={previewHtml} className="w-full border border-card-border rounded-lg" style={{ height: '600px', background: '#0a0a0a' }} title="Email preview" sandbox="" />
+              <iframe srcDoc={previewHtml} className="w-full border border-card-border rounded-lg" style={{ height: '75vh', background: '#0a0a0a' }} title="Email preview" sandbox="" />
             )}
           </div>
         </DialogContent>

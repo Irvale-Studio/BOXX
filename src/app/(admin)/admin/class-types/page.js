@@ -160,8 +160,11 @@ export default function ClassTypesPage() {
     }
   }
 
+  const [formError, setFormError] = useState(null)
+
   async function handleCreate() {
-    if (!createForm.name.trim()) return
+    if (!createForm.name.trim()) { setFormError('Name is required'); return }
+    setFormError(null)
 
     const tempId = `temp-${Date.now()}`
     const optimistic = {
@@ -200,7 +203,8 @@ export default function ClassTypesPage() {
   }
 
   async function handleUpdate() {
-    if (!editForm.name.trim()) return
+    if (!editForm.name.trim()) { setFormError('Name is required'); return }
+    setFormError(null)
     const id = editingId
     const prev = [...classTypes]
     setClassTypes((list) => list.map((ct) => ct.id === id ? { ...ct, ...editForm } : ct))
@@ -356,7 +360,7 @@ export default function ClassTypesPage() {
           <h1 className="text-2xl font-bold text-foreground">Events</h1>
           <p className="text-sm text-muted mt-1">Manage your class types and event categories</p>
         </div>
-        <button onClick={startCreate} className="px-3 py-2 rounded-lg bg-accent/10 text-accent hover:bg-accent/20 text-sm font-medium transition-colors flex items-center gap-1.5"><Plus className="w-4 h-4" /> Add</button>
+        <button onClick={startCreate} className="px-3 py-2 rounded-lg bg-green-500/10 text-green-400 hover:bg-green-500/20 text-sm font-medium transition-colors flex items-center gap-1.5"><Plus className="w-4 h-4" /> Add</button>
       </div>
 
       {/* Toast */}
@@ -441,9 +445,10 @@ export default function ClassTypesPage() {
                     {editMore ? 'Fewer options' : 'More options'}
                   </button>
                   {editMore && renderMoreFields(editForm, setEditForm, 'edit', editImagePreview, (f) => { setEditImageFile(f); setEditImagePreview(f ? URL.createObjectURL(f) : null) }, editForm.image_url ? () => deleteClassImage(ct.id) : null)}
+                  {formError && <p className="text-[11px] text-red-400 mt-2">{formError}</p>}
                   <div className="flex gap-2 mt-4">
-                    <button onClick={cancelEdit} className="flex-1 h-10 rounded-lg border border-card-border text-muted hover:text-foreground hover:bg-white/[0.03] text-sm transition-colors flex items-center justify-center gap-2"><X className="w-4 h-4" /> Cancel</button>
-                    <button onClick={handleUpdate} className="flex-1 h-10 rounded-lg bg-accent/10 text-accent hover:bg-accent/20 text-sm font-medium transition-colors flex items-center justify-center gap-2"><Check className="w-4 h-4" /> Save</button>
+                    <button onClick={() => { cancelEdit(); setFormError(null) }} className="flex-1 h-10 rounded-lg border border-card-border text-muted hover:text-foreground hover:bg-white/[0.03] text-sm transition-colors flex items-center justify-center gap-2"><X className="w-4 h-4" /> Cancel</button>
+                    <button onClick={handleUpdate} className="flex-1 h-10 rounded-lg bg-green-500/10 text-green-400 hover:bg-green-500/20 text-sm font-medium transition-colors flex items-center justify-center gap-2"><Check className="w-4 h-4" /> Save</button>
                   </div>
                 </div>
               )
@@ -513,9 +518,10 @@ export default function ClassTypesPage() {
                 {createMore ? 'Fewer options' : 'More options'}
               </button>
               {createMore && renderMoreFields(createForm, setCreateForm, 'create', createImagePreview, (f) => { setCreateImageFile(f); setCreateImagePreview(f ? URL.createObjectURL(f) : null) }, null)}
+              {formError && <p className="text-[11px] text-red-400 mt-2">{formError}</p>}
               <div className="flex gap-2 mt-4">
-                <button onClick={cancelCreate} className="flex-1 h-10 rounded-lg border border-card-border text-muted hover:text-foreground hover:bg-white/[0.03] text-sm transition-colors flex items-center justify-center gap-2"><X className="w-4 h-4" /> Cancel</button>
-                <button onClick={handleCreate} className="flex-1 h-10 rounded-lg bg-accent/10 text-accent hover:bg-accent/20 text-sm font-medium transition-colors flex items-center justify-center gap-2"><Check className="w-4 h-4" /> Save</button>
+                <button onClick={() => { cancelCreate(); setFormError(null) }} className="flex-1 h-10 rounded-lg border border-card-border text-muted hover:text-foreground hover:bg-white/[0.03] text-sm transition-colors flex items-center justify-center gap-2"><X className="w-4 h-4" /> Cancel</button>
+                <button onClick={handleCreate} className="flex-1 h-10 rounded-lg bg-green-500/10 text-green-400 hover:bg-green-500/20 text-sm font-medium transition-colors flex items-center justify-center gap-2"><Check className="w-4 h-4" /> Save</button>
               </div>
             </div>
           ) : (

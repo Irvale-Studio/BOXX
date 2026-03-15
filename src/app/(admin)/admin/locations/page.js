@@ -543,7 +543,7 @@ export default function AdminLocationsPage() {
           <h1 className="text-2xl font-bold text-foreground">Locations</h1>
           <p className="text-sm text-muted mt-1">Manage your studio locations and areas within them</p>
         </div>
-        <button onClick={startCreateLocation} className="px-3 py-2 rounded-lg bg-accent/10 text-accent hover:bg-accent/20 text-sm font-medium transition-colors flex items-center gap-1.5"><Plus className="w-4 h-4" /> Add</button>
+        <button onClick={startCreateLocation} className="px-3 py-2 rounded-lg bg-green-500/10 text-green-400 hover:bg-green-500/20 text-sm font-medium transition-colors flex items-center gap-1.5"><Plus className="w-4 h-4" /> Add</button>
       </div>
 
       {/* Toast — fixed position */}
@@ -660,7 +660,7 @@ export default function AdminLocationsPage() {
                   {locMoreOptions && renderLocOptionalFields()}
                   <div className="flex gap-2 mt-4">
                     <button onClick={cancelEditLocation} className="flex-1 h-10 rounded-lg border border-card-border text-muted hover:text-foreground hover:bg-white/[0.03] text-sm transition-colors flex items-center justify-center gap-2"><X className="w-4 h-4" /> Cancel</button>
-                    <button onClick={() => saveLocation('edit')} className="flex-1 h-10 rounded-lg bg-accent/10 text-accent hover:bg-accent/20 text-sm font-medium transition-colors flex items-center justify-center gap-2"><Check className="w-4 h-4" /> Save</button>
+                    <button onClick={() => saveLocation('edit')} className="flex-1 h-10 rounded-lg bg-green-500/10 text-green-400 hover:bg-green-500/20 text-sm font-medium transition-colors flex items-center justify-center gap-2"><Check className="w-4 h-4" /> Save</button>
                   </div>
                 </div>
               )
@@ -809,7 +809,7 @@ export default function AdminLocationsPage() {
                               )}
                               <div className="flex gap-2 mt-3">
                                 <button onClick={cancelEditZone} className="flex-1 h-9 rounded-lg border border-card-border text-muted hover:text-foreground hover:bg-white/[0.03] text-xs transition-colors flex items-center justify-center gap-1.5"><X className="w-3.5 h-3.5" /> Cancel</button>
-                                <button onClick={() => saveZone('edit')} className="flex-1 h-9 rounded-lg bg-accent/10 text-accent hover:bg-accent/20 text-xs font-medium transition-colors flex items-center justify-center gap-1.5"><Check className="w-3.5 h-3.5" /> Save</button>
+                                <button onClick={() => saveZone('edit')} className="flex-1 h-9 rounded-lg bg-green-500/10 text-green-400 hover:bg-green-500/20 text-xs font-medium transition-colors flex items-center justify-center gap-1.5"><Check className="w-3.5 h-3.5" /> Save</button>
                               </div>
                             </div>
                           )}
@@ -870,7 +870,7 @@ export default function AdminLocationsPage() {
                         )}
                         <div className="flex gap-2 mt-3">
                           <button onClick={cancelCreateZone} className="flex-1 h-9 rounded-lg border border-card-border text-muted hover:text-foreground hover:bg-white/[0.03] text-xs transition-colors flex items-center justify-center gap-1.5"><X className="w-3.5 h-3.5" /> Cancel</button>
-                          <button onClick={() => saveZone('create')} className="flex-1 h-9 rounded-lg bg-accent/10 text-accent hover:bg-accent/20 text-xs font-medium transition-colors flex items-center justify-center gap-1.5"><Check className="w-3.5 h-3.5" /> Save</button>
+                          <button onClick={() => saveZone('create')} className="flex-1 h-9 rounded-lg bg-green-500/10 text-green-400 hover:bg-green-500/20 text-xs font-medium transition-colors flex items-center justify-center gap-1.5"><Check className="w-3.5 h-3.5" /> Save</button>
                         </div>
                       </div>
                     )}
@@ -924,7 +924,7 @@ export default function AdminLocationsPage() {
               )}
               <div className="flex gap-2 mt-4">
                 <button onClick={cancelCreateLocation} className="flex-1 h-10 rounded-lg border border-card-border text-muted hover:text-foreground hover:bg-white/[0.03] text-sm transition-colors flex items-center justify-center gap-2"><X className="w-4 h-4" /> Cancel</button>
-                <button onClick={() => saveLocation('create')} className="flex-1 h-10 rounded-lg bg-accent/10 text-accent hover:bg-accent/20 text-sm font-medium transition-colors flex items-center justify-center gap-2"><Check className="w-4 h-4" /> Save</button>
+                <button onClick={() => saveLocation('create')} className="flex-1 h-10 rounded-lg bg-green-500/10 text-green-400 hover:bg-green-500/20 text-sm font-medium transition-colors flex items-center justify-center gap-2"><Check className="w-4 h-4" /> Save</button>
               </div>
             </div>
           )}

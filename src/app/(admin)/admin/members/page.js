@@ -58,6 +58,17 @@ export default function AdminMembersPage() {
     return () => clearTimeout(t)
   }, [toast])
 
+  // Click outside to close add member form
+  useEffect(() => {
+    if (!showAddMember) return
+    function handleClick(e) {
+      const el = document.querySelector('[data-add-member]')
+      if (el && !el.contains(e.target)) { setShowAddMember(false); setAddForm({ name: '', email: '', password: '' }); setAddError(null) }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [showAddMember])
+
   const fetchMembers = useCallback(async () => {
     setLoading(true)
     setFetchError(null)
@@ -227,8 +238,13 @@ export default function AdminMembersPage() {
     setPage(1)
   }
 
+  const [addError, setAddError] = useState(null)
+
   async function handleAddMember() {
-    if (!addForm.name.trim() || !addForm.email.trim() || !addForm.password.trim()) return
+    if (!addForm.name.trim()) { setAddError('Name is required'); return }
+    if (!addForm.email.trim()) { setAddError('Email is required'); return }
+    if (!addForm.password.trim() || addForm.password.length < 8) { setAddError('Password must be at least 8 characters'); return }
+    setAddError(null)
     setAddSubmitting(true)
     try {
       const res = await fetch('/api/auth/register', {
@@ -326,7 +342,7 @@ export default function AdminMembersPage() {
 
       {/* Inline add member */}
       {showAddMember && (
-        <div className="border border-dashed border-accent/40 rounded-lg p-3 sm:p-4 bg-card">
+        <div data-add-member className="border border-dashed border-accent/40 rounded-lg p-3 sm:p-4 bg-card">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
               <label className="text-[11px] text-muted block mb-1">Name *</label>
@@ -341,9 +357,10 @@ export default function AdminMembersPage() {
               <Input type="password" value={addForm.password} onChange={(e) => setAddForm((f) => ({ ...f, password: e.target.value }))} placeholder="Min 8 characters" className="h-8 text-sm bg-background border-card-border" />
             </div>
           </div>
+          {addError && <p className="text-[11px] text-red-400 mt-2">{addError}</p>}
           <div className="flex gap-2 mt-4">
-            <button onClick={() => { setShowAddMember(false); setAddForm({ name: '', email: '', password: '' }) }} className="flex-1 h-10 rounded-lg border border-card-border text-muted hover:text-foreground hover:bg-white/[0.03] text-sm transition-colors flex items-center justify-center gap-2"><X className="w-4 h-4" /> Cancel</button>
-            <button onClick={handleAddMember} disabled={addSubmitting || !addForm.name.trim() || !addForm.email.trim() || !addForm.password.trim()} className={cn('flex-1 h-10 rounded-lg bg-accent/10 text-accent hover:bg-accent/20 text-sm font-medium transition-colors flex items-center justify-center gap-2', (addSubmitting || !addForm.name.trim() || !addForm.email.trim() || !addForm.password.trim()) && 'opacity-50 cursor-not-allowed')}><Check className="w-4 h-4" /> {addSubmitting ? 'Adding...' : 'Add Member'}</button>
+            <button onClick={() => { setShowAddMember(false); setAddForm({ name: '', email: '', password: '' }); setAddError(null) }} className="flex-1 h-10 rounded-lg border border-card-border text-muted hover:text-foreground hover:bg-white/[0.03] text-sm transition-colors flex items-center justify-center gap-2"><X className="w-4 h-4" /> Cancel</button>
+            <button onClick={handleAddMember} disabled={addSubmitting} className={cn('flex-1 h-10 rounded-lg bg-green-500/10 text-green-400 hover:bg-green-500/20 text-sm font-medium transition-colors flex items-center justify-center gap-2', addSubmitting && 'opacity-50 cursor-not-allowed')}><Check className="w-4 h-4" /> {addSubmitting ? 'Adding...' : 'Add Member'}</button>
           </div>
         </div>
       )}

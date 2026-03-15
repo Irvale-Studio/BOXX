@@ -74,6 +74,13 @@ select {
   padding-right: 32px !important;
 }
 
+/* Dropdown menu styling (browser-native options) */
+select option {
+  background: var(--card);
+  color: var(--foreground);
+  padding: 8px 12px;
+}
+
 /* Cursor pointer on all interactive elements */
 button,
 a,
