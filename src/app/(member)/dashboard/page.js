@@ -1244,7 +1244,7 @@ function ScheduleSection({ credits, onUpdate, sharedClassId, view, onViewChange,
         {/* Blended image or gradient from right side */}
         <div className="absolute top-0 right-0 bottom-0 w-2/3 sm:w-1/2 overflow-hidden">
           {classImage ? (
-            <Image src={classImage} alt="" fill className="object-cover object-right" sizes="(max-width: 640px) 66vw, 50vw" style={{ WebkitMaskImage: 'linear-gradient(to left, black 0%, black 30%, transparent 100%)', maskImage: 'linear-gradient(to left, black 0%, black 30%, transparent 100%)' }} />
+            <Image src={classImage} alt="" fill className="object-cover object-right" sizes="(max-width: 640px) 66vw, 50vw" style={{ WebkitMaskImage: 'linear-gradient(to left, rgba(0,0,0,1) 0%, rgba(0,0,0,0.6) 40%, rgba(0,0,0,0) 70%)', maskImage: 'linear-gradient(to left, rgba(0,0,0,1) 0%, rgba(0,0,0,0.6) 40%, rgba(0,0,0,0) 70%)' }} />
           ) : (
             <div className="absolute inset-0" style={{ background: `linear-gradient(to right, transparent, ${classColor}15, ${classColor}08)` }} />
           )}
@@ -2040,7 +2040,7 @@ function BookingsSection({ upcoming, past, waitlist = [], credits = [], onUpdate
         {/* Blended image or gradient from right */}
         <div className="absolute top-0 right-0 bottom-0 w-2/3 sm:w-1/2 overflow-hidden">
           {classImage ? (
-            <Image src={classImage} alt="" fill className="object-cover object-right" sizes="(max-width: 640px) 66vw, 50vw" style={{ WebkitMaskImage: 'linear-gradient(to left, black 0%, black 30%, transparent 100%)', maskImage: 'linear-gradient(to left, black 0%, black 30%, transparent 100%)' }} />
+            <Image src={classImage} alt="" fill className="object-cover object-right" sizes="(max-width: 640px) 66vw, 50vw" style={{ WebkitMaskImage: 'linear-gradient(to left, rgba(0,0,0,1) 0%, rgba(0,0,0,0.6) 40%, rgba(0,0,0,0) 70%)', maskImage: 'linear-gradient(to left, rgba(0,0,0,1) 0%, rgba(0,0,0,0.6) 40%, rgba(0,0,0,0) 70%)' }} />
           ) : (
             <div className="absolute inset-0" style={{ background: `linear-gradient(to right, transparent, ${classColor}15, ${classColor}08)` }} />
           )}
