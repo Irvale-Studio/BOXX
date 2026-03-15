@@ -283,7 +283,7 @@ export default function AdminInstructorsPage() {
           <h1 className="text-2xl font-bold text-foreground">Instructors</h1>
           <p className="text-sm text-muted mt-1">Manage your team of instructors and coaches</p>
         </div>
-        <button onClick={startCreate} className="px-3 py-2 rounded-lg bg-green-500/10 text-green-400 hover:bg-green-500/20 text-sm font-medium transition-colors flex items-center gap-1.5"><Plus className="w-4 h-4" /> Add</button>
+        <button onClick={startCreate} className="px-3 py-2 rounded-lg bg-accent/10 text-accent hover:bg-accent/20 text-sm font-medium transition-colors flex items-center gap-1.5"><Plus className="w-4 h-4" /> Add</button>
       </div>
 
       {/* Toast */}
@@ -381,9 +381,9 @@ export default function AdminInstructorsPage() {
                     <Input
                       ref={editNameRef}
                       value={editForm.name}
-                      onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))}
+                      onChange={(e) => { setEditForm((f) => ({ ...f, name: e.target.value })); setFormError(null) }}
                       placeholder="Instructor name"
-                      className="h-8 text-sm bg-background border-card-border"
+                      className={cn("h-8 text-sm bg-background border-card-border", formError && "border-red-500/50")}
                     />
                     <button
                       type="button"
@@ -531,7 +531,7 @@ export default function AdminInstructorsPage() {
                   <Input
                     ref={createNameRef}
                     value={createForm.name}
-                    onChange={(e) => setCreateForm((f) => ({ ...f, name: e.target.value }))}
+                    onChange={(e) => { setCreateForm((f) => ({ ...f, name: e.target.value })); setFormError(null) }}
                     placeholder="Instructor name"
                     className="h-8 text-sm bg-background border-card-border"
                   />

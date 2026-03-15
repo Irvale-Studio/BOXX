@@ -201,7 +201,7 @@ export default function AdminPacksPage() {
       <div className="flex flex-wrap items-end gap-3">
         <div className="flex-1 min-w-[140px]">
           <Label className="text-xs text-muted">Name *</Label>
-          <Input ref={nameRef} value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="Pack name" className="mt-1 h-8 text-sm bg-background border-card-border" onKeyDown={(e) => handleKeyDown(e, mode)} />
+          <Input ref={nameRef} value={form.name} onChange={(e) => { setForm((f) => ({ ...f, name: e.target.value })); setFormError(null) }} placeholder="Pack name" className={cn("mt-1 h-8 text-sm bg-background border-card-border", formError && "border-red-500/50")} onKeyDown={(e) => handleKeyDown(e, mode)} />
         </div>
         <div className="w-20">
           <Label className="text-xs text-muted">Credits</Label>
@@ -262,7 +262,7 @@ export default function AdminPacksPage() {
           <h1 className="text-2xl font-bold text-foreground">Products</h1>
           <p className="text-sm text-muted mt-1">Manage your class packs and memberships</p>
         </div>
-        <button onClick={startCreate} className="px-3 py-2 rounded-lg bg-green-500/10 text-green-400 hover:bg-green-500/20 text-sm font-medium transition-colors flex items-center gap-1.5"><Plus className="w-4 h-4" /> Add</button>
+        <button onClick={startCreate} className="px-3 py-2 rounded-lg bg-accent/10 text-accent hover:bg-accent/20 text-sm font-medium transition-colors flex items-center gap-1.5"><Plus className="w-4 h-4" /> Add</button>
       </div>
 
       {/* Toast */}

@@ -360,7 +360,7 @@ export default function ClassTypesPage() {
           <h1 className="text-2xl font-bold text-foreground">Events</h1>
           <p className="text-sm text-muted mt-1">Manage your class types and event categories</p>
         </div>
-        <button onClick={startCreate} className="px-3 py-2 rounded-lg bg-green-500/10 text-green-400 hover:bg-green-500/20 text-sm font-medium transition-colors flex items-center gap-1.5"><Plus className="w-4 h-4" /> Add</button>
+        <button onClick={startCreate} className="px-3 py-2 rounded-lg bg-accent/10 text-accent hover:bg-accent/20 text-sm font-medium transition-colors flex items-center gap-1.5"><Plus className="w-4 h-4" /> Add</button>
       </div>
 
       {/* Toast */}
@@ -425,9 +425,9 @@ export default function ClassTypesPage() {
                       <Input
                         ref={editNameRef}
                         value={editForm.name}
-                        onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))}
+                        onChange={(e) => { setEditForm((f) => ({ ...f, name: e.target.value })); setFormError(null) }}
                         placeholder="Event name"
-                        className="h-8 text-sm bg-background border-card-border"
+                        className={cn("h-8 text-sm bg-background border-card-border", formError && "border-red-500/50")}
                         onKeyDown={(e) => handleKeyDown(e, 'edit')}
                       />
                       <div className="flex items-center gap-3">
@@ -498,7 +498,7 @@ export default function ClassTypesPage() {
                   <Input
                     ref={createNameRef}
                     value={createForm.name}
-                    onChange={(e) => setCreateForm((f) => ({ ...f, name: e.target.value }))}
+                    onChange={(e) => { setCreateForm((f) => ({ ...f, name: e.target.value })); setFormError(null) }}
                     placeholder="Event name"
                     className="h-8 text-sm bg-background border-card-border"
                     onKeyDown={(e) => handleKeyDown(e, 'create')}

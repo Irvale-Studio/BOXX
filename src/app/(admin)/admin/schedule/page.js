@@ -1464,13 +1464,13 @@ export default function AdminSchedulePage() {
             )
           })()}
 
-          <div className="border-t border-card-border px-4 sm:px-6 py-4 flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setAddDialog(false)}>Cancel</Button>
-            <Button onClick={handleCreate} disabled={submitting || (form.recurring && form.days.length === 0)}>
+          <div className="border-t border-card-border px-4 sm:px-6 py-4 flex gap-2">
+            <button onClick={() => setAddDialog(false)} className="flex-1 h-10 rounded-lg border border-card-border text-muted hover:text-foreground hover:bg-white/[0.03] text-sm transition-colors flex items-center justify-center gap-2">Cancel</button>
+            <button onClick={handleCreate} disabled={submitting || (form.recurring && form.days.length === 0)} className={cn('flex-1 h-10 rounded-lg bg-green-500/10 text-green-400 hover:bg-green-500/20 text-sm font-medium transition-colors flex items-center justify-center gap-2', (submitting || (form.recurring && form.days.length === 0)) && 'opacity-50 cursor-not-allowed')}>
               {submitting ? 'Creating...' : form.recurring
                 ? `Create ${form.everyWeek ? 52 : form.weeks} Classes`
                 : 'Create Class'}
-            </Button>
+            </button>
           </div>
         </DialogContent>
       </Dialog>

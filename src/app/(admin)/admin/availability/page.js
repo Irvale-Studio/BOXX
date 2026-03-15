@@ -961,23 +961,23 @@ export default function AdminAvailabilityPage() {
             </div>
           </div>
 
-          <DialogFooter className="gap-2">
-            {dialog !== 'create' && (
-              <Button variant="ghost" size="sm" className="mr-auto text-red-400 hover:text-red-300 hover:bg-red-500/10" onClick={() => setDeleteConfirm(dialog.id)}>
+          {dialog !== 'create' && (
+            <div className="flex items-center justify-between px-1 pt-2">
+              <Button variant="ghost" size="sm" className="text-red-400 hover:text-red-300 hover:bg-red-500/10" onClick={() => setDeleteConfirm(dialog.id)}>
                 <Trash2 className="w-3.5 h-3.5 mr-1.5" /> Delete
               </Button>
-            )}
-            {dialog !== 'create' && (
-              <div className="flex items-center gap-2 mr-2">
+              <div className="flex items-center gap-2">
                 <Switch checked={dialog?.is_active ?? true} onCheckedChange={v => { handleToggleActive(dialog); setDialog(null) }} />
                 <span className="text-xs text-muted">{dialog?.is_active ? 'Active' : 'Inactive'}</span>
               </div>
-            )}
-            <Button variant="outline" onClick={() => setDialog(null)}>Cancel</Button>
-            <Button onClick={handleSave} disabled={submitting}>
+            </div>
+          )}
+          <div className="flex gap-2 pt-2">
+            <button onClick={() => setDialog(null)} className="flex-1 h-10 rounded-lg border border-card-border text-muted hover:text-foreground hover:bg-white/[0.03] text-sm transition-colors flex items-center justify-center">Cancel</button>
+            <button onClick={handleSave} disabled={submitting} className={cn('flex-1 h-10 rounded-lg bg-green-500/10 text-green-400 hover:bg-green-500/20 text-sm font-medium transition-colors flex items-center justify-center', submitting && 'opacity-50 cursor-not-allowed')}>
               {submitting ? 'Saving...' : dialog === 'create' ? 'Create' : 'Save'}
-            </Button>
-          </DialogFooter>
+            </button>
+          </div>
         </DialogContent>
       </Dialog>
 

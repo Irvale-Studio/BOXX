@@ -544,9 +544,11 @@ function ComposeTab() {
 
           {message && <p className={cn('text-sm', message.type === 'success' ? 'text-green-400' : 'text-red-400')}>{message.text}</p>}
 
-          <Button type="submit" disabled={sending || !selectedEmail || !subject.trim() || !body.trim()}>
-            {sending ? 'Sending...' : 'Send Email'}
-          </Button>
+          <div className="flex justify-end">
+            <Button type="submit" disabled={sending || !selectedEmail || !subject.trim() || !body.trim()}>
+              {sending ? 'Sending...' : 'Send Email'}
+            </Button>
+          </div>
         </form>
       </CardContent>
     </Card>
