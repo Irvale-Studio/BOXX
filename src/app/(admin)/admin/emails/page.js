@@ -5,11 +5,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
-import { MailOpen, ClipboardList, PenLine } from 'lucide-react'
+import { MailOpen, ClipboardList, PenLine, X, Check, ChevronDown, ChevronUp, RotateCcw } from 'lucide-react'
 
 const TABS = [
   { id: 'overview', label: 'Email Events', icon: MailOpen },
@@ -17,42 +16,40 @@ const TABS = [
   { id: 'compose', label: 'Compose', icon: PenLine },
 ]
 
-// ─── Email events ───────────────────────────────────────────────────────────
-
 const EMAIL_EVENTS = [
-  { slug: 'booking_confirmation', name: 'Booking Confirmation', description: 'Sent when a member books a class', trigger: 'Member books a class', defaultSubject: 'Booking Confirmed — {{class}}' },
-  { slug: 'class_reminder', name: 'Class Reminder (1hr)', description: 'Sent 1 hour before a class starts', trigger: 'Cron every 15min', defaultSubject: 'Reminder: {{class}} in 1 hour' },
-  { slug: 'waitlist_promotion', name: 'Waitlist Promotion', description: 'Sent when a member is promoted from the waitlist', trigger: 'Spot opens up', defaultSubject: 'Spot Available — {{class}}' },
-  { slug: 'credit_expiry_warning', name: 'Credit Expiry Warning', description: 'Sent when credits are about to expire', trigger: 'Cron daily', defaultSubject: 'Credits Expiring Soon — {{pack}}' },
-  { slug: 'welcome', name: 'Welcome Email', description: 'Sent when a new member registers', trigger: 'User registers', defaultSubject: 'Welcome!' },
-  { slug: 'cancellation_confirmation', name: 'Cancellation Confirmation', description: 'Sent when a member cancels a booking', trigger: 'Member cancels', defaultSubject: 'Booking Cancelled — {{class}}' },
-  { slug: 'class_cancelled_admin', name: 'Class Cancelled by Admin', description: 'Sent to all booked members when admin cancels a class', trigger: 'Admin cancels class', defaultSubject: 'Class Cancelled — {{class}}' },
-  { slug: 'pack_purchase_confirmation', name: 'Pack Purchase Confirmation', description: 'Sent after successful pack purchase', trigger: 'Stripe webhook', defaultSubject: 'Pack Purchased — {{pack}}' },
-  { slug: 'credits_low_warning', name: 'Credits Low Warning', description: 'Sent when member has 1 credit remaining', trigger: 'Credit drops to 1', defaultSubject: 'Low Credits — 1 remaining' },
-  { slug: 'class_changed', name: 'Class Change Notification', description: 'Sent when admin edits a class with existing bookings', trigger: 'Admin edits class', defaultSubject: 'Class Updated — {{class}}' },
-  { slug: 'removed_from_class', name: 'Removed from Class', description: 'Sent when admin removes a member from a class', trigger: 'Admin removes member', defaultSubject: 'Removed from {{class}}' },
-  { slug: 'admin_cancelled_booking', name: 'Admin Cancels Booking', description: 'Sent when admin cancels a booking on behalf of a member', trigger: 'Admin cancels booking', defaultSubject: 'Booking Cancelled — {{class}}' },
-  { slug: 'private_class_invitation', name: 'Private Class Invitation', description: 'Sent when admin adds a member to a private class', trigger: 'Admin adds to private class', defaultSubject: 'Private Class Invitation — {{class}}' },
+  { slug: 'booking_confirmation', name: 'Booking Confirmation', description: 'Sent when a member books a class', defaultSubject: 'Booking Confirmed — {{class}}' },
+  { slug: 'class_reminder', name: 'Class Reminder (1hr)', description: 'Sent 1 hour before a class starts', defaultSubject: 'Reminder: {{class}} in 1 hour' },
+  { slug: 'waitlist_promotion', name: 'Waitlist Promotion', description: 'Sent when a member is promoted from the waitlist', defaultSubject: 'Spot Available — {{class}}' },
+  { slug: 'credit_expiry_warning', name: 'Credit Expiry Warning', description: 'Sent when credits are about to expire', defaultSubject: 'Credits Expiring Soon — {{pack}}' },
+  { slug: 'welcome', name: 'Welcome Email', description: 'Sent when a new member registers', defaultSubject: 'Welcome!' },
+  { slug: 'cancellation_confirmation', name: 'Cancellation Confirmation', description: 'Sent when a member cancels a booking', defaultSubject: 'Booking Cancelled — {{class}}' },
+  { slug: 'class_cancelled_admin', name: 'Class Cancelled by Admin', description: 'Sent to all booked members when admin cancels a class', defaultSubject: 'Class Cancelled — {{class}}' },
+  { slug: 'pack_purchase_confirmation', name: 'Pack Purchase Confirmation', description: 'Sent after successful pack purchase', defaultSubject: 'Pack Purchased — {{pack}}' },
+  { slug: 'credits_low_warning', name: 'Credits Low Warning', description: 'Sent when member has 1 credit remaining', defaultSubject: 'Low Credits — 1 remaining' },
+  { slug: 'class_changed', name: 'Class Change Notification', description: 'Sent when admin edits a class with existing bookings', defaultSubject: 'Class Updated — {{class}}' },
+  { slug: 'removed_from_class', name: 'Removed from Class', description: 'Sent when admin removes a member from a class', defaultSubject: 'Removed from {{class}}' },
+  { slug: 'admin_cancelled_booking', name: 'Admin Cancels Booking', description: 'Sent when admin cancels a booking on behalf of a member', defaultSubject: 'Booking Cancelled — {{class}}' },
+  { slug: 'private_class_invitation', name: 'Private Class Invitation', description: 'Sent when admin adds a member to a private class', defaultSubject: 'Private Class Invitation — {{class}}' },
 ]
 
 export default function EmailsPage() {
   const [activeTab, setActiveTab] = useState('overview')
 
   return (
-    <div>
-      <h1 className="text-xl sm:text-2xl font-bold text-foreground mb-4 sm:mb-6">Emails</h1>
+    <div className="max-w-4xl mx-auto space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold text-foreground">Emails</h1>
+        <p className="text-sm text-muted mt-1">Manage automated email templates and send direct messages</p>
+      </div>
 
-      {/* Tab buttons */}
-      <div className="flex gap-1.5 mb-5 overflow-x-auto pb-1 -mx-4 px-4 sm:mx-0 sm:px-0 sm:flex-wrap">
+      <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-4 px-4 sm:mx-0 sm:px-0 sm:flex-wrap">
         {TABS.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             className={cn(
               'flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors shrink-0',
-              activeTab === tab.id
-                ? 'bg-accent/10 text-accent'
-                : 'text-muted hover:text-foreground hover:bg-white/5'
+              activeTab === tab.id ? 'bg-accent/10 text-accent' : 'text-muted hover:text-foreground hover:bg-white/5'
             )}
           >
             <tab.icon className="w-4 h-4 shrink-0" />
@@ -74,12 +71,24 @@ function EmailOverviewTab() {
   const [settings, setSettings] = useState({})
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(null)
-  const [editSlug, setEditSlug] = useState(null)
+  const [toast, setToast] = useState(null)
+
+  // Inline edit
+  const [editingSlug, setEditingSlug] = useState(null)
+  const [editSubject, setEditSubject] = useState('')
+  const [editBody, setEditBody] = useState('')
+
+  // Preview
   const [previewSlug, setPreviewSlug] = useState(null)
   const [previewHtml, setPreviewHtml] = useState('')
   const [previewLoading, setPreviewLoading] = useState(false)
 
-  // Load all email settings
+  useEffect(() => {
+    if (!toast) return
+    const t = setTimeout(() => setToast(null), 3000)
+    return () => clearTimeout(t)
+  }, [toast])
+
   useEffect(() => {
     async function load() {
       try {
@@ -88,69 +97,72 @@ function EmailOverviewTab() {
           const { settings: s } = await res.json()
           setSettings(s || {})
         }
-      } catch (err) {
-        console.error('Failed to load settings:', err)
-      } finally {
+      } catch {} finally {
         setLoading(false)
       }
     }
     load()
   }, [])
 
-  const isEnabled = useCallback((slug) => {
-    const key = `email_${slug}_enabled`
-    return settings[key] !== 'false'
-  }, [settings])
-
-  const getCustomSubject = useCallback((slug) => {
-    return settings[`email_${slug}_subject`] || ''
-  }, [settings])
-
-  const getCustomBody = useCallback((slug) => {
-    return settings[`email_${slug}_body`] || ''
-  }, [settings])
+  const isEnabled = useCallback((slug) => settings[`email_${slug}_enabled`] !== 'false', [settings])
+  const getCustomSubject = useCallback((slug) => settings[`email_${slug}_subject`] || '', [settings])
+  const getCustomBody = useCallback((slug) => settings[`email_${slug}_body`] || '', [settings])
 
   async function toggleEnabled(slug) {
     const key = `email_${slug}_enabled`
     const newValue = isEnabled(slug) ? 'false' : 'true'
-    setSaving(slug)
+    // Optimistic
+    setSettings((prev) => ({ ...prev, [key]: newValue }))
     try {
       const res = await fetch('/api/admin/settings', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ [key]: newValue }),
       })
-      if (res.ok) {
-        setSettings((prev) => ({ ...prev, [key]: newValue }))
+      if (!res.ok) {
+        setSettings((prev) => ({ ...prev, [key]: newValue === 'true' ? 'false' : 'true' }))
+        setToast({ message: 'Failed to update', type: 'error' })
       }
-    } catch (err) {
-      console.error('Failed to toggle:', err)
-    } finally {
-      setSaving(null)
+    } catch {
+      setSettings((prev) => ({ ...prev, [key]: newValue === 'true' ? 'false' : 'true' }))
     }
   }
 
-  async function saveCustomMessage(slug, subject, body) {
-    setSaving(slug)
+  function startEdit(slug) {
+    setEditSubject(getCustomSubject(slug))
+    setEditBody(getCustomBody(slug))
+    setEditingSlug(slug)
+  }
+
+  function cancelEdit() {
+    setEditingSlug(null)
+    setEditSubject('')
+    setEditBody('')
+  }
+
+  async function saveEdit() {
+    if (!editingSlug) return
+    setSaving(editingSlug)
+    const slug = editingSlug
     try {
-      const updates = {}
-      updates[`email_${slug}_subject`] = subject
-      updates[`email_${slug}_body`] = body
+      const updates = {
+        [`email_${slug}_subject`]: editSubject,
+        [`email_${slug}_body`]: editBody,
+      }
       const res = await fetch('/api/admin/settings', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updates),
       })
       if (res.ok) {
-        setSettings((prev) => ({
-          ...prev,
-          [`email_${slug}_subject`]: subject,
-          [`email_${slug}_body`]: body,
-        }))
-        setEditSlug(null)
+        setSettings((prev) => ({ ...prev, ...updates }))
+        setToast({ message: 'Email template saved', type: 'success' })
+        cancelEdit()
+      } else {
+        setToast({ message: 'Failed to save', type: 'error' })
       }
-    } catch (err) {
-      console.error('Failed to save:', err)
+    } catch {
+      setToast({ message: 'Something went wrong', type: 'error' })
     } finally {
       setSaving(null)
     }
@@ -162,12 +174,8 @@ function EmailOverviewTab() {
     setPreviewHtml('')
     try {
       const res = await fetch(`/api/admin/emails/preview?slug=${slug}`)
-      if (res.ok) {
-        const html = await res.text()
-        setPreviewHtml(html)
-      } else {
-        setPreviewHtml('<p style="color:#888;padding:40px;text-align:center;">Failed to load preview</p>')
-      }
+      if (res.ok) setPreviewHtml(await res.text())
+      else setPreviewHtml('<p style="color:#888;padding:40px;text-align:center;">Failed to load preview</p>')
     } catch {
       setPreviewHtml('<p style="color:#888;padding:40px;text-align:center;">Failed to load preview</p>')
     } finally {
@@ -175,107 +183,116 @@ function EmailOverviewTab() {
     }
   }
 
-  const enabledCount = EMAIL_EVENTS.filter((e) => isEnabled(e.slug)).length
-
   if (loading) {
     return (
-      <div className="space-y-3">
-        {[1, 2, 3, 4, 5].map((i) => (
-          <Card key={i}>
-            <CardContent className="py-4 px-4">
-              <div className="animate-pulse flex items-center gap-4">
-                <div className="h-5 bg-card-border rounded w-48" />
-                <div className="flex-1" />
-                <div className="h-5 bg-card-border rounded w-12" />
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+      <div className="space-y-2">
+        {[1, 2, 3, 4, 5].map((i) => <div key={i} className="h-14 bg-card border border-card-border rounded-lg animate-pulse" />)}
       </div>
     )
   }
 
+  const enabledCount = EMAIL_EVENTS.filter((e) => isEnabled(e.slug)).length
+
   return (
-    <div className="space-y-4 sm:space-y-5">
+    <div className="space-y-4">
+      {/* Toast */}
+      {toast && (
+        <div className={cn(
+          'fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:bottom-6 z-50 px-4 py-3 rounded-lg border flex items-center gap-3 shadow-lg backdrop-blur-sm sm:max-w-sm',
+          toast.type === 'error' ? 'bg-red-500/10 border-red-500/20 text-red-400' : 'bg-green-500/10 border-green-500/20 text-green-400'
+        )}>
+          <span className="text-sm flex-1">{toast.message}</span>
+          <button onClick={() => setToast(null)} className="opacity-60 hover:opacity-100 shrink-0"><X className="w-3.5 h-3.5" /></button>
+        </div>
+      )}
+
       {/* Stats */}
-      <div className="grid grid-cols-2 gap-3">
-        <Card>
-          <CardContent className="py-4 px-4 text-center">
-            <p className="text-2xl font-bold text-green-400">{enabledCount}</p>
-            <p className="text-xs text-muted mt-1">Enabled</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="py-4 px-4 text-center">
-            <p className="text-2xl font-bold text-zinc-400">{EMAIL_EVENTS.length - enabledCount}</p>
-            <p className="text-xs text-muted mt-1">Disabled</p>
-          </CardContent>
-        </Card>
+      <div className="flex gap-4 text-sm">
+        <span className="text-green-400 font-medium">{enabledCount} enabled</span>
+        <span className="text-muted">{EMAIL_EVENTS.length - enabledCount} disabled</span>
       </div>
 
-      {/* Email event cards */}
+      {/* Email event rows */}
       <div className="space-y-2">
         {EMAIL_EVENTS.map((event) => {
           const enabled = isEnabled(event.slug)
           const hasCustom = getCustomSubject(event.slug) || getCustomBody(event.slug)
+          const isEditing = editingSlug === event.slug
+
+          if (isEditing) {
+            return (
+              <div key={event.slug} className="border border-accent/40 rounded-lg p-3 sm:p-4 bg-card">
+                <p className="text-sm font-medium text-foreground mb-3">{event.name}</p>
+
+                <div className="space-y-3">
+                  <div>
+                    <Label className="text-xs text-muted">Subject Line</Label>
+                    <Input
+                      value={editSubject}
+                      onChange={(e) => setEditSubject(e.target.value)}
+                      placeholder={event.defaultSubject}
+                      className="mt-1 h-8 text-sm bg-background border-card-border"
+                      autoFocus
+                    />
+                    <p className="text-[11px] text-muted mt-1">Default: {event.defaultSubject}</p>
+                  </div>
+
+                  <div>
+                    <Label className="text-xs text-muted">Message Body</Label>
+                    <textarea
+                      value={editBody}
+                      onChange={(e) => setEditBody(e.target.value)}
+                      rows={4}
+                      className="mt-1 w-full rounded-lg bg-background border border-card-border px-3 py-2 text-sm text-foreground placeholder:text-muted/50 focus:outline-none focus:ring-1 focus:ring-accent/50 resize-y"
+                      placeholder="Leave blank to use the default message..."
+                    />
+                    <p className="text-[11px] text-muted mt-1">Replaces the greeting and main message. Detail tables are preserved.</p>
+                  </div>
+
+                  {(editSubject || editBody) && (
+                    <button
+                      onClick={() => { setEditSubject(''); setEditBody('') }}
+                      className="flex items-center gap-1.5 text-xs text-muted hover:text-foreground transition-colors"
+                    >
+                      <RotateCcw className="w-3 h-3" /> Reset to default
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex gap-2 mt-4">
+                  <button onClick={cancelEdit} className="flex-1 h-10 rounded-lg border border-card-border text-muted hover:text-foreground hover:bg-white/[0.03] text-sm transition-colors flex items-center justify-center gap-2"><X className="w-4 h-4" /> Cancel</button>
+                  <button onClick={saveEdit} disabled={saving === event.slug} className={cn('flex-1 h-10 rounded-lg bg-accent/10 text-accent hover:bg-accent/20 text-sm font-medium transition-colors flex items-center justify-center gap-2', saving === event.slug && 'opacity-50')}><Check className="w-4 h-4" /> {saving === event.slug ? 'Saving...' : 'Save'}</button>
+                </div>
+              </div>
+            )
+          }
 
           return (
-            <Card key={event.slug} className={cn(!enabled && 'opacity-60')}>
-              <CardContent className="py-3 px-4">
-                <div className="flex items-start gap-3">
-                  {/* Info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <p className="text-sm font-medium text-foreground">{event.name}</p>
-                      {hasCustom && (
-                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-accent/10 text-accent border border-accent/20">
-                          Customised
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-xs text-muted mt-0.5">{event.description}</p>
+            <div
+              key={event.slug}
+              className={cn(
+                'border border-card-border rounded-lg p-3 sm:p-4 transition-colors hover:bg-white/[0.03]',
+                !enabled && 'opacity-50'
+              )}
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="text-sm font-medium text-foreground">{event.name}</p>
+                    {hasCustom && <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-accent/10 text-accent border border-accent/20">Customised</span>}
                   </div>
-
-                  {/* Actions */}
-                  <div className="flex items-center gap-2 shrink-0">
-                    <button
-                      onClick={() => openPreview(event.slug)}
-                      className="text-xs text-muted hover:text-foreground transition-colors px-2 py-1"
-                      title="Preview"
-                    >
-                      Preview
-                    </button>
-                    <button
-                      onClick={() => setEditSlug(event.slug)}
-                      className="text-xs text-muted hover:text-foreground transition-colors px-2 py-1"
-                      title="Edit message"
-                    >
-                      Edit
-                    </button>
-                    <Switch
-                      checked={enabled}
-                      onCheckedChange={() => toggleEnabled(event.slug)}
-                      disabled={saving === event.slug}
-                    />
-                  </div>
+                  <p className="text-xs text-muted mt-0.5">{event.description}</p>
                 </div>
-              </CardContent>
-            </Card>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button onClick={() => openPreview(event.slug)} className="px-2 py-1 text-xs text-muted hover:text-foreground transition-colors">Preview</button>
+                  <button onClick={() => startEdit(event.slug)} className="px-2 py-1 text-xs text-muted hover:text-foreground transition-colors">Edit</button>
+                  <Switch checked={enabled} onCheckedChange={() => toggleEnabled(event.slug)} />
+                </div>
+              </div>
+            </div>
           )
         })}
       </div>
-
-      {/* Edit Dialog */}
-      <EditEmailDialog
-        key={editSlug}
-        slug={editSlug}
-        event={EMAIL_EVENTS.find((e) => e.slug === editSlug)}
-        customSubject={editSlug ? getCustomSubject(editSlug) : ''}
-        customBody={editSlug ? getCustomBody(editSlug) : ''}
-        saving={saving}
-        onSave={saveCustomMessage}
-        onClose={() => setEditSlug(null)}
-      />
 
       {/* Preview Dialog */}
       <Dialog open={!!previewSlug} onOpenChange={() => setPreviewSlug(null)}>
@@ -284,95 +301,18 @@ function EmailOverviewTab() {
             <DialogTitle className="text-base">
               {EMAIL_EVENTS.find((e) => e.slug === previewSlug)?.name} — Preview
             </DialogTitle>
-            <DialogDescription>
-              Preview with sample data. Actual emails use real member and class information.
-            </DialogDescription>
+            <DialogDescription>Preview with sample data. Actual emails use real member and class information.</DialogDescription>
           </DialogHeader>
           <div className="px-6 pb-6 overflow-auto" style={{ maxHeight: 'calc(85vh - 100px)' }}>
             {previewLoading ? (
               <div className="h-64 flex items-center justify-center text-muted text-sm">Loading preview...</div>
             ) : (
-              <iframe
-                srcDoc={previewHtml}
-                className="w-full border border-card-border rounded-lg"
-                style={{ height: '600px', background: '#0a0a0a' }}
-                title="Email preview"
-                sandbox=""
-              />
+              <iframe srcDoc={previewHtml} className="w-full border border-card-border rounded-lg" style={{ height: '600px', background: '#0a0a0a' }} title="Email preview" sandbox="" />
             )}
           </div>
         </DialogContent>
       </Dialog>
     </div>
-  )
-}
-
-// ─── Edit Email Dialog ──────────────────────────────────────────────────────
-
-function EditEmailDialog({ slug, event, customSubject, customBody, saving, onSave, onClose }) {
-  // key={slug} on parent ensures fresh state when slug changes
-  const [subject, setSubject] = useState(customSubject || '')
-  const [body, setBody] = useState(customBody || '')
-
-  if (!event) return null
-
-  return (
-    <Dialog open={!!slug} onOpenChange={() => onClose()}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle className="text-base">Edit — {event.name}</DialogTitle>
-          <DialogDescription>
-            Customise the subject line and message body. Leave blank to use the default.
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-4 mt-2">
-          <div className="space-y-1.5">
-            <Label htmlFor="edit-subject">Subject Line</Label>
-            <Input
-              id="edit-subject"
-              value={subject}
-              onChange={(e) => setSubject(e.target.value)}
-              placeholder={event.defaultSubject}
-            />
-            <p className="text-xs text-muted">Leave blank to use default: {event.defaultSubject}</p>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="edit-body">Message Body</Label>
-            <textarea
-              id="edit-body"
-              value={body}
-              onChange={(e) => setBody(e.target.value)}
-              rows={6}
-              className="w-full rounded-lg bg-background/50 border border-card-border/60 px-3.5 py-2.5 text-sm text-foreground placeholder:text-muted/50 transition-colors focus:outline-none focus:ring-1 focus:ring-accent/50 focus:border-accent/30 resize-y"
-              placeholder="Leave blank to use the default message..."
-            />
-            <p className="text-xs text-muted">
-              This replaces the greeting and main message. Detail tables (class info, dates) are preserved automatically.
-            </p>
-          </div>
-
-          <div className="flex gap-2 justify-end">
-            {(subject || body) && (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => { setSubject(''); setBody('') }}
-              >
-                Reset to Default
-              </Button>
-            )}
-            <Button
-              onClick={() => onSave(slug, subject, body)}
-              disabled={saving === slug}
-            >
-              {saving === slug ? 'Saving...' : 'Save Changes'}
-            </Button>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
   )
 }
 
@@ -406,135 +346,78 @@ function EmailLogTab() {
         setPages(data.pages || 1)
         setTotal(data.total || 0)
       }
-    } catch (err) {
-      console.error('Failed to load email log:', err)
-    } finally {
+    } catch {} finally {
       setLoading(false)
     }
   }, [page, statusFilter, typeFilter])
 
   useEffect(() => { fetchLogs() }, [fetchLogs])
 
-  const formatDate = (iso) => {
-    const d = new Date(iso)
-    return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
-  }
-
-  const formatType = (slug) => {
-    return slug.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
-  }
-
-  const failedCount = logs.filter((l) => l.status === 'failed').length
+  const formatDate = (iso) => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+  const formatType = (slug) => slug.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
 
   return (
     <div className="space-y-4">
-      {/* Filters */}
       <div className="flex flex-wrap items-center gap-2">
-        <select
-          value={statusFilter}
-          onChange={(e) => { setStatusFilter(e.target.value); setPage(1) }}
-          className="rounded-lg bg-card border border-card-border px-3 py-1.5 text-sm text-foreground"
-        >
+        <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1) }} className="rounded-lg bg-background/50 border border-card-border px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-accent/50">
           <option value="">All statuses</option>
           <option value="sent">Sent</option>
           <option value="failed">Failed</option>
           <option value="skipped">Skipped</option>
         </select>
-
-        <select
-          value={typeFilter}
-          onChange={(e) => { setTypeFilter(e.target.value); setPage(1) }}
-          className="rounded-lg bg-card border border-card-border px-3 py-1.5 text-sm text-foreground"
-        >
+        <select value={typeFilter} onChange={(e) => { setTypeFilter(e.target.value); setPage(1) }} className="rounded-lg bg-background/50 border border-card-border px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-accent/50">
           <option value="">All types</option>
-          {EMAIL_EVENTS.map((e) => (
-            <option key={e.slug} value={e.slug}>{e.name}</option>
-          ))}
+          {EMAIL_EVENTS.map((e) => <option key={e.slug} value={e.slug}>{e.name}</option>)}
           <option value="admin_direct">Admin Direct</option>
         </select>
-
-        <span className="text-xs text-muted ml-auto">
-          {total} email{total !== 1 ? 's' : ''} total
-        </span>
+        <span className="text-xs text-muted ml-auto">{total} email{total !== 1 ? 's' : ''}</span>
       </div>
 
-      {/* Log table */}
-      <Card>
-        <CardContent className="py-0 px-0">
-          {loading ? (
-            <div className="py-12 text-center text-muted text-sm">Loading...</div>
-          ) : logs.length === 0 ? (
-            <div className="py-12 text-center text-muted text-sm">
-              No emails logged yet. Emails will appear here once sent.
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-card-border text-left">
-                    <th className="px-4 py-2.5 text-xs text-muted font-medium">Time</th>
-                    <th className="px-4 py-2.5 text-xs text-muted font-medium">Type</th>
-                    <th className="px-4 py-2.5 text-xs text-muted font-medium hidden sm:table-cell">Recipient</th>
-                    <th className="px-4 py-2.5 text-xs text-muted font-medium hidden md:table-cell">Subject</th>
-                    <th className="px-4 py-2.5 text-xs text-muted font-medium">Status</th>
-                    <th className="px-4 py-2.5 text-xs text-muted font-medium hidden lg:table-cell">Error</th>
+      <div className="border border-card-border rounded-lg overflow-hidden">
+        {loading ? (
+          <div className="py-12 text-center text-muted text-sm">Loading...</div>
+        ) : logs.length === 0 ? (
+          <div className="py-12 text-center text-muted text-sm">No emails logged yet.</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-card-border text-left">
+                  <th className="px-4 py-2.5 text-xs text-muted font-medium">Time</th>
+                  <th className="px-4 py-2.5 text-xs text-muted font-medium">Type</th>
+                  <th className="px-4 py-2.5 text-xs text-muted font-medium hidden sm:table-cell">Recipient</th>
+                  <th className="px-4 py-2.5 text-xs text-muted font-medium hidden md:table-cell">Subject</th>
+                  <th className="px-4 py-2.5 text-xs text-muted font-medium">Status</th>
+                  <th className="px-4 py-2.5 text-xs text-muted font-medium hidden lg:table-cell">Error</th>
+                </tr>
+              </thead>
+              <tbody>
+                {logs.map((log) => (
+                  <tr key={log.id} className="border-b border-card-border/50 last:border-0">
+                    <td className="px-4 py-2.5 text-muted text-xs whitespace-nowrap">{formatDate(log.created_at)}</td>
+                    <td className="px-4 py-2.5">
+                      <p className="text-foreground text-xs font-medium">{formatType(log.email_type)}</p>
+                      <p className="text-muted text-xs sm:hidden">{log.recipient}</p>
+                    </td>
+                    <td className="px-4 py-2.5 text-xs text-muted hidden sm:table-cell truncate max-w-[180px]">{log.recipient}</td>
+                    <td className="px-4 py-2.5 text-xs text-muted hidden md:table-cell truncate max-w-[220px]">{log.subject || '—'}</td>
+                    <td className="px-4 py-2.5">
+                      <span className={cn('text-[10px] font-medium px-1.5 py-0.5 rounded border', STATUS_STYLES[log.status] || STATUS_STYLES.skipped)}>{log.status}</span>
+                    </td>
+                    <td className="px-4 py-2.5 text-xs text-red-400/80 hidden lg:table-cell truncate max-w-[200px]" title={log.error || ''}>{log.error || '—'}</td>
                   </tr>
-                </thead>
-                <tbody>
-                  {logs.map((log) => (
-                    <tr key={log.id} className="border-b border-card-border/50 last:border-0">
-                      <td className="px-4 py-2.5 text-muted text-xs whitespace-nowrap">
-                        {formatDate(log.created_at)}
-                      </td>
-                      <td className="px-4 py-2.5">
-                        <p className="text-foreground text-xs font-medium">{formatType(log.email_type)}</p>
-                        <p className="text-muted text-xs sm:hidden">{log.recipient}</p>
-                      </td>
-                      <td className="px-4 py-2.5 text-xs text-muted hidden sm:table-cell truncate max-w-[180px]">
-                        {log.recipient}
-                      </td>
-                      <td className="px-4 py-2.5 text-xs text-muted hidden md:table-cell truncate max-w-[220px]">
-                        {log.subject || '—'}
-                      </td>
-                      <td className="px-4 py-2.5">
-                        <span className={cn('text-[10px] font-medium px-1.5 py-0.5 rounded border', STATUS_STYLES[log.status] || STATUS_STYLES.skipped)}>
-                          {log.status}
-                        </span>
-                      </td>
-                      <td className="px-4 py-2.5 text-xs text-red-400/80 hidden lg:table-cell truncate max-w-[200px]" title={log.error || ''}>
-                        {log.error || '—'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
 
-      {/* Pagination */}
       {pages > 1 && (
         <div className="flex items-center justify-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={page <= 1}
-            onClick={() => setPage((p) => p - 1)}
-          >
-            Previous
-          </Button>
-          <span className="text-xs text-muted">
-            Page {page} of {pages}
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={page >= pages}
-            onClick={() => setPage((p) => p + 1)}
-          >
-            Next
-          </Button>
+          <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>Previous</Button>
+          <span className="text-xs text-muted">Page {page} of {pages}</span>
+          <Button variant="outline" size="sm" disabled={page >= pages} onClick={() => setPage((p) => p + 1)}>Next</Button>
         </div>
       )}
     </div>
@@ -554,20 +437,11 @@ function ComposeTab() {
   const [loadingMembers, setLoadingMembers] = useState(true)
 
   useEffect(() => {
-    async function fetchMembers() {
-      try {
-        const res = await fetch('/api/admin/members')
-        if (res.ok) {
-          const data = await res.json()
-          setMembers(data.members || [])
-        }
-      } catch (err) {
-        console.error('Failed to load members:', err)
-      } finally {
-        setLoadingMembers(false)
-      }
-    }
-    fetchMembers()
+    fetch('/api/admin/members')
+      .then((res) => res.ok ? res.json() : { members: [] })
+      .then((data) => setMembers(data.members || []))
+      .catch(() => {})
+      .finally(() => setLoadingMembers(false))
   }, [])
 
   async function handleSend(e) {
@@ -576,17 +450,14 @@ function ComposeTab() {
       setMessage({ type: 'error', text: 'Please fill in all fields' })
       return
     }
-
     setSending(true)
     setMessage(null)
-
     try {
       const res = await fetch('/api/admin/emails', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ to: selectedEmail, subject: subject.trim(), body: body.trim() }),
       })
-
       const data = await res.json()
       if (res.ok) {
         setMessage({ type: 'success', text: 'Email sent successfully!' })
@@ -597,7 +468,7 @@ function ComposeTab() {
       } else {
         setMessage({ type: 'error', text: data.error || 'Failed to send email' })
       }
-    } catch (err) {
+    } catch {
       setMessage({ type: 'error', text: 'Failed to send email. Please try again.' })
     } finally {
       setSending(false)
@@ -619,31 +490,16 @@ function ComposeTab() {
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSend} className="space-y-4">
-          {/* Recipient */}
           <div className="space-y-1.5">
             <Label htmlFor="recipient">To</Label>
             {selectedEmail ? (
               <div className="flex items-center gap-2">
-                <div className="flex-1 px-3 py-2 rounded-lg bg-background/50 border border-card-border text-sm text-foreground">
-                  {selectedEmail}
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => { setSelectedEmail(''); setSearchQuery('') }}
-                >
-                  Change
-                </Button>
+                <div className="flex-1 px-3 py-2 rounded-lg bg-background/50 border border-card-border text-sm text-foreground">{selectedEmail}</div>
+                <Button type="button" variant="outline" size="sm" onClick={() => { setSelectedEmail(''); setSearchQuery('') }}>Change</Button>
               </div>
             ) : (
               <div className="space-y-2">
-                <Input
-                  id="recipient"
-                  placeholder="Search members by name or email..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
+                <Input id="recipient" placeholder="Search members by name or email..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
                 {loadingMembers ? (
                   <div className="text-xs text-muted py-2">Loading members...</div>
                 ) : searchQuery && (
@@ -652,12 +508,7 @@ function ComposeTab() {
                       <p className="text-xs text-muted p-3">No members found</p>
                     ) : (
                       filteredMembers.slice(0, 10).map((m) => (
-                        <button
-                          key={m.id}
-                          type="button"
-                          onClick={() => { setSelectedEmail(m.email); setSearchQuery('') }}
-                          className="w-full text-left px-3 py-2 hover:bg-white/5 transition-colors border-b border-card-border/50 last:border-0"
-                        >
+                        <button key={m.id} type="button" onClick={() => { setSelectedEmail(m.email); setSearchQuery('') }} className="w-full text-left px-3 py-2 hover:bg-white/5 transition-colors border-b border-card-border/50 last:border-0">
                           <p className="text-sm text-foreground">{m.name || 'Unnamed'}</p>
                           <p className="text-xs text-muted">{m.email}</p>
                         </button>
@@ -669,39 +520,18 @@ function ComposeTab() {
             )}
           </div>
 
-          {/* Subject */}
           <div className="space-y-1.5">
             <Label htmlFor="subject">Subject</Label>
-            <Input
-              id="subject"
-              placeholder="Email subject..."
-              value={subject}
-              onChange={(e) => setSubject(e.target.value)}
-              maxLength={200}
-            />
+            <Input id="subject" placeholder="Email subject..." value={subject} onChange={(e) => setSubject(e.target.value)} maxLength={200} />
           </div>
 
-          {/* Body */}
           <div className="space-y-1.5">
             <Label htmlFor="body">Message</Label>
-            <textarea
-              id="body"
-              placeholder="Write your message..."
-              value={body}
-              onChange={(e) => setBody(e.target.value)}
-              maxLength={5000}
-              rows={8}
-              className="w-full rounded-lg bg-background/50 border border-card-border/60 px-3.5 py-2.5 text-sm text-foreground placeholder:text-muted/50 transition-colors focus:outline-none focus:ring-1 focus:ring-accent/50 focus:border-accent/30 resize-y"
-            />
+            <textarea id="body" placeholder="Write your message..." value={body} onChange={(e) => setBody(e.target.value)} maxLength={5000} rows={8} className="w-full rounded-lg bg-background/50 border border-card-border/60 px-3.5 py-2.5 text-sm text-foreground placeholder:text-muted/50 focus:outline-none focus:ring-1 focus:ring-accent/50 resize-y" />
             <p className="text-xs text-muted text-right">{body.length}/5000</p>
           </div>
 
-          {/* Feedback */}
-          {message && (
-            <p className={cn('text-sm', message.type === 'success' ? 'text-green-400' : 'text-red-400')}>
-              {message.text}
-            </p>
-          )}
+          {message && <p className={cn('text-sm', message.type === 'success' ? 'text-green-400' : 'text-red-400')}>{message.text}</p>}
 
           <Button type="submit" disabled={sending || !selectedEmail || !subject.trim() || !body.trim()}>
             {sending ? 'Sending...' : 'Send Email'}
