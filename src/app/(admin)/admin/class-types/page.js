@@ -1,14 +1,13 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Badge } from '@/components/ui/badge'
+import { Switch } from '@/components/ui/switch'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
-import { X, Upload, Trash2, ImageIcon, Plus, Check, ChevronDown, Camera } from 'lucide-react'
+import { X, Upload, Trash2, ImageIcon, Plus, Check, ChevronDown, ChevronUp, Camera, Tag } from 'lucide-react'
 import Image from 'next/image'
 
 const COLOR_OPTIONS = [
@@ -26,26 +25,29 @@ export default function ClassTypesPage() {
   const [classTypes, setClassTypes] = useState([])
   const [loading, setLoading] = useState(true)
   const [toast, setToast] = useState(null)
-  const [editDialog, setEditDialog] = useState(null)
   const [submitting, setSubmitting] = useState(false)
-  const [form, setForm] = useState({ name: '', description: '', duration_mins: 60, color: '#c8a750', icon: '', is_private: false, image_url: null })
-  const [imageFile, setImageFile] = useState(null)
-  const [imagePreview, setImagePreview] = useState(null)
-  const [deleteDialog, setDeleteDialog] = useState(null)
   const [fetchError, setFetchError] = useState(null)
+  const [deleteDialog, setDeleteDialog] = useState(null)
 
-  // Inline add state
-  const [showAddForm, setShowAddForm] = useState(false)
-  const [addForm, setAddForm] = useState({ name: '', description: '', duration_mins: 60, color: '#c8a750', icon: '', is_private: false })
-  const [addMoreOptions, setAddMoreOptions] = useState(false)
-  const [addImageFile, setAddImageFile] = useState(null)
-  const [addImagePreview, setAddImagePreview] = useState(null)
-  const [addSubmitting, setAddSubmitting] = useState(false)
-  const nameInputRef = useRef(null)
+  // Inline create
+  const [showCreate, setShowCreate] = useState(false)
+  const [createForm, setCreateForm] = useState({ name: '', description: '', duration_mins: 60, color: '#c8a750', icon: '', is_private: false })
+  const [createMore, setCreateMore] = useState(false)
+  const [createImageFile, setCreateImageFile] = useState(null)
+  const [createImagePreview, setCreateImagePreview] = useState(null)
+  const createNameRef = useRef(null)
+
+  // Inline edit
+  const [editingId, setEditingId] = useState(null)
+  const [editForm, setEditForm] = useState({ name: '', description: '', duration_mins: 60, color: '#c8a750', icon: '', is_private: false, image_url: null })
+  const [editMore, setEditMore] = useState(false)
+  const [editImageFile, setEditImageFile] = useState(null)
+  const [editImagePreview, setEditImagePreview] = useState(null)
+  const editNameRef = useRef(null)
 
   useEffect(() => {
     if (!toast) return
-    const t = setTimeout(() => setToast(null), 4000)
+    const t = setTimeout(() => setToast(null), 3000)
     return () => clearTimeout(t)
   }, [toast])
 
@@ -57,10 +59,9 @@ export default function ClassTypesPage() {
         const data = await res.json()
         setClassTypes(data.classTypes || [])
       } else {
-        setFetchError('Failed to load class types')
+        setFetchError('Failed to load events')
       }
-    } catch (err) {
-      console.error('Failed to fetch class types:', err)
+    } catch {
       setFetchError('Unable to connect. Check your internet and try again.')
     } finally {
       setLoading(false)
@@ -68,26 +69,43 @@ export default function ClassTypesPage() {
   }
 
   useEffect(() => { fetchClassTypes() }, [])
+  useEffect(() => { if (showCreate) setTimeout(() => createNameRef.current?.focus(), 50) }, [showCreate])
+  useEffect(() => { if (editingId) setTimeout(() => editNameRef.current?.focus(), 50) }, [editingId])
 
-  function openAddInline() {
-    setAddForm({ name: '', description: '', duration_mins: 60, color: '#c8a750', icon: '', is_private: false })
-    setAddMoreOptions(false)
-    setAddImageFile(null)
-    setAddImagePreview(null)
-    setShowAddForm(true)
-    setTimeout(() => nameInputRef.current?.focus(), 50)
+  // Click outside to dismiss
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (showCreate) {
+        const el = document.querySelector('[data-event-create]')
+        if (el && !el.contains(e.target)) cancelCreate()
+      }
+      if (editingId) {
+        const el = document.querySelector('[data-event-edit]')
+        if (el && !el.contains(e.target)) cancelEdit()
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [showCreate, editingId])
+
+  function startCreate() {
+    setCreateForm({ name: '', description: '', duration_mins: 60, color: '#c8a750', icon: '', is_private: false })
+    setCreateMore(false)
+    setCreateImageFile(null)
+    setCreateImagePreview(null)
+    setShowCreate(true)
+    setEditingId(null)
   }
 
-  function cancelAdd() {
-    setShowAddForm(false)
-    setAddForm({ name: '', description: '', duration_mins: 60, color: '#c8a750', icon: '', is_private: false })
-    setAddMoreOptions(false)
-    setAddImageFile(null)
-    setAddImagePreview(null)
+  function cancelCreate() {
+    setShowCreate(false)
+    setCreateMore(false)
+    setCreateImageFile(null)
+    setCreateImagePreview(null)
   }
 
-  function openEdit(ct) {
-    setForm({
+  function startEdit(ct) {
+    setEditForm({
       name: ct.name,
       description: ct.description || '',
       duration_mins: ct.duration_mins || 60,
@@ -96,61 +114,19 @@ export default function ClassTypesPage() {
       is_private: ct.is_private || false,
       image_url: ct.image_url || null,
     })
-    setImageFile(null)
-    setImagePreview(null)
-    setEditDialog(ct)
+    const hasMore = ct.description || ct.icon || ct.is_private || ct.image_url
+    setEditMore(!!hasMore)
+    setEditImageFile(null)
+    setEditImagePreview(null)
+    setEditingId(ct.id)
+    setShowCreate(false)
   }
 
-  async function handleCreate() {
-    if (!addForm.name.trim()) { setToast({ message: 'Name is required', type: 'error' }); return }
-
-    // Optimistic: add card immediately, close form
-    const tempId = `temp-${Date.now()}`
-    const optimisticCt = {
-      id: tempId,
-      name: addForm.name,
-      description: addForm.description || null,
-      duration_mins: addForm.duration_mins,
-      color: addForm.color,
-      icon: addForm.icon || null,
-      is_private: addForm.is_private,
-      is_active: true,
-      image_url: addImagePreview || null,
-      _optimistic: true,
-    }
-    setClassTypes((prev) => [...prev, optimisticCt])
-    const savedImageFile = addImageFile
-    cancelAdd()
-
-    try {
-      const res = await fetch('/api/admin/class-types', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: addForm.name,
-          description: addForm.description || undefined,
-          duration_mins: addForm.duration_mins,
-          color: addForm.color,
-          icon: addForm.icon || undefined,
-          is_private: addForm.is_private,
-        }),
-      })
-      const data = await res.json()
-      if (!res.ok) {
-        setClassTypes((prev) => prev.filter((ct) => ct.id !== tempId))
-        setToast({ message: data.error || 'Failed to create', type: 'error' })
-        return
-      }
-      // Upload image if selected
-      if (savedImageFile && data.classType?.id) {
-        await uploadClassImage(data.classType.id, savedImageFile)
-      }
-      setToast({ message: `"${data.classType.name}" created`, type: 'success' })
-      fetchClassTypes()
-    } catch {
-      setClassTypes((prev) => prev.filter((ct) => ct.id !== tempId))
-      setToast({ message: 'Something went wrong', type: 'error' })
-    }
+  function cancelEdit() {
+    setEditingId(null)
+    setEditMore(false)
+    setEditImageFile(null)
+    setEditImagePreview(null)
   }
 
   async function uploadClassImage(classTypeId, file) {
@@ -176,7 +152,7 @@ export default function ClassTypesPage() {
         body: JSON.stringify({ classTypeId }),
       })
       if (res.ok) {
-        setForm((f) => ({ ...f, image_url: null }))
+        setEditForm((f) => ({ ...f, image_url: null }))
         setToast({ message: 'Image removed', type: 'success' })
         fetchClassTypes()
       }
@@ -185,43 +161,76 @@ export default function ClassTypesPage() {
     }
   }
 
+  async function handleCreate() {
+    if (!createForm.name.trim()) return
+
+    const tempId = `temp-${Date.now()}`
+    const optimistic = {
+      id: tempId, ...createForm, is_active: true, active: true, image_url: createImagePreview || null, _optimistic: true,
+    }
+    setClassTypes((prev) => [...prev, optimistic])
+    const savedFile = createImageFile
+    cancelCreate()
+
+    try {
+      const res = await fetch('/api/admin/class-types', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: createForm.name,
+          description: createForm.description || undefined,
+          duration_mins: createForm.duration_mins,
+          color: createForm.color,
+          icon: createForm.icon || undefined,
+          is_private: createForm.is_private,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setClassTypes((prev) => prev.filter((ct) => ct.id !== tempId))
+        setToast({ message: data.error || 'Failed to create', type: 'error' })
+        return
+      }
+      if (savedFile && data.classType?.id) await uploadClassImage(data.classType.id, savedFile)
+      setToast({ message: `"${data.classType.name}" created`, type: 'success' })
+      fetchClassTypes()
+    } catch {
+      setClassTypes((prev) => prev.filter((ct) => ct.id !== tempId))
+      setToast({ message: 'Something went wrong', type: 'error' })
+    }
+  }
+
   async function handleUpdate() {
-    if (!editDialog || !form.name.trim()) return
-    setSubmitting(true)
+    if (!editForm.name.trim()) return
+    const id = editingId
+    const prev = [...classTypes]
+    setClassTypes((list) => list.map((ct) => ct.id === id ? { ...ct, ...editForm } : ct))
+    cancelEdit()
+
     try {
       const res = await fetch('/api/admin/class-types', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: editDialog.id,
-          name: form.name,
-          description: form.description || null,
-          duration_mins: form.duration_mins,
-          color: form.color,
-          icon: form.icon || null,
-          is_private: form.is_private,
-        }),
+        body: JSON.stringify({ id, name: editForm.name, description: editForm.description || null, duration_mins: editForm.duration_mins, color: editForm.color, icon: editForm.icon || null, is_private: editForm.is_private }),
       })
       const data = await res.json()
-      if (!res.ok) { setToast({ message: data.error || 'Failed to update', type: 'error' }); return }
-      // Upload new image if selected
-      if (imageFile) {
-        await uploadClassImage(editDialog.id, imageFile)
+      if (!res.ok) {
+        setClassTypes(prev)
+        setToast({ message: data.error || 'Failed to update', type: 'error' })
+        return
       }
+      if (editImageFile) await uploadClassImage(id, editImageFile)
       setToast({ message: `"${data.classType.name}" updated`, type: 'success' })
-      setEditDialog(null)
-      setImageFile(null)
-      setImagePreview(null)
       fetchClassTypes()
     } catch {
+      setClassTypes(prev)
       setToast({ message: 'Something went wrong', type: 'error' })
-    } finally {
-      setSubmitting(false)
     }
   }
 
   async function handleDelete(ct) {
     setDeleteDialog(null)
+    setClassTypes((prev) => prev.filter((c) => c.id !== ct.id))
     try {
       const res = await fetch('/api/admin/class-types', {
         method: 'DELETE',
@@ -230,373 +239,100 @@ export default function ClassTypesPage() {
       })
       const data = await res.json()
       if (!res.ok) {
+        fetchClassTypes()
         setToast({ message: data.error || 'Failed to delete', type: 'error' })
         return
       }
       setToast({ message: `"${ct.name}" deleted`, type: 'success' })
-      fetchClassTypes()
     } catch {
+      fetchClassTypes()
       setToast({ message: 'Something went wrong', type: 'error' })
     }
   }
 
   async function toggleActive(ct) {
+    setClassTypes((prev) => prev.map((c) => c.id === ct.id ? { ...c, active: !c.active, is_active: !c.active } : c))
     try {
       const res = await fetch('/api/admin/class-types', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: ct.id, active: !ct.active }),
       })
-      if (res.ok) {
-        setToast({ message: `"${ct.name}" ${ct.active ? 'deactivated' : 'activated'}`, type: 'success' })
-        fetchClassTypes()
+      if (!res.ok) {
+        setClassTypes((prev) => prev.map((c) => c.id === ct.id ? { ...c, active: ct.active, is_active: ct.active } : c))
+        setToast({ message: 'Failed to update', type: 'error' })
+        return
       }
+      setToast({ message: ct.active ? 'Event deactivated' : 'Event activated', type: 'success' })
     } catch {
+      setClassTypes((prev) => prev.map((c) => c.id === ct.id ? { ...c, active: ct.active, is_active: ct.active } : c))
       setToast({ message: 'Something went wrong', type: 'error' })
     }
   }
 
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-foreground">Events</h1>
+  function handleKeyDown(e, mode) {
+    if (e.key === 'Enter') { e.preventDefault(); mode === 'create' ? handleCreate() : handleUpdate() }
+    else if (e.key === 'Escape') { e.preventDefault(); mode === 'create' ? cancelCreate() : cancelEdit() }
+  }
+
+  function renderColorPicker(form, setForm) {
+    return (
+      <div className="flex flex-wrap gap-1.5">
+        {COLOR_OPTIONS.map((c) => (
+          <button
+            key={c.value}
+            type="button"
+            onClick={() => setForm((f) => ({ ...f, color: c.value }))}
+            className={cn('w-6 h-6 rounded-full border-2 transition-all', form.color === c.value ? 'border-foreground scale-110' : 'border-transparent hover:border-card-border')}
+            style={{ backgroundColor: c.value }}
+            title={c.label}
+          />
+        ))}
       </div>
+    )
+  }
 
-      {toast && (
-        <div className={cn('mb-6 px-4 py-3 rounded-lg border flex items-center justify-between', toast.type === 'error' ? 'bg-red-500/10 border-red-500/20 text-red-400' : 'bg-green-500/10 border-green-500/20 text-green-400')}>
-          <span className="text-sm">{toast.message}</span>
-          <button onClick={() => setToast(null)} className="opacity-60 hover:opacity-100"><X className="w-3.5 h-3.5" /></button>
+  function renderMoreFields(form, setForm, mode, imagePreview, onImageSelect, onImageDelete) {
+    return (
+      <div className="space-y-3 mt-3 pt-3 border-t border-card-border/50">
+        <div>
+          <Label className="text-xs text-muted">Description</Label>
+          <Input
+            value={form.description}
+            onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+            placeholder="Brief description"
+            className="mt-1 h-8 text-sm bg-background border-card-border"
+            onKeyDown={(e) => handleKeyDown(e, mode)}
+          />
         </div>
-      )}
-
-      {fetchError && !loading ? (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <p className="text-red-400 font-medium">{fetchError}</p>
-            <Button variant="outline" size="sm" className="mt-3" onClick={fetchClassTypes}>Retry</Button>
-          </CardContent>
-        </Card>
-      ) : loading ? (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {[1, 2, 3].map((i) => <div key={i} className="h-32 bg-card border border-card-border rounded-lg animate-pulse" />)}
+        <div className="flex items-center gap-3">
+          <div className="w-20">
+            <Label className="text-xs text-muted">Icon</Label>
+            <Input
+              value={form.icon}
+              onChange={(e) => setForm((f) => ({ ...f, icon: e.target.value }))}
+              placeholder="e.g. 🥊"
+              className="mt-1 h-8 text-sm bg-background border-card-border"
+              onKeyDown={(e) => handleKeyDown(e, mode)}
+            />
+          </div>
+          <label className="flex items-center gap-2 cursor-pointer pt-4">
+            <input
+              type="checkbox"
+              checked={form.is_private}
+              onChange={(e) => setForm((f) => ({ ...f, is_private: e.target.checked }))}
+              className="w-3.5 h-3.5 rounded border-card-border bg-card accent-accent"
+            />
+            <span className="text-xs text-foreground">Private</span>
+          </label>
         </div>
-      ) : (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {classTypes.map((ct) => (
-            <button
-              key={ct.id}
-              onClick={() => openEdit(ct)}
-              className={cn(
-                'text-left rounded-lg border border-card-border bg-card hover:bg-white/[0.04] transition-colors overflow-hidden group',
-                !ct.active && 'opacity-50'
-              )}
-            >
-              {/* Image or gradient header */}
-              <div className="relative h-24 overflow-hidden" style={{ backgroundColor: ct.color ? `${ct.color}15` : '#c8a75015' }}>
-                {ct.image_url ? (
-                  <Image src={ct.image_url} alt={ct.name} fill className="object-cover" sizes="(max-width: 640px) 100vw, 33vw" />
-                ) : (
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ backgroundColor: `${ct.color || '#c8a750'}25` }}>
-                      {ct.icon ? (
-                        <span className="text-lg">{ct.icon}</span>
-                      ) : (
-                        <ImageIcon className="w-5 h-5" style={{ color: ct.color || '#c8a750' }} />
-                      )}
-                    </div>
-                  </div>
-                )}
-                <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-card to-transparent" />
-              </div>
-              <div className="p-3 pt-1">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      {ct.icon && <span className="text-base">{ct.icon}</span>}
-                      <h3 className="text-sm font-semibold text-foreground truncate">{ct.name}</h3>
-                    </div>
-                    {ct.description && (
-                      <p className="text-xs text-muted mt-1 line-clamp-2">{ct.description}</p>
-                    )}
-                  </div>
-                  <div className="flex flex-col items-end gap-1 shrink-0">
-                    {ct.is_private && (
-                      <Badge className="text-[10px] bg-amber-500/10 text-amber-400 border-amber-500/20">Private</Badge>
-                    )}
-                    {!ct.active && (
-                      <Badge variant="outline" className="text-[10px]">Inactive</Badge>
-                    )}
-                  </div>
-                </div>
-                <div className="flex items-center gap-3 mt-2 text-xs text-muted">
-                  <span>{ct.duration_mins} min</span>
-                  <span className="w-3 h-3 rounded-full" style={{ backgroundColor: ct.color || '#c8a750' }} />
-                </div>
-              </div>
-            </button>
-          ))}
-
-          {/* Inline Add Card */}
-          {!showAddForm ? (
-            <button
-              onClick={openAddInline}
-              className="rounded-lg border-2 border-dashed border-card-border/60 hover:border-accent/40 bg-transparent hover:bg-card/50 transition-all flex flex-col items-center justify-center gap-2 min-h-[160px] group"
-            >
-              <div className="w-10 h-10 rounded-full border-2 border-dashed border-card-border/60 group-hover:border-accent/40 flex items-center justify-center transition-colors">
-                <Plus className="w-5 h-5 text-muted group-hover:text-accent transition-colors" />
-              </div>
-              <span className="text-sm text-muted group-hover:text-foreground transition-colors">Add event</span>
-            </button>
-          ) : (
-            <div
-              className="rounded-lg border border-card-border bg-card overflow-hidden"
-              onKeyDown={(e) => {
-                if (e.key === 'Escape') { e.preventDefault(); cancelAdd() }
-              }}
-            >
-              {/* Colored top strip */}
-              <div className="h-2 transition-colors" style={{ backgroundColor: addForm.color }} />
-
-              <div className="p-3 space-y-3">
-                {/* Name input */}
-                <div>
-                  <Input
-                    ref={nameInputRef}
-                    value={addForm.name}
-                    onChange={(e) => setAddForm((f) => ({ ...f, name: e.target.value }))}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleCreate() }
-                    }}
-                    placeholder="Event name"
-                    className="text-sm font-medium h-9"
-                    autoFocus
-                  />
-                </div>
-
-                {/* Duration */}
-                <div className="flex items-center gap-2">
-                  <Label className="text-xs text-muted shrink-0">Duration</Label>
-                  <Input
-                    type="number"
-                    min={1}
-                    max={300}
-                    value={addForm.duration_mins}
-                    onChange={(e) => setAddForm((f) => ({ ...f, duration_mins: parseInt(e.target.value) || 60 }))}
-                    className="h-8 text-xs w-20"
-                  />
-                  <span className="text-xs text-muted">min</span>
-                </div>
-
-                {/* Color dots */}
-                <div>
-                  <Label className="text-xs text-muted">Color</Label>
-                  <div className="flex flex-wrap gap-1.5 mt-1">
-                    {COLOR_OPTIONS.map((c) => (
-                      <button
-                        key={c.value}
-                        type="button"
-                        onClick={() => setAddForm((f) => ({ ...f, color: c.value }))}
-                        className={cn(
-                          'w-6 h-6 rounded-full border-2 transition-all',
-                          addForm.color === c.value ? 'border-foreground scale-110' : 'border-transparent hover:border-card-border'
-                        )}
-                        style={{ backgroundColor: c.value }}
-                        title={c.label}
-                      />
-                    ))}
-                  </div>
-                </div>
-
-                {/* More options toggle */}
-                <button
-                  type="button"
-                  onClick={() => setAddMoreOptions((v) => !v)}
-                  className="flex items-center gap-1.5 text-xs text-muted hover:text-foreground transition-colors w-full"
-                >
-                  <ChevronDown className={cn('w-3.5 h-3.5 transition-transform', addMoreOptions && 'rotate-180')} />
-                  <span>More options</span>
-                </button>
-
-                {/* Expanded options */}
-                {addMoreOptions && (
-                  <div className="space-y-3 pt-1 border-t border-card-border/50">
-                    {/* Description */}
-                    <div>
-                      <Label className="text-xs text-muted">Description</Label>
-                      <textarea
-                        value={addForm.description}
-                        onChange={(e) => setAddForm((f) => ({ ...f, description: e.target.value }))}
-                        placeholder="Brief description"
-                        rows={2}
-                        className="mt-1 w-full rounded-lg bg-background/50 border border-card-border/60 px-3 py-2 text-xs text-foreground transition-colors focus:outline-none focus:ring-1 focus:ring-accent/50 focus:border-accent/30 resize-none"
-                      />
-                    </div>
-
-                    {/* Icon */}
-                    <div className="flex items-center gap-2">
-                      <Label className="text-xs text-muted shrink-0">Icon</Label>
-                      <Input
-                        value={addForm.icon}
-                        onChange={(e) => setAddForm((f) => ({ ...f, icon: e.target.value }))}
-                        placeholder="e.g. 🥊"
-                        className="h-8 text-xs w-20"
-                      />
-                    </div>
-
-                    {/* Private toggle */}
-                    <label className="flex items-center gap-2.5 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={addForm.is_private}
-                        onChange={(e) => setAddForm((f) => ({ ...f, is_private: e.target.checked }))}
-                        className="w-3.5 h-3.5 rounded border-card-border bg-card accent-accent"
-                      />
-                      <span className="text-xs text-foreground">Private</span>
-                    </label>
-
-                    {/* Image upload */}
-                    <div>
-                      {addImagePreview ? (
-                        <div className="relative rounded-lg overflow-hidden h-20 bg-card border border-card-border group">
-                          <Image src={addImagePreview} alt="Preview" fill className="object-cover" sizes="400px" />
-                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
-                            <button
-                              type="button"
-                              onClick={() => { setAddImageFile(null); setAddImagePreview(null) }}
-                              className="w-7 h-7 rounded-full bg-red-500/20 hover:bg-red-500/30 flex items-center justify-center transition-colors"
-                            >
-                              <Trash2 className="w-3.5 h-3.5 text-red-400" />
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <label className="flex items-center gap-2 text-xs text-muted hover:text-foreground cursor-pointer transition-colors">
-                          <Camera className="w-3.5 h-3.5" />
-                          <span>Add image</span>
-                          <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => {
-                            const f = e.target.files?.[0]
-                            if (f) {
-                              setAddImageFile(f)
-                              setAddImagePreview(URL.createObjectURL(f))
-                            }
-                          }} />
-                        </label>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Save / Cancel */}
-                <div className="flex items-center justify-end gap-1.5 pt-1">
-                  <button
-                    type="button"
-                    onClick={cancelAdd}
-                    disabled={addSubmitting}
-                    className="w-8 h-8 rounded-lg border border-card-border/60 hover:bg-white/[0.04] flex items-center justify-center transition-colors text-muted hover:text-foreground"
-                    title="Cancel"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleCreate}
-                    disabled={addSubmitting}
-                    className={cn(
-                      'w-8 h-8 rounded-lg flex items-center justify-center transition-colors',
-                      addSubmitting ? 'bg-accent/50 cursor-not-allowed' : 'bg-accent hover:bg-accent-dim'
-                    )}
-                    title="Save"
-                  >
-                    {addSubmitting ? (
-                      <div className="w-3.5 h-3.5 border-2 border-background/40 border-t-background rounded-full animate-spin" />
-                    ) : (
-                      <Check className="w-4 h-4 text-background" />
-                    )}
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Delete Confirmation */}
-      <Dialog open={!!deleteDialog} onOpenChange={(open) => !open && setDeleteDialog(null)}>
-        <DialogContent className="sm:max-w-sm" onOpenAutoFocus={(e) => e.preventDefault()}>
-          <DialogHeader>
-            <DialogTitle>Delete Class Type</DialogTitle>
-            <DialogDescription>
-              Permanently delete &quot;{deleteDialog?.name}&quot;? This cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setDeleteDialog(null)}>Cancel</Button>
-            <Button
-              className="bg-red-600 hover:bg-red-700 text-white"
-              onClick={() => handleDelete(deleteDialog)}
-            >
-              Delete
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit Dialog */}
-      <Dialog open={!!editDialog} onOpenChange={(open) => !open && setEditDialog(null)}>
-        <DialogContent className="sm:max-w-md" onOpenAutoFocus={(e) => e.preventDefault()}>
-          <DialogHeader>
-            <DialogTitle>Edit Class Type</DialogTitle>
-            <DialogDescription>Update {editDialog?.name}</DialogDescription>
-          </DialogHeader>
-          <ClassTypeForm form={form} setForm={setForm} imagePreview={imagePreview} onImageSelect={(file) => {
-            setImageFile(file)
-            setImagePreview(file ? URL.createObjectURL(file) : null)
-          }} onImageDelete={editDialog?.image_url ? () => deleteClassImage(editDialog.id) : null} />
-          <DialogFooter className="flex-col sm:flex-row gap-2">
-            {editDialog && (
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  className={editDialog.active ? 'text-red-400 border-red-400/30 hover:bg-red-400/10' : 'text-green-400 border-green-400/30 hover:bg-green-400/10'}
-                  onClick={() => { toggleActive(editDialog); setEditDialog(null) }}
-                >
-                  {editDialog.active ? 'Deactivate' : 'Activate'}
-                </Button>
-                <Button
-                  variant="outline"
-                  className="text-red-400 border-red-400/30 hover:bg-red-400/10"
-                  onClick={() => { setEditDialog(null); setDeleteDialog(editDialog) }}
-                >
-                  Delete
-                </Button>
-              </div>
-            )}
-            <div className="flex gap-2 sm:ml-auto">
-              <Button variant="outline" onClick={() => setEditDialog(null)}>Cancel</Button>
-              <Button onClick={handleUpdate} disabled={submitting}>{submitting ? 'Saving...' : 'Save'}</Button>
-            </div>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
-  )
-}
-
-function ClassTypeForm({ form, setForm, imagePreview, onImageSelect, onImageDelete }) {
-  const displayImage = imagePreview || form.image_url
-
-  return (
-    <div className="space-y-4 py-2">
-      {/* Image upload */}
-      <div>
-        <Label>Image (optional)</Label>
-        <div className="mt-1.5">
-          {displayImage ? (
-            <div className="relative rounded-lg overflow-hidden h-32 bg-card border border-card-border group">
-              <Image src={displayImage} alt="Preview" fill className="object-cover" sizes="400px" />
+        <div>
+          {(imagePreview || form.image_url) ? (
+            <div className="relative rounded-lg overflow-hidden h-20 bg-card border border-card-border group">
+              <Image src={imagePreview || form.image_url} alt="Preview" fill className="object-cover" sizes="400px" />
               <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100">
-                <label className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center cursor-pointer transition-colors">
-                  <Upload className="w-4 h-4 text-white" />
+                <label className="w-7 h-7 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center cursor-pointer transition-colors">
+                  <Upload className="w-3.5 h-3.5 text-white" />
                   <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => {
                     const f = e.target.files?.[0]
                     if (f) onImageSelect(f)
@@ -604,21 +340,17 @@ function ClassTypeForm({ form, setForm, imagePreview, onImageSelect, onImageDele
                 </label>
                 <button
                   type="button"
-                  onClick={() => {
-                    onImageSelect(null)
-                    if (onImageDelete) onImageDelete()
-                  }}
-                  className="w-8 h-8 rounded-full bg-red-500/20 hover:bg-red-500/30 flex items-center justify-center transition-colors"
+                  onClick={() => { onImageSelect(null); if (onImageDelete) onImageDelete() }}
+                  className="w-7 h-7 rounded-full bg-red-500/20 hover:bg-red-500/30 flex items-center justify-center transition-colors"
                 >
-                  <Trash2 className="w-4 h-4 text-red-400" />
+                  <Trash2 className="w-3.5 h-3.5 text-red-400" />
                 </button>
               </div>
             </div>
           ) : (
-            <label className="flex flex-col items-center justify-center h-24 rounded-lg border-2 border-dashed border-card-border/60 hover:border-accent/30 bg-background/30 cursor-pointer transition-colors">
-              <Upload className="w-5 h-5 text-muted mb-1" />
-              <span className="text-xs text-muted">Click to upload image</span>
-              <span className="text-[10px] text-muted/60">JPEG, PNG, WebP — max 5MB</span>
+            <label className="flex items-center gap-2 text-xs text-muted hover:text-foreground cursor-pointer transition-colors">
+              <Camera className="w-3.5 h-3.5" />
+              <span>Add image</span>
               <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => {
                 const f = e.target.files?.[0]
                 if (f) onImageSelect(f)
@@ -627,61 +359,195 @@ function ClassTypeForm({ form, setForm, imagePreview, onImageSelect, onImageDele
           )}
         </div>
       </div>
+    )
+  }
+
+  return (
+    <div className="max-w-4xl mx-auto space-y-6">
       <div>
-        <Label htmlFor="ct-name">Name</Label>
-        <Input id="ct-name" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="e.g. Boxing Fundamentals" className="mt-1" />
+        <h1 className="text-2xl font-bold text-foreground">Events</h1>
+        <p className="text-sm text-muted mt-1">Manage your class types and event categories</p>
       </div>
-      <div>
-        <Label htmlFor="ct-desc">Description (optional)</Label>
-        <textarea
-          id="ct-desc"
-          value={form.description}
-          onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-          placeholder="Brief description of this class type"
-          rows={2}
-          className="mt-1 w-full rounded-lg bg-background/50 border border-card-border/60 px-3.5 py-2 text-sm text-foreground transition-colors focus:outline-none focus:ring-1 focus:ring-accent/50 focus:border-accent/30 resize-none"
-        />
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div>
-          <Label htmlFor="ct-duration">Duration (mins)</Label>
-          <Input id="ct-duration" type="number" min={1} max={300} value={form.duration_mins} onChange={(e) => setForm((f) => ({ ...f, duration_mins: parseInt(e.target.value) || 60 }))} className="mt-1" />
+
+      {/* Toast */}
+      {toast && (
+        <div className={cn(
+          'fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:bottom-6 z-50 px-4 py-3 rounded-lg border flex items-center gap-3 shadow-lg backdrop-blur-sm sm:max-w-sm',
+          toast.type === 'error' ? 'bg-red-500/10 border-red-500/20 text-red-400' : 'bg-green-500/10 border-green-500/20 text-green-400'
+        )}>
+          <span className="text-sm flex-1">{toast.message}</span>
+          <button onClick={() => setToast(null)} className="opacity-60 hover:opacity-100 shrink-0"><X className="w-3.5 h-3.5" /></button>
         </div>
-        <div>
-          <Label htmlFor="ct-icon">Icon (optional)</Label>
-          <Input id="ct-icon" value={form.icon} onChange={(e) => setForm((f) => ({ ...f, icon: e.target.value }))} placeholder="e.g. 🥊" className="mt-1" />
+      )}
+
+      {/* Delete dialog */}
+      {deleteDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-card border border-card-border rounded-lg p-6 max-w-sm mx-4 shadow-xl">
+            <h3 className="text-foreground font-semibold mb-2">Delete Event</h3>
+            <p className="text-sm text-muted mb-4">
+              Are you sure you want to delete <span className="text-foreground font-medium">{deleteDialog.name}</span>? This cannot be undone.
+            </p>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" size="sm" onClick={() => setDeleteDialog(null)}>Cancel</Button>
+              <Button size="sm" onClick={() => handleDelete(deleteDialog)} className="bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20">Delete</Button>
+            </div>
+          </div>
         </div>
-      </div>
-      <div>
-        <Label>Color</Label>
-        <div className="flex flex-wrap gap-2 mt-1.5">
-          {COLOR_OPTIONS.map((c) => (
-            <button
-              key={c.value}
-              type="button"
-              onClick={() => setForm((f) => ({ ...f, color: c.value }))}
-              className={cn(
-                'w-8 h-8 rounded-full border-2 transition-all',
-                form.color === c.value ? 'border-foreground scale-110' : 'border-transparent hover:border-card-border'
+      )}
+
+      {fetchError && !loading ? (
+        <div className="bg-card border border-card-border rounded-lg p-8 text-center">
+          <p className="text-red-400 mb-4">{fetchError}</p>
+          <Button variant="outline" onClick={fetchClassTypes} className="gap-2">Retry</Button>
+        </div>
+      ) : loading ? (
+        <div className="space-y-2">
+          {[1, 2, 3].map((i) => <div key={i} className="h-16 bg-card border border-card-border rounded-lg animate-pulse" />)}
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {classTypes.length === 0 && !showCreate && (
+            <div className="border border-card-border rounded-lg py-12 text-center">
+              <Tag className="w-10 h-10 text-muted mx-auto mb-3" />
+              <p className="text-foreground font-medium mb-1">No events yet</p>
+              <p className="text-sm text-muted mb-4">Add your first event type to get started</p>
+              <Button onClick={startCreate} className="gap-2"><Plus className="w-4 h-4" /> Add Event</Button>
+            </div>
+          )}
+
+          {classTypes.map((ct) => {
+            const isActive = ct.active !== undefined ? ct.active : ct.is_active
+            const isEditing = editingId === ct.id
+
+            if (isEditing) {
+              return (
+                <div key={ct.id} data-event-edit className="border-2 border-accent/40 rounded-lg p-3 sm:p-4 bg-card">
+                  <div className="flex items-center gap-3">
+                    {/* Color dot */}
+                    <div className="w-10 h-10 rounded-full shrink-0 flex items-center justify-center" style={{ backgroundColor: `${editForm.color}25` }}>
+                      {editForm.icon ? <span className="text-base">{editForm.icon}</span> : <div className="w-4 h-4 rounded-full" style={{ backgroundColor: editForm.color }} />}
+                    </div>
+                    <div className="flex-1 min-w-0 space-y-2">
+                      <Input
+                        ref={editNameRef}
+                        value={editForm.name}
+                        onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))}
+                        placeholder="Event name"
+                        className="h-8 text-sm bg-background border-card-border"
+                        onKeyDown={(e) => handleKeyDown(e, 'edit')}
+                      />
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-1.5">
+                          <Label className="text-xs text-muted">Duration</Label>
+                          <Input type="number" min={1} max={300} value={editForm.duration_mins} onChange={(e) => setEditForm((f) => ({ ...f, duration_mins: parseInt(e.target.value) || 60 }))} className="h-7 text-xs w-16 bg-background border-card-border" onKeyDown={(e) => handleKeyDown(e, 'edit')} />
+                          <span className="text-xs text-muted">min</span>
+                        </div>
+                        {renderColorPicker(editForm, setEditForm)}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button onClick={handleUpdate} className="w-8 h-8 rounded-md flex items-center justify-center text-green-400 hover:bg-green-500/10 transition-colors" title="Save (Enter)"><Check className="w-5 h-5" /></button>
+                      <button onClick={cancelEdit} className="w-8 h-8 rounded-md flex items-center justify-center text-muted hover:text-red-400 hover:bg-red-500/10 transition-colors" title="Cancel (Esc)"><X className="w-5 h-5" /></button>
+                    </div>
+                  </div>
+                  <button onClick={() => setEditMore(!editMore)} className="flex items-center gap-1.5 text-xs text-muted hover:text-foreground transition-colors mt-3 ml-13">
+                    {editMore ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                    {editMore ? 'Fewer options' : 'More options'}
+                  </button>
+                  {editMore && (
+                    <div className="ml-13">
+                      {renderMoreFields(editForm, setEditForm, 'edit', editImagePreview, (f) => { setEditImageFile(f); setEditImagePreview(f ? URL.createObjectURL(f) : null) }, editForm.image_url ? () => deleteClassImage(ct.id) : null)}
+                    </div>
+                  )}
+                  <p className="text-[10px] text-muted mt-3 ml-13">Enter to save · Esc to cancel</p>
+                </div>
+              )
+            }
+
+            return (
+              <div
+                key={ct.id}
+                onClick={(e) => { if (e.target.closest('[data-no-edit]')) return; startEdit(ct) }}
+                className={cn('border border-card-border rounded-lg p-3 sm:p-4 transition-colors hover:bg-white/[0.03] cursor-pointer', !isActive && 'opacity-50')}
+              >
+                <div className="flex items-center gap-3">
+                  {/* Color indicator */}
+                  <div className="w-10 h-10 rounded-full shrink-0 flex items-center justify-center" style={{ backgroundColor: `${ct.color || '#c8a750'}25` }}>
+                    {ct.icon ? <span className="text-base">{ct.icon}</span> : <div className="w-4 h-4 rounded-full" style={{ backgroundColor: ct.color || '#c8a750' }} />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-semibold text-foreground truncate">{ct.name}</p>
+                      {ct.is_private && <span className="text-[10px] font-medium text-amber-400 bg-amber-400/10 px-1.5 py-0.5 rounded shrink-0">Private</span>}
+                      {!isActive && <span className="text-[10px] font-medium text-red-400 bg-red-400/10 px-1.5 py-0.5 rounded shrink-0">Inactive</span>}
+                    </div>
+                    <p className="text-xs text-muted mt-0.5">
+                      {ct.duration_mins} min
+                      {ct.description && <span> · {ct.description}</span>}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0" data-no-edit>
+                    <Switch checked={isActive} onCheckedChange={() => toggleActive(ct)} />
+                    <button onClick={() => setDeleteDialog(ct)} className="p-1.5 rounded-md text-muted hover:text-red-400 hover:bg-red-500/10 transition-colors" title="Delete event">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+
+          {/* Inline create */}
+          {showCreate ? (
+            <div data-event-create className="border-2 border-dashed border-accent/40 rounded-lg p-3 sm:p-4 bg-card">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full shrink-0 flex items-center justify-center" style={{ backgroundColor: `${createForm.color}25` }}>
+                  {createForm.icon ? <span className="text-base">{createForm.icon}</span> : <div className="w-4 h-4 rounded-full" style={{ backgroundColor: createForm.color }} />}
+                </div>
+                <div className="flex-1 min-w-0 space-y-2">
+                  <Input
+                    ref={createNameRef}
+                    value={createForm.name}
+                    onChange={(e) => setCreateForm((f) => ({ ...f, name: e.target.value }))}
+                    placeholder="Event name"
+                    className="h-8 text-sm bg-background border-card-border"
+                    onKeyDown={(e) => handleKeyDown(e, 'create')}
+                  />
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-1.5">
+                      <Label className="text-xs text-muted">Duration</Label>
+                      <Input type="number" min={1} max={300} value={createForm.duration_mins} onChange={(e) => setCreateForm((f) => ({ ...f, duration_mins: parseInt(e.target.value) || 60 }))} className="h-7 text-xs w-16 bg-background border-card-border" onKeyDown={(e) => handleKeyDown(e, 'create')} />
+                      <span className="text-xs text-muted">min</span>
+                    </div>
+                    {renderColorPicker(createForm, setCreateForm)}
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button onClick={handleCreate} className="w-8 h-8 rounded-md flex items-center justify-center text-green-400 hover:bg-green-500/10 transition-colors" title="Save (Enter)"><Check className="w-5 h-5" /></button>
+                  <button onClick={cancelCreate} className="w-8 h-8 rounded-md flex items-center justify-center text-muted hover:text-red-400 hover:bg-red-500/10 transition-colors" title="Cancel (Esc)"><X className="w-5 h-5" /></button>
+                </div>
+              </div>
+              <button onClick={() => setCreateMore(!createMore)} className="flex items-center gap-1.5 text-xs text-muted hover:text-foreground transition-colors mt-3 ml-13">
+                {createMore ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                {createMore ? 'Fewer options' : 'More options'}
+              </button>
+              {createMore && (
+                <div className="ml-13">
+                  {renderMoreFields(createForm, setCreateForm, 'create', createImagePreview, (f) => { setCreateImageFile(f); setCreateImagePreview(f ? URL.createObjectURL(f) : null) }, null)}
+                </div>
               )}
-              style={{ backgroundColor: c.value }}
-              title={c.label}
-            />
-          ))}
+              <p className="text-[10px] text-muted mt-3 ml-13">Enter to save · Esc to cancel</p>
+            </div>
+          ) : (
+            (classTypes.length > 0 || showCreate) && (
+              <button onClick={startCreate} className="w-full py-3 rounded-lg border border-dashed border-card-border text-sm text-muted hover:text-accent hover:border-accent/30 transition-colors flex items-center justify-center gap-2">
+                <Plus className="w-4 h-4" /> Add event
+              </button>
+            )
+          )}
         </div>
-      </div>
-      <label className="flex items-center gap-3 cursor-pointer pt-2 border-t border-card-border">
-        <input
-          type="checkbox"
-          checked={form.is_private}
-          onChange={(e) => setForm((f) => ({ ...f, is_private: e.target.checked }))}
-          className="w-4 h-4 rounded border-card-border bg-card accent-accent"
-        />
-        <div>
-          <span className="text-sm text-foreground">Private class type</span>
-          <p className="text-xs text-muted">Private classes won&apos;t appear on the public schedule. Only admin can add members.</p>
-        </div>
-      </label>
+      )}
     </div>
   )
 }

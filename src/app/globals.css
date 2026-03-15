@@ -56,6 +56,15 @@ body {
   background: var(--muted);
 }
 
+/* Prevent iOS Safari auto-zoom on input focus (triggers at < 16px) */
+@media screen and (max-width: 767px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
 /* Cursor pointer on all interactive elements */
 button,
 a,

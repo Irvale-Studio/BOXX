@@ -1,201 +1,14 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 import { useTheme } from '@/components/ThemeProvider'
 import { getCurrencySymbol } from '@/lib/currency'
-import { X, ExternalLink, Trash2, Tag, Check, ChevronDown, ChevronUp, Plus } from 'lucide-react'
-
-const emptyForm = {
-  name: '',
-  description: '',
-  credits: '',
-  validity_days: 30,
-  price_thb: 0,
-  is_membership: false,
-  is_intro: false,
-  badge_text: '',
-  display_order: 0,
-  stripe_price_id: '',
-}
-
-function InlinePackForm({ form, setForm, onSave, onCancel, submitting, theme, cs }) {
-  const [showMore, setShowMore] = useState(false)
-  const [nameEl, setNameEl] = useState(null)
-
-  useEffect(() => {
-    nameEl?.focus()
-  }, [nameEl])
-
-  useEffect(() => {
-    function handleKeyDown(e) {
-      if (e.key === 'Escape') {
-        e.preventDefault()
-        onCancel()
-      }
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault()
-        if (form.name && !submitting) onSave()
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [form.name, submitting, onSave, onCancel])
-
-  return (
-    <div className="px-4 py-3 bg-card/50">
-      {/* Primary fields row */}
-      <div className="flex flex-wrap items-end gap-3">
-        <div className="flex-1 min-w-[140px]">
-          <label className="text-[11px] text-muted mb-1 block">Name</label>
-          <Input
-            ref={setNameEl}
-            value={form.name}
-            onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-            placeholder="Pack name"
-            className="h-8 text-sm"
-          />
-        </div>
-        <div className="w-24">
-          <label className="text-[11px] text-muted mb-1 block">Credits</label>
-          <Input
-            type="number"
-            value={form.credits}
-            onChange={(e) => setForm((f) => ({ ...f, credits: e.target.value }))}
-            placeholder="∞"
-            className="h-8 text-sm"
-          />
-        </div>
-        <div className="w-24">
-          <label className="text-[11px] text-muted mb-1 block">Validity (days)</label>
-          <Input
-            type="number"
-            value={form.validity_days}
-            onChange={(e) => setForm((f) => ({ ...f, validity_days: e.target.value }))}
-            className="h-8 text-sm"
-          />
-        </div>
-        <div className="w-28">
-          <label className="text-[11px] text-muted mb-1 block">Price ({theme?.currency || 'THB'})</label>
-          <Input
-            type="number"
-            value={form.price_thb}
-            onChange={(e) => setForm((f) => ({ ...f, price_thb: e.target.value }))}
-            className="h-8 text-sm"
-          />
-        </div>
-        <div className="flex items-center gap-1.5 shrink-0">
-          <Button
-            size="sm"
-            className="h-8 px-3 text-xs"
-            onClick={onSave}
-            disabled={submitting || !form.name}
-          >
-            {submitting ? (
-              'Saving...'
-            ) : (
-              <><Check className="w-3.5 h-3.5 mr-1" /> Save</>
-            )}
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-8 px-3 text-xs"
-            onClick={onCancel}
-            disabled={submitting}
-          >
-            <X className="w-3.5 h-3.5 mr-1" /> Cancel
-          </Button>
-        </div>
-      </div>
-
-      {/* More options toggle */}
-      <button
-        type="button"
-        onClick={() => setShowMore(!showMore)}
-        className="flex items-center gap-1 text-[11px] text-accent hover:text-accent-dim transition-colors mt-3"
-      >
-        {showMore ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-        {showMore ? 'Fewer options' : 'More options'}
-      </button>
-
-      {/* Expandable section */}
-      <div
-        className={cn(
-          'overflow-hidden transition-all duration-200 ease-in-out',
-          showMore ? 'max-h-[400px] opacity-100' : 'max-h-0 opacity-0'
-        )}
-      >
-        <div className="pt-3 pb-1 space-y-3">
-          <div className="flex flex-wrap items-end gap-3">
-            <div className="flex-1 min-w-[200px]">
-              <label className="text-[11px] text-muted mb-1 block">Description</label>
-              <Input
-                value={form.description}
-                onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-                placeholder="Optional description"
-                className="h-8 text-sm"
-              />
-            </div>
-            <div className="w-24">
-              <label className="text-[11px] text-muted mb-1 block">Display Order</label>
-              <Input
-                type="number"
-                value={form.display_order}
-                onChange={(e) => setForm((f) => ({ ...f, display_order: e.target.value }))}
-                className="h-8 text-sm"
-              />
-            </div>
-            <div className="w-36">
-              <label className="text-[11px] text-muted mb-1 block">Badge Text</label>
-              <Input
-                value={form.badge_text}
-                onChange={(e) => setForm((f) => ({ ...f, badge_text: e.target.value }))}
-                placeholder="e.g. Best Value"
-                className="h-8 text-sm"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="text-[11px] text-muted mb-1 block">Stripe Product</label>
-            <Input
-              value={form.stripe_price_id}
-              onChange={(e) => setForm((f) => ({ ...f, stripe_price_id: e.target.value }))}
-              placeholder="Paste product ID, price ID, or Stripe URL"
-              className="h-8 text-sm font-mono"
-            />
-            <p className="text-[10px] text-muted mt-1">
-              Paste a Product ID (prod_...), Price ID (price_...), or product URL from Stripe Dashboard
-            </p>
-          </div>
-
-          <div className="flex items-center gap-6">
-            <div className="flex items-center gap-2">
-              <Switch
-                checked={form.is_intro}
-                onCheckedChange={(checked) => setForm((f) => ({ ...f, is_intro: checked }))}
-              />
-              <Label className="text-xs">Intro Pack</Label>
-            </div>
-            <div className="flex items-center gap-2">
-              <Switch
-                checked={form.is_membership}
-                onCheckedChange={(checked) => setForm((f) => ({ ...f, is_membership: checked }))}
-              />
-              <Label className="text-xs">Membership</Label>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
+import { X, ExternalLink, Trash2, Tag, Check, ChevronDown, ChevronUp, Plus, Package } from 'lucide-react'
 
 export default function AdminPacksPage() {
   const { theme } = useTheme()
@@ -203,15 +16,25 @@ export default function AdminPacksPage() {
   const [packs, setPacks] = useState([])
   const [loading, setLoading] = useState(true)
   const [toast, setToast] = useState(null)
-  const [editingId, setEditingId] = useState(null) // 'new' for create, pack.id for edit
-  const [form, setForm] = useState(emptyForm)
-  const [submitting, setSubmitting] = useState(false)
-  const [deleteDialog, setDeleteDialog] = useState(null)
   const [fetchError, setFetchError] = useState(null)
+  const [deleteDialog, setDeleteDialog] = useState(null)
+  const [deleteSubmitting, setDeleteSubmitting] = useState(false)
+
+  // Inline create
+  const [showCreate, setShowCreate] = useState(false)
+  const [createForm, setCreateForm] = useState({ name: '', description: '', credits: '', validity_days: 30, price_thb: 0, is_membership: false, is_intro: false, badge_text: '', display_order: 0, stripe_price_id: '' })
+  const [createMore, setCreateMore] = useState(false)
+  const createNameRef = useRef(null)
+
+  // Inline edit
+  const [editingId, setEditingId] = useState(null)
+  const [editForm, setEditForm] = useState({ name: '', description: '', credits: '', validity_days: 30, price_thb: 0, is_membership: false, is_intro: false, badge_text: '', display_order: 0, stripe_price_id: '' })
+  const [editMore, setEditMore] = useState(false)
+  const editNameRef = useRef(null)
 
   useEffect(() => {
     if (!toast) return
-    const t = setTimeout(() => setToast(null), 4000)
+    const t = setTimeout(() => setToast(null), 3000)
     return () => clearTimeout(t)
   }, [toast])
 
@@ -223,10 +46,9 @@ export default function AdminPacksPage() {
         const data = await res.json()
         setPacks(data.packs || [])
       } else {
-        setFetchError('Failed to load packs')
+        setFetchError('Failed to load products')
       }
-    } catch (err) {
-      console.error(err)
+    } catch {
       setFetchError('Unable to connect. Check your internet and try again.')
     } finally {
       setLoading(false)
@@ -234,14 +56,35 @@ export default function AdminPacksPage() {
   }
 
   useEffect(() => { fetchPacks() }, [])
+  useEffect(() => { if (showCreate) setTimeout(() => createNameRef.current?.focus(), 50) }, [showCreate])
+  useEffect(() => { if (editingId) setTimeout(() => editNameRef.current?.focus(), 50) }, [editingId])
+
+  // Click outside
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (showCreate) {
+        const el = document.querySelector('[data-pack-create]')
+        if (el && !el.contains(e.target)) cancelCreate()
+      }
+      if (editingId) {
+        const el = document.querySelector('[data-pack-edit]')
+        if (el && !el.contains(e.target)) cancelEdit()
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [showCreate, editingId])
 
   function startCreate() {
-    setForm(emptyForm)
-    setEditingId('new')
+    setCreateForm({ name: '', description: '', credits: '', validity_days: 30, price_thb: 0, is_membership: false, is_intro: false, badge_text: '', display_order: 0, stripe_price_id: '' })
+    setCreateMore(false)
+    setShowCreate(true)
+    setEditingId(null)
   }
+  function cancelCreate() { setShowCreate(false); setCreateMore(false) }
 
   function startEdit(pack) {
-    setForm({
+    setEditForm({
       name: pack.name,
       description: pack.description || '',
       credits: pack.credits === null ? '' : pack.credits.toString(),
@@ -253,21 +96,16 @@ export default function AdminPacksPage() {
       display_order: pack.display_order || 0,
       stripe_price_id: pack.stripe_price_id || '',
     })
+    const hasMore = pack.description || pack.badge_text || pack.stripe_price_id || pack.is_intro || pack.is_membership
+    setEditMore(!!hasMore)
     setEditingId(pack.id)
+    setShowCreate(false)
   }
+  function cancelEdit() { setEditingId(null); setEditMore(false) }
 
-  function cancelEdit() {
-    setEditingId(null)
-    setForm(emptyForm)
-  }
-
-  async function handleSave() {
-    const isCreate = editingId === 'new'
-    const url = '/api/admin/packs'
-    const method = isCreate ? 'POST' : 'PUT'
-
-    const payload = {
-      ...(!isCreate && { id: editingId }),
+  function buildPayload(form, id) {
+    return {
+      ...(id && { id }),
       name: form.name,
       description: form.description || null,
       credits: form.credits === '' ? null : parseInt(form.credits),
@@ -279,158 +117,216 @@ export default function AdminPacksPage() {
       display_order: parseInt(form.display_order) || 0,
       stripe_price_id: form.stripe_price_id || null,
     }
+  }
 
-    if (isCreate) {
-      // Optimistic: add row immediately
-      const tempId = `temp-${Date.now()}`
-      const optimisticPack = {
-        id: tempId,
-        ...payload,
-        active: true,
-        _optimistic: true,
-      }
-      setPacks((prev) => [...prev, optimisticPack])
-      setEditingId(null)
-      setForm(emptyForm)
+  async function handleCreate() {
+    if (!createForm.name.trim()) return
+    const payload = buildPayload(createForm)
+    const tempId = `temp-${Date.now()}`
+    setPacks((prev) => [...prev, { id: tempId, ...payload, active: true, _optimistic: true }])
+    cancelCreate()
 
-      try {
-        const res = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        })
-        const data = await res.json()
-        if (!res.ok) {
-          setPacks((prev) => prev.filter((p) => p.id !== tempId))
-          setToast({ message: data.error || 'Failed to save pack', type: 'error' })
-          return
-        }
-        setToast({ message: 'Pack created', type: 'success' })
-        fetchPacks()
-      } catch {
-        setPacks((prev) => prev.filter((p) => p.id !== tempId))
-        setToast({ message: 'Something went wrong', type: 'error' })
-      }
-    } else {
-      // Optimistic edit
-      const editId = editingId
-      const prevPacks = [...packs]
-      setPacks((prev) => prev.map((p) => p.id === editId ? { ...p, ...payload } : p))
-      setEditingId(null)
-      setForm(emptyForm)
+    try {
+      const res = await fetch('/api/admin/packs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+      const data = await res.json()
+      if (!res.ok) { setPacks((prev) => prev.filter((p) => p.id !== tempId)); setToast({ message: data.error || 'Failed to create', type: 'error' }); return }
+      setToast({ message: 'Product created', type: 'success' })
+      fetchPacks()
+    } catch {
+      setPacks((prev) => prev.filter((p) => p.id !== tempId))
+      setToast({ message: 'Something went wrong', type: 'error' })
+    }
+  }
 
-      try {
-        const res = await fetch(url, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        })
-        const data = await res.json()
-        if (!res.ok) {
-          setPacks(prevPacks)
-          setToast({ message: data.error || 'Failed to save pack', type: 'error' })
-          return
-        }
-        setToast({ message: 'Pack updated', type: 'success' })
-        fetchPacks()
-      } catch {
-        setPacks(prevPacks)
-        setToast({ message: 'Something went wrong', type: 'error' })
-      }
+  async function handleUpdate() {
+    if (!editForm.name.trim()) return
+    const id = editingId
+    const payload = buildPayload(editForm, id)
+    const prev = [...packs]
+    setPacks((list) => list.map((p) => p.id === id ? { ...p, ...payload } : p))
+    cancelEdit()
+
+    try {
+      const res = await fetch('/api/admin/packs', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+      const data = await res.json()
+      if (!res.ok) { setPacks(prev); setToast({ message: data.error || 'Failed to update', type: 'error' }); return }
+      setToast({ message: 'Product updated', type: 'success' })
+      fetchPacks()
+    } catch {
+      setPacks(prev)
+      setToast({ message: 'Something went wrong', type: 'error' })
     }
   }
 
   async function handleDelete(pack) {
     setDeleteDialog(null)
+    setPacks((prev) => prev.filter((p) => p.id !== pack.id))
     try {
-      const res = await fetch('/api/admin/packs', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: pack.id }),
-      })
+      const res = await fetch('/api/admin/packs', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: pack.id }) })
       const data = await res.json()
-      if (!res.ok) {
-        setToast({ message: data.error || 'Failed to delete', type: 'error' })
-        return
-      }
+      if (!res.ok) { fetchPacks(); setToast({ message: data.error || 'Failed to delete', type: 'error' }); return }
       setToast({ message: `"${pack.name}" deleted`, type: 'success' })
-      fetchPacks()
     } catch {
+      fetchPacks()
       setToast({ message: 'Something went wrong', type: 'error' })
     }
   }
 
-  async function handleToggleActive(pack) {
+  async function toggleActive(pack) {
+    setPacks((prev) => prev.map((p) => p.id === pack.id ? { ...p, active: !p.active } : p))
     try {
-      const res = await fetch('/api/admin/packs', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: pack.id, active: !pack.active }),
-      })
-      if (res.ok) {
-        setToast({ message: pack.active ? 'Pack deactivated' : 'Pack activated', type: 'success' })
-        fetchPacks()
+      const res = await fetch('/api/admin/packs', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: pack.id, active: !pack.active }) })
+      if (!res.ok) {
+        setPacks((prev) => prev.map((p) => p.id === pack.id ? { ...p, active: pack.active } : p))
+        setToast({ message: 'Failed to update', type: 'error' })
+        return
       }
-    } catch (err) {
-      setToast({ message: 'Failed to update', type: 'error' })
+      setToast({ message: pack.active ? 'Product deactivated' : 'Product activated', type: 'success' })
+    } catch {
+      setPacks((prev) => prev.map((p) => p.id === pack.id ? { ...p, active: pack.active } : p))
+      setToast({ message: 'Something went wrong', type: 'error' })
     }
   }
 
+  function handleKeyDown(e, mode) {
+    if (e.key === 'Enter') { e.preventDefault(); mode === 'create' ? handleCreate() : handleUpdate() }
+    else if (e.key === 'Escape') { e.preventDefault(); mode === 'create' ? cancelCreate() : cancelEdit() }
+  }
+
+  function renderPrimaryFields(form, setForm, mode, nameRef) {
+    return (
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="flex-1 min-w-[140px]">
+          <Label className="text-xs text-muted">Name *</Label>
+          <Input ref={nameRef} value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="Pack name" className="mt-1 h-8 text-sm bg-background border-card-border" onKeyDown={(e) => handleKeyDown(e, mode)} />
+        </div>
+        <div className="w-20">
+          <Label className="text-xs text-muted">Credits</Label>
+          <Input type="number" value={form.credits} onChange={(e) => setForm((f) => ({ ...f, credits: e.target.value }))} placeholder="∞" className="mt-1 h-8 text-sm bg-background border-card-border" onKeyDown={(e) => handleKeyDown(e, mode)} />
+        </div>
+        <div className="w-20">
+          <Label className="text-xs text-muted">Days</Label>
+          <Input type="number" value={form.validity_days} onChange={(e) => setForm((f) => ({ ...f, validity_days: e.target.value }))} className="mt-1 h-8 text-sm bg-background border-card-border" onKeyDown={(e) => handleKeyDown(e, mode)} />
+        </div>
+        <div className="w-24">
+          <Label className="text-xs text-muted">Price ({theme?.currency || 'THB'})</Label>
+          <Input type="number" value={form.price_thb} onChange={(e) => setForm((f) => ({ ...f, price_thb: e.target.value }))} className="mt-1 h-8 text-sm bg-background border-card-border" onKeyDown={(e) => handleKeyDown(e, mode)} />
+        </div>
+      </div>
+    )
+  }
+
+  function renderMoreFields(form, setForm, mode) {
+    return (
+      <div className="space-y-3 mt-3 pt-3 border-t border-card-border/50">
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="flex-1 min-w-[200px]">
+            <Label className="text-xs text-muted">Description</Label>
+            <Input value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} placeholder="Optional description" className="mt-1 h-8 text-sm bg-background border-card-border" onKeyDown={(e) => handleKeyDown(e, mode)} />
+          </div>
+          <div className="w-20">
+            <Label className="text-xs text-muted">Order</Label>
+            <Input type="number" value={form.display_order} onChange={(e) => setForm((f) => ({ ...f, display_order: e.target.value }))} className="mt-1 h-8 text-sm bg-background border-card-border" onKeyDown={(e) => handleKeyDown(e, mode)} />
+          </div>
+          <div className="w-32">
+            <Label className="text-xs text-muted">Badge</Label>
+            <Input value={form.badge_text} onChange={(e) => setForm((f) => ({ ...f, badge_text: e.target.value }))} placeholder="e.g. Best Value" className="mt-1 h-8 text-sm bg-background border-card-border" onKeyDown={(e) => handleKeyDown(e, mode)} />
+          </div>
+        </div>
+        <div>
+          <Label className="text-xs text-muted">Stripe Product</Label>
+          <Input value={form.stripe_price_id} onChange={(e) => setForm((f) => ({ ...f, stripe_price_id: e.target.value }))} placeholder="Paste product ID, price ID, or Stripe URL" className="mt-1 h-8 text-sm font-mono bg-background border-card-border" onKeyDown={(e) => handleKeyDown(e, mode)} />
+          <p className="text-[10px] text-muted mt-1">Product ID (prod_...), Price ID (price_...), or product URL</p>
+        </div>
+        <div className="flex items-center gap-6">
+          <div className="flex items-center gap-2">
+            <Switch checked={form.is_intro} onCheckedChange={(v) => setForm((f) => ({ ...f, is_intro: v }))} />
+            <Label className="text-xs">Intro Pack</Label>
+          </div>
+          <div className="flex items-center gap-2">
+            <Switch checked={form.is_membership} onCheckedChange={(v) => setForm((f) => ({ ...f, is_membership: v }))} />
+            <Label className="text-xs">Membership</Label>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
+    <div className="max-w-4xl mx-auto space-y-6">
+      <div>
         <h1 className="text-2xl font-bold text-foreground">Products</h1>
+        <p className="text-sm text-muted mt-1">Manage your class packs and memberships</p>
       </div>
 
       {/* Toast */}
       {toast && (
         <div className={cn(
-          'mb-6 px-4 py-3 rounded-lg border flex items-center justify-between',
-          toast.type === 'error'
-            ? 'bg-red-500/10 border-red-500/20 text-red-400'
-            : 'bg-green-500/10 border-green-500/20 text-green-400'
+          'fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:bottom-6 z-50 px-4 py-3 rounded-lg border flex items-center gap-3 shadow-lg backdrop-blur-sm sm:max-w-sm',
+          toast.type === 'error' ? 'bg-red-500/10 border-red-500/20 text-red-400' : 'bg-green-500/10 border-green-500/20 text-green-400'
         )}>
-          <span className="text-sm">{toast.message}</span>
-          <button onClick={() => setToast(null)} className="opacity-60 hover:opacity-100">
-            <X className="w-4 h-4" />
-          </button>
+          <span className="text-sm flex-1">{toast.message}</span>
+          <button onClick={() => setToast(null)} className="opacity-60 hover:opacity-100 shrink-0"><X className="w-3.5 h-3.5" /></button>
+        </div>
+      )}
+
+      {/* Delete dialog */}
+      {deleteDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-card border border-card-border rounded-lg p-6 max-w-sm mx-4 shadow-xl">
+            <h3 className="text-foreground font-semibold mb-2">Delete Product</h3>
+            <p className="text-sm text-muted mb-4">
+              Are you sure you want to delete <span className="text-foreground font-medium">{deleteDialog.name}</span>? This cannot be undone.
+            </p>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" size="sm" onClick={() => setDeleteDialog(null)}>Cancel</Button>
+              <Button size="sm" onClick={() => handleDelete(deleteDialog)} className="bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20">Delete</Button>
+            </div>
+          </div>
         </div>
       )}
 
       {fetchError && !loading ? (
-        <div className="border border-card-border rounded-lg py-12 text-center">
-          <p className="text-red-400 font-medium">{fetchError}</p>
-          <Button variant="outline" size="sm" className="mt-3" onClick={fetchPacks}>Retry</Button>
+        <div className="bg-card border border-card-border rounded-lg p-8 text-center">
+          <p className="text-red-400 mb-4">{fetchError}</p>
+          <Button variant="outline" onClick={fetchPacks} className="gap-2">Retry</Button>
         </div>
       ) : loading ? (
         <div className="space-y-2">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="h-20 bg-card border border-card-border rounded-lg animate-pulse" />
-          ))}
+          {[1, 2, 3].map((i) => <div key={i} className="h-16 bg-card border border-card-border rounded-lg animate-pulse" />)}
         </div>
       ) : (
-        <div className="border border-card-border rounded-lg overflow-hidden">
-          {packs.map((pack, idx) => {
+        <div className="space-y-2">
+          {packs.length === 0 && !showCreate && (
+            <div className="border border-card-border rounded-lg py-12 text-center">
+              <Package className="w-10 h-10 text-muted mx-auto mb-3" />
+              <p className="text-foreground font-medium mb-1">No products yet</p>
+              <p className="text-sm text-muted mb-4">Add your first class pack or membership</p>
+              <Button onClick={startCreate} className="gap-2"><Plus className="w-4 h-4" /> Add Product</Button>
+            </div>
+          )}
+
+          {packs.map((pack) => {
             const isEditing = editingId === pack.id
 
             if (isEditing) {
               return (
-                <div
-                  key={pack.id}
-                  className={cn(
-                    idx !== packs.length - 1 && 'border-b border-card-border',
-                    'border-l-2 border-l-accent'
-                  )}
-                >
-                  <InlinePackForm
-                    form={form}
-                    setForm={setForm}
-                    onSave={handleSave}
-                    onCancel={cancelEdit}
-                    submitting={submitting}
-                    theme={theme}
-                    cs={cs}
-                  />
+                <div key={pack.id} data-pack-edit className="border-2 border-accent/40 rounded-lg p-3 sm:p-4 bg-card">
+                  <div className="flex items-start gap-3">
+                    <div className="flex-1 min-w-0">
+                      {renderPrimaryFields(editForm, setEditForm, 'edit', editNameRef)}
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0 pt-5">
+                      <button onClick={handleUpdate} className="w-8 h-8 rounded-md flex items-center justify-center text-green-400 hover:bg-green-500/10 transition-colors" title="Save (Enter)"><Check className="w-5 h-5" /></button>
+                      <button onClick={cancelEdit} className="w-8 h-8 rounded-md flex items-center justify-center text-muted hover:text-red-400 hover:bg-red-500/10 transition-colors" title="Cancel (Esc)"><X className="w-5 h-5" /></button>
+                    </div>
+                  </div>
+                  <button onClick={() => setEditMore(!editMore)} className="flex items-center gap-1.5 text-xs text-muted hover:text-foreground transition-colors mt-3">
+                    {editMore ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                    {editMore ? 'Fewer options' : 'More options'}
+                  </button>
+                  {editMore && renderMoreFields(editForm, setEditForm, 'edit')}
+                  <p className="text-[10px] text-muted mt-3">Enter to save · Esc to cancel</p>
                 </div>
               )
             }
@@ -438,122 +334,71 @@ export default function AdminPacksPage() {
             return (
               <div
                 key={pack.id}
-                className={cn(
-                  'flex flex-wrap sm:flex-nowrap items-center gap-3 sm:gap-4 px-4 py-3',
-                  idx !== packs.length - 1 && 'border-b border-card-border',
-                  !pack.active && 'opacity-50'
-                )}
+                onClick={(e) => { if (e.target.closest('[data-no-edit]')) return; startEdit(pack) }}
+                className={cn('border border-card-border rounded-lg p-3 sm:p-4 transition-colors hover:bg-white/[0.03] cursor-pointer', !pack.active && 'opacity-50')}
               >
-                {/* Order */}
-                <span className="text-xs text-muted w-6 shrink-0 text-center hidden sm:block">{pack.display_order}</span>
-
-                {/* Info */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm font-medium text-foreground truncate">{pack.name}</p>
-                    {pack.badge_text && (
-                      <span className="text-[10px] font-medium text-accent bg-accent/10 px-1.5 py-0.5 rounded shrink-0">
-                        {pack.badge_text}
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-sm font-semibold text-foreground truncate">{pack.name}</p>
+                      {pack.badge_text && <span className="text-[10px] font-medium text-accent bg-accent/10 px-1.5 py-0.5 rounded shrink-0">{pack.badge_text}</span>}
+                      {pack.is_intro && <span className="text-[10px] font-medium text-blue-400 bg-blue-400/10 px-1.5 py-0.5 rounded shrink-0">Intro</span>}
+                      {pack.is_membership && <span className="text-[10px] font-medium text-purple-400 bg-purple-400/10 px-1.5 py-0.5 rounded shrink-0">Membership</span>}
+                      {!pack.active && <span className="text-[10px] font-medium text-red-400 bg-red-400/10 px-1.5 py-0.5 rounded shrink-0">Inactive</span>}
+                    </div>
+                    <p className="text-xs text-muted mt-0.5">
+                      {pack.credits === null ? 'Unlimited' : `${pack.credits} credit${pack.credits !== 1 ? 's' : ''}`} · {pack.validity_days} days · {cs}{(pack.price_thb || 0).toLocaleString()}
+                    </p>
+                    {pack.stripe_price_id ? (
+                      <span className="text-[10px] text-green-400/70 mt-0.5 font-mono inline-flex items-center gap-1">
+                        Stripe linked <ExternalLink className="w-2.5 h-2.5" />
                       </span>
-                    )}
-                    {pack.is_intro && (
-                      <span className="text-[10px] font-medium text-blue-400 bg-blue-400/10 px-1.5 py-0.5 rounded shrink-0">
-                        Intro
-                      </span>
-                    )}
-                    {pack.is_membership && (
-                      <span className="text-[10px] font-medium text-purple-400 bg-purple-400/10 px-1.5 py-0.5 rounded shrink-0">
-                        Membership
-                      </span>
-                    )}
-                    {!pack.active && (
-                      <span className="text-[10px] font-medium text-red-400 bg-red-400/10 px-1.5 py-0.5 rounded shrink-0">
-                        Inactive
-                      </span>
+                    ) : (
+                      <span className="text-[10px] text-red-400/70 mt-0.5">No Stripe product linked</span>
                     )}
                   </div>
-                  <p className="text-xs text-muted mt-0.5">
-                    {pack.credits === null ? 'Unlimited' : `${pack.credits} credit${pack.credits !== 1 ? 's' : ''}`} · {pack.validity_days} days · {cs}{pack.price_thb.toLocaleString()}
-                  </p>
-                  {pack.stripe_price_id ? (
-                    <a
-                      href={pack.stripe_product_id
-                        ? `https://dashboard.stripe.com/products/${pack.stripe_product_id}`
-                        : `https://dashboard.stripe.com/search#query=${pack.stripe_price_id}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-[10px] text-green-400/70 hover:text-green-400 mt-0.5 font-mono inline-flex items-center gap-1"
-                    >
-                      Stripe Product Linked
-                      <ExternalLink className="w-2.5 h-2.5" />
-                    </a>
-                  ) : (
-                    <p className="text-[10px] text-red-400/70 mt-0.5">No Stripe product linked</p>
-                  )}
-                </div>
-
-                {/* Actions */}
-                <div className="flex items-center gap-2 shrink-0">
-                  <Switch
-                    checked={pack.active}
-                    onCheckedChange={() => handleToggleActive(pack)}
-                  />
-                  <Button
-                    variant="outline"
-                    className="text-xs h-7 px-2"
-                    onClick={() => startEdit(pack)}
-                    disabled={editingId !== null}
-                  >
-                    Edit
-                  </Button>
-                  <button
-                    onClick={() => setDeleteDialog(pack)}
-                    className="text-muted hover:text-red-400 transition-colors p-1"
-                    title="Delete pack"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  <div className="flex items-center gap-2 shrink-0" data-no-edit>
+                    <Switch checked={pack.active} onCheckedChange={() => toggleActive(pack)} />
+                    <button onClick={() => setDeleteDialog(pack)} className="p-1.5 rounded-md text-muted hover:text-red-400 hover:bg-red-500/10 transition-colors" title="Delete product">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
               </div>
             )
           })}
 
-          {/* Inline create form or Add button */}
-          {editingId === 'new' ? (
-            <div className={cn(
-              packs.length > 0 && 'border-t border-card-border',
-              'border-l-2 border-l-accent'
-            )}>
-              <InlinePackForm
-                form={form}
-                setForm={setForm}
-                onSave={handleSave}
-                onCancel={cancelEdit}
-                submitting={submitting}
-                theme={theme}
-                cs={cs}
-              />
+          {/* Inline create */}
+          {showCreate ? (
+            <div data-pack-create className="border-2 border-dashed border-accent/40 rounded-lg p-3 sm:p-4 bg-card">
+              <div className="flex items-start gap-3">
+                <div className="flex-1 min-w-0">
+                  {renderPrimaryFields(createForm, setCreateForm, 'create', createNameRef)}
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0 pt-5">
+                  <button onClick={handleCreate} className="w-8 h-8 rounded-md flex items-center justify-center text-green-400 hover:bg-green-500/10 transition-colors" title="Save (Enter)"><Check className="w-5 h-5" /></button>
+                  <button onClick={cancelCreate} className="w-8 h-8 rounded-md flex items-center justify-center text-muted hover:text-red-400 hover:bg-red-500/10 transition-colors" title="Cancel (Esc)"><X className="w-5 h-5" /></button>
+                </div>
+              </div>
+              <button onClick={() => setCreateMore(!createMore)} className="flex items-center gap-1.5 text-xs text-muted hover:text-foreground transition-colors mt-3">
+                {createMore ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                {createMore ? 'Fewer options' : 'More options'}
+              </button>
+              {createMore && renderMoreFields(createForm, setCreateForm, 'create')}
+              <p className="text-[10px] text-muted mt-3">Enter to save · Esc to cancel</p>
             </div>
           ) : (
-            <button
-              onClick={startCreate}
-              disabled={editingId !== null}
-              className={cn(
-                'w-full flex items-center justify-center gap-2 px-4 py-3 text-sm text-muted',
-                'border-t border-dashed border-card-border',
-                'hover:text-accent hover:bg-card/50 transition-colors',
-                'disabled:opacity-40 disabled:cursor-not-allowed'
-              )}
-            >
-              <Plus className="w-4 h-4" />
-              Add pack
-            </button>
+            (packs.length > 0 || showCreate) && (
+              <button onClick={startCreate} className="w-full py-3 rounded-lg border border-dashed border-card-border text-sm text-muted hover:text-accent hover:border-accent/30 transition-colors flex items-center justify-center gap-2">
+                <Plus className="w-4 h-4" /> Add product
+              </button>
+            )
           )}
         </div>
       )}
 
       {/* Promo Codes Guide */}
-      <div className="mt-8 border border-card-border rounded-lg bg-card p-5">
+      <div className="border border-card-border rounded-lg bg-card p-5">
         <div className="flex items-center gap-2 mb-3">
           <Tag className="w-4 h-4 text-accent" />
           <h2 className="text-sm font-semibold text-foreground">Promo Codes</h2>
@@ -568,7 +413,7 @@ export default function AdminPacksPage() {
           </div>
           <div className="flex items-start gap-2">
             <span className="text-accent font-bold mt-0.5 shrink-0">2.</span>
-            <span>Click <strong className="text-foreground">&quot;+ New&quot;</strong> to create a coupon (e.g. 20% off, or a fixed amount off)</span>
+            <span>Click <strong className="text-foreground">&quot;+ New&quot;</strong> to create a coupon</span>
           </div>
           <div className="flex items-start gap-2">
             <span className="text-accent font-bold mt-0.5 shrink-0">3.</span>
@@ -585,31 +430,10 @@ export default function AdminPacksPage() {
         </div>
         <div className="mt-3 pt-3 border-t border-card-border">
           <p className="text-xs text-muted">
-            All promo code usage, redemptions, and revenue impact are tracked automatically in your Stripe Dashboard under Coupons &rarr; Promotion Codes.
+            All promo code usage, redemptions, and revenue impact are tracked automatically in your Stripe Dashboard.
           </p>
         </div>
       </div>
-
-      {/* Delete Confirmation */}
-      <Dialog open={!!deleteDialog} onOpenChange={(open) => !open && setDeleteDialog(null)}>
-        <DialogContent className="sm:max-w-sm" onOpenAutoFocus={(e) => e.preventDefault()}>
-          <DialogHeader>
-            <DialogTitle>Delete Pack</DialogTitle>
-            <DialogDescription>
-              Permanently delete &quot;{deleteDialog?.name}&quot;? This cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setDeleteDialog(null)}>Cancel</Button>
-            <Button
-              className="bg-red-600 hover:bg-red-700 text-white"
-              onClick={() => handleDelete(deleteDialog)}
-            >
-              Delete
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }
