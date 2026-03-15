@@ -204,6 +204,7 @@ export default function AdminAnalyticsPage() {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [retryCount, setRetryCount] = useState(0)
 
   useEffect(() => {
     async function fetchAnalytics() {
@@ -222,7 +223,7 @@ export default function AdminAnalyticsPage() {
       }
     }
     fetchAnalytics()
-  }, [range])
+  }, [range, retryCount])
 
   const ranges = ['7d', '30d', '90d']
 
@@ -269,7 +270,7 @@ export default function AdminAnalyticsPage() {
             <p className="text-red-400 text-sm mb-2">Failed to load analytics</p>
             <p className="text-muted text-xs">{error}</p>
             <button
-              onClick={() => setRange(range)}
+              onClick={() => setRetryCount((c) => c + 1)}
               className="mt-4 text-xs text-accent hover:text-accent-dim underline"
             >
               Retry

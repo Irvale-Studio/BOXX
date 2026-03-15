@@ -26,7 +26,7 @@ export async function GET(request) {
     // Find classes starting in 50-70 minutes
     const { data: classes } = await supabaseAdmin
       .from('class_schedule')
-      .select('id, starts_at, class_types(name), instructors(name)')
+      .select('id, starts_at, tenant_id, class_types(name), instructors(name)')
       .eq('status', 'active')
       .gte('starts_at', windowStart.toISOString())
       .lte('starts_at', windowEnd.toISOString())
@@ -67,6 +67,7 @@ export async function GET(request) {
             className: cls.class_types?.name || 'Class',
             instructor: cls.instructors?.name,
             time,
+            tenantId: cls.tenant_id,
           }).then(() => b.id)
         })
     )

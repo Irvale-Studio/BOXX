@@ -89,6 +89,7 @@ export async function confirmPendingInvitations(userId, tenantId) {
           time: startDate.toLocaleTimeString('en-US', {
             hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Bangkok',
           }),
+          tenantId,
         }).catch(() => {})
       }
     }

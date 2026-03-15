@@ -33,7 +33,7 @@ export async function GET(request) {
     const threeDays = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000)
     const { data: expiring } = await supabaseAdmin
       .from('user_credits')
-      .select('id, credits_remaining, expires_at, expiry_warned, users(email, name), class_packs(name)')
+      .select('id, tenant_id, credits_remaining, expires_at, expiry_warned, users(email, name), class_packs(name)')
       .gt('credits_remaining', 0)
       .gte('expires_at', now.toISOString())
       .lte('expires_at', threeDays.toISOString())
@@ -56,6 +56,7 @@ export async function GET(request) {
               day: 'numeric',
               timeZone: 'Asia/Bangkok',
             }),
+            tenantId: credit.tenant_id,
           })
 
           await supabaseAdmin

@@ -134,6 +134,7 @@ export async function promoteFromWaitlist(classScheduleId) {
             className: cls.class_types?.name || 'Class',
             date,
             time,
+            tenantId: cls.tenant_id,
           })
         } catch (err) {
           console.error(`[waitlist] Email failed for ${user.email}:`, err)
@@ -152,10 +153,12 @@ export async function promoteFromWaitlist(classScheduleId) {
 
     if (remaining) {
       const updates = remaining
-        .filter((r, i) => r.position !== i + 1)
-        .map((r, i) =>
-          supabaseAdmin.from('waitlist').update({ position: i + 1 }).eq('id', r.id)
-        )
+        .map((r, i) => {
+          const correctPosition = i + 1
+          if (r.position === correctPosition) return null
+          return supabaseAdmin.from('waitlist').update({ position: correctPosition }).eq('id', r.id)
+        })
+        .filter(Boolean)
       if (updates.length) await Promise.all(updates)
     }
 
