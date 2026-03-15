@@ -10,7 +10,7 @@ export function useTheme() {
 
 /**
  * ThemeProvider — fetches tenant theme and injects CSS variables + Google Fonts.
- * Wrap admin/member layouts with this to apply tenant branding.
+ * Shows a branded loading screen while theme loads, then fades in content.
  */
 export default function ThemeProvider({ children }) {
   const [theme, setTheme] = useState(null)
@@ -32,7 +32,6 @@ export default function ThemeProvider({ children }) {
 
     const root = document.documentElement
 
-    // Map theme keys to CSS variable names
     const varMap = {
       background: '--background',
       surface: '--card',
@@ -42,19 +41,16 @@ export default function ThemeProvider({ children }) {
       border: '--card-border',
     }
 
-    // Apply each theme color as a CSS variable
     for (const [key, cssVar] of Object.entries(varMap)) {
       if (theme[key]) {
         root.style.setProperty(cssVar, theme[key])
       }
     }
 
-    // Additional derived vars
     if (theme.primaryHover) root.style.setProperty('--accent-dim', theme.primaryHover)
     if (theme.accent) root.style.setProperty('--cta', theme.accent)
     if (theme.borderHover) root.style.setProperty('--cta-hover', theme.borderHover)
 
-    // Apply fonts
     if (theme.bodyFont) {
       root.style.setProperty('--font-tenant-body', `"${theme.bodyFont}", sans-serif`)
     }
@@ -63,7 +59,6 @@ export default function ThemeProvider({ children }) {
     }
 
     return () => {
-      // Clean up on unmount
       for (const cssVar of Object.values(varMap)) {
         root.style.removeProperty(cssVar)
       }
@@ -92,8 +87,8 @@ export default function ThemeProvider({ children }) {
     return () => { link.remove() }
   }, [theme?.titleFont, theme?.bodyFont])
 
-  // Brief opacity transition prevents flash of wrong theme colors on reload.
-  // Content fades in once theme CSS vars are applied (or after timeout for default theme).
+  const studioName = theme?.studioName || ''
+
   return (
     <ThemeContext.Provider value={{ theme, loading }}>
       {theme?.bodyFont && (
@@ -102,11 +97,34 @@ export default function ThemeProvider({ children }) {
           .tenant-title { font-family: var(--font-tenant-title, var(--font-tenant-body, inherit)); }
         `}</style>
       )}
+
+      {/* Loading screen */}
+      {loading && (
+        <div className="fixed inset-0 z-[100] bg-background flex flex-col items-center justify-center gap-6">
+          {/* Spinner */}
+          <div className="relative">
+            <div className="w-10 h-10 rounded-full border-2 border-card-border border-t-accent animate-spin" />
+          </div>
+
+          {/* Branding */}
+          <div className="flex flex-col items-center gap-2">
+            {studioName && (
+              <p className="text-sm font-semibold text-foreground tracking-wide tenant-title">{studioName}</p>
+            )}
+            <div className="flex items-center gap-1.5 text-muted">
+              <span className="text-[10px] tracking-widest uppercase">Powered by</span>
+              <span className="text-[10px] font-bold tracking-widest uppercase text-accent">Zatrovo</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Content — fades in after theme loads */}
       <div
         className={theme?.bodyFont ? 'tenant-body' : ''}
         style={{
           opacity: loading ? 0 : 1,
-          transition: 'opacity 0.15s ease-in',
+          transition: 'opacity 0.2s ease-in',
         }}
       >
         {children}
