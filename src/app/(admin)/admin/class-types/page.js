@@ -206,6 +206,7 @@ export default function ClassTypesPage() {
     if (!editForm.name.trim()) { setFormError('Name is required'); return }
     setFormError(null)
     const id = editingId
+    const savedImageFile = editImageFile
     const prev = [...classTypes]
     setClassTypes((list) => list.map((ct) => ct.id === id ? { ...ct, ...editForm } : ct))
     cancelEdit()
@@ -222,7 +223,7 @@ export default function ClassTypesPage() {
         setToast({ message: data.error || 'Failed to update', type: 'error' })
         return
       }
-      if (editImageFile) await uploadClassImage(id, editImageFile)
+      if (savedImageFile) await uploadClassImage(id, savedImageFile)
       setToast({ message: `"${data.classType.name}" updated`, type: 'success' })
       fetchClassTypes()
     } catch {

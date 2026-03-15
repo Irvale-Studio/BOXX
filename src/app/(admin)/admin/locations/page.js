@@ -53,7 +53,7 @@ export default function AdminLocationsPage() {
     return () => clearTimeout(t)
   }, [toast])
 
-  // Click outside to close create forms only (edit uses Cancel/Esc)
+  // Click outside to close create forms and expanded locations
   useEffect(() => {
     function handleClickOutside(e) {
       if (showCreateLoc && locFormRef.current && !locFormRef.current.contains(e.target)) {
@@ -62,10 +62,17 @@ export default function AdminLocationsPage() {
       if (creatingZoneForLoc && zoneFormRef.current && !zoneFormRef.current.contains(e.target)) {
         cancelCreateZone()
       }
+      // Close expanded location if clicking outside any location card
+      if (expanded.size > 0) {
+        const clickedCard = e.target.closest('[data-location-card]')
+        if (!clickedCard) {
+          setExpanded(new Set())
+        }
+      }
     }
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [showCreateLoc, creatingZoneForLoc])
+  }, [showCreateLoc, creatingZoneForLoc, expanded])
 
   async function fetchLocations() {
     setFetchError(null)
@@ -667,7 +674,7 @@ export default function AdminLocationsPage() {
             }
 
             return (
-              <div key={loc.id} className={cn(
+              <div key={loc.id} data-location-card className={cn(
                 'border border-card-border rounded-lg overflow-hidden transition-colors',
                 isExpanded && 'bg-white/[0.02]',
                 !loc.is_active && 'opacity-50'

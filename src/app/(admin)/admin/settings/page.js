@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -319,6 +320,7 @@ function ThemePreview({ theme, businessName, logoUrl }) {
 // ─── Branding Tab ───────────────────────────────────────────────────────────
 
 function BrandingTab() {
+  const { data: session } = useSession()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState(null)
@@ -438,13 +440,15 @@ function BrandingTab() {
     try {
       const fd = new FormData()
       fd.append('file', file)
+      fd.append('tenantId', session?.user?.tenantId)
       const res = await fetch('/api/onboarding/upload-logo', { method: 'POST', body: fd })
       if (res.ok) {
         const data = await res.json()
-        if (data.logoUrl) setLogoUrl(data.logoUrl)
+        if (data.url) setLogoUrl(data.url)
         setMessage({ type: 'success', text: 'Logo uploaded!' })
       } else {
-        setMessage({ type: 'error', text: 'Failed to upload logo.' })
+        const data = await res.json().catch(() => ({}))
+        setMessage({ type: 'error', text: data.error || 'Failed to upload logo.' })
       }
     } catch {
       setMessage({ type: 'error', text: 'Failed to upload logo.' })
@@ -541,9 +545,10 @@ function BrandingTab() {
           {message.text}
         </p>
       )}
-      <Button onClick={handleSave} disabled={saving}>
-        {saving ? 'Saving...' : 'Save Branding'}
-      </Button>
+      <div className="flex gap-2">
+        <button onClick={() => window.location.reload()} className="flex-1 h-10 rounded-lg border border-card-border text-muted hover:text-foreground hover:bg-white/[0.03] text-sm transition-colors flex items-center justify-center gap-2"><X className="w-4 h-4" /> Cancel</button>
+        <button onClick={handleSave} disabled={saving} className={cn('flex-1 h-10 rounded-lg bg-green-500/10 text-green-400 hover:bg-green-500/20 text-sm font-medium transition-colors flex items-center justify-center gap-2', saving && 'opacity-50 cursor-not-allowed')}><Check className="w-4 h-4" /> {saving ? 'Saving...' : 'Save Branding'}</button>
+      </div>
     </div>
   )
 }
