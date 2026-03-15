@@ -324,6 +324,7 @@ function BrandingTab() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState(null)
+  useEffect(() => { if (!message) return; const t = setTimeout(() => setMessage(null), 4000); return () => clearTimeout(t) }, [message])
   const [logoUrl, setLogoUrl] = useState(null)
   const [studioName, setStudioName] = useState('')
   const [uploading, setUploading] = useState(false)
@@ -456,16 +457,12 @@ function BrandingTab() {
       setMessage({ type: 'error', text: 'Logo must be under 2MB' })
       return
     }
-    if (!session?.user?.tenantId) {
-      setMessage({ type: 'error', text: 'Not logged in. Please refresh and try again.' })
-      return
-    }
     setUploading(true)
     try {
       const fd = new FormData()
       fd.append('file', file)
-      fd.append('tenantId', session.user.tenantId)
-      const res = await fetch('/api/onboarding/upload-logo', { method: 'POST', body: fd })
+      // Use a dedicated admin logo upload route that gets tenantId from auth
+      const res = await fetch('/api/admin/logo', { method: 'POST', body: fd })
       const data = await res.json().catch(() => ({}))
       if (res.ok && data.url) {
         setLogoUrl(data.url)
@@ -497,9 +494,10 @@ function BrandingTab() {
     <div className="space-y-6">
       {/* Save at top — only when changes made */}
       {message && (
-        <p className={cn('text-sm', message.type === 'success' ? 'text-green-400' : 'text-red-400')}>
-          {message.text}
-        </p>
+        <div className={cn('fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:bottom-6 z-50 px-4 py-3 rounded-lg border flex items-center gap-3 shadow-lg backdrop-blur-sm sm:max-w-sm', message.type === 'error' ? 'bg-red-500/10 border-red-500/20 text-red-400' : 'bg-green-500/10 border-green-500/20 text-green-400')}>
+          <span className="text-sm flex-1">{message.text}</span>
+          <button onClick={() => setMessage(null)} className="opacity-60 hover:opacity-100 shrink-0"><X className="w-3.5 h-3.5" /></button>
+        </div>
       )}
       {(initialState && JSON.stringify({ colors, titleFont, bodyFont }) !== initialState) && (
         <div className="flex gap-2">
@@ -620,6 +618,7 @@ function StudioInfoTab() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState(null)
+  useEffect(() => { if (!message) return; const t = setTimeout(() => setMessage(null), 4000); return () => clearTimeout(t) }, [message])
   const [form, setForm] = useState({
     studio_name: '',
     studio_address: '',
@@ -739,6 +738,7 @@ function SocialLinksTab() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState(null)
+  useEffect(() => { if (!message) return; const t = setTimeout(() => setMessage(null), 4000); return () => clearTimeout(t) }, [message])
   const [form, setForm] = useState({
     social_instagram: '',
     social_tiktok: '',
@@ -855,6 +855,7 @@ function SeoTab() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState(null)
+  useEffect(() => { if (!message) return; const t = setTimeout(() => setMessage(null), 4000); return () => clearTimeout(t) }, [message])
   const [form, setForm] = useState({
     seo_title: '',
     seo_description: '',
@@ -1073,6 +1074,7 @@ function BookingRulesTab() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState(null)
+  useEffect(() => { if (!message) return; const t = setTimeout(() => setMessage(null), 4000); return () => clearTimeout(t) }, [message])
   const [form, setForm] = useState({
     default_capacity: '6',
     cancellation_window_hours: '24',
@@ -1203,6 +1205,7 @@ function RemindersTab() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState(null)
+  useEffect(() => { if (!message) return; const t = setTimeout(() => setMessage(null), 4000); return () => clearTimeout(t) }, [message])
   const [reminder1h, setReminder1h] = useState(true)
   const [reminder24h, setReminder24h] = useState(false)
 

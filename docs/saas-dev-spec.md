@@ -1616,6 +1616,85 @@ COMMIT;
 
 ---
 
+## Admin UI Design Rules
+
+> These rules apply to ALL admin pages. Follow them when building new pages or modifying existing ones. Derived from user testing feedback.
+
+### Layout
+- Every admin page uses `max-w-4xl mx-auto space-y-6` as the outer container
+- Page header: title (text-2xl font-bold) + subtitle (text-sm text-muted) on the left, "Add" button on the right
+- "Add" button in header uses **gold** accent color (`bg-accent/10 text-accent`)
+
+### Cards & Rows
+- Entity lists (instructors, events, products, locations, members) use **row cards** — not grid cards or tables
+- Row cards are transparent by default, `hover:bg-white/[0.03]` on hover
+- Active/expanded cards get subtle background (`bg-white/[0.02]` or `bg-card`)
+- Cards use `border border-card-border rounded-lg` — never `border-2` (causes size shift)
+- Click anywhere on a row to edit/expand (except controls area marked with `data-no-edit`)
+- Nested items (zones inside locations) render inside the parent card with `border-t` separator and `ml-7` indent
+
+### Inline Create & Edit
+- **Create** uses progressive disclosure — name shown by default, "More options" toggle reveals additional fields
+- **Edit** shows all fields expanded immediately (no progressive disclosure)
+- Click outside closes **create** forms only. Edit forms use explicit Cancel button (click-outside caused re-open bugs)
+- Inline forms use dashed border for create (`border-dashed border-accent/40`), solid for edit (`border-accent/40`)
+
+### Buttons
+- **Cancel** always on the LEFT, **Save** always on the RIGHT
+- Both buttons are full-width (`flex-1 h-10 rounded-lg`)
+- Cancel: `border border-card-border text-muted hover:text-foreground`
+- Save/Confirm: `bg-green-500/10 text-green-400 hover:bg-green-500/20` (subtle green)
+- "Add new" / "Create" header buttons: `bg-accent/10 text-accent` (subtle gold)
+- Delete buttons: red text with confirmation dialog
+- **Never disable** save/create buttons for empty fields — always allow click, show inline error instead
+
+### Validation & Errors
+- Save/create buttons are always clickable (never `disabled` for missing required fields)
+- When user clicks save with missing required field: show red error text below the field AND red border on the input (`border-red-500/50`)
+- Error clears when user types in the field (`onChange` clears error state)
+- Per-field errors preferred over generic error messages (e.g. highlight the specific empty field)
+
+### Toast Messages
+- **Always fixed position** bottom-right: `fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:bottom-6 z-50`
+- Never inline — no `mb-4` or `mb-6` toast placement
+- Include dismiss button (`X` icon, `opacity-60 hover:opacity-100`)
+- Auto-dismiss after 3-4 seconds
+- Success: `bg-green-500/10 border-green-500/20 text-green-400`
+- Error: `bg-red-500/10 border-red-500/20 text-red-400`
+- `backdrop-blur-sm shadow-lg sm:max-w-sm`
+
+### Optimistic UI
+- All create/edit/delete/toggle operations should be optimistic
+- Pattern: update state immediately → close form → fire API → on failure: revert state + show error toast
+- Background `fetch()` syncs real data from server after optimistic update
+- Active/inactive toggles: instant visual feedback, revert on API failure
+
+### Dropdowns
+- All `<select>` elements use custom chevron via CSS (`appearance: none` + SVG background-image)
+- `padding-right: 32px` for chevron space
+- Styled options: `background: var(--card); color: var(--foreground)`
+
+### Mobile
+- `font-size: 16px !important` on all inputs/selects/textareas on mobile (prevents iOS Safari zoom)
+- No nested scroll containers — body handles all scrolling
+- Admin layout: `min-h-screen` on content wrapper, no `h-screen` or `overflow-auto` on main
+
+### Delete Confirmations
+- Always use a confirmation dialog for destructive actions
+- Dialog shows item name in bold, "This cannot be undone" warning
+- Cancel + Delete buttons (Delete in red: `bg-red-500/10 text-red-400`)
+
+### Loading States
+- Branded loading screen via ThemeProvider: spinner + studio name + "Powered by Zatrovo"
+- Content fades in after theme loads (`opacity 0→1, transition 0.2s`)
+- Skeleton loaders for list pages while data loads
+
+### Keyboard Shortcuts
+- Enter to save, Esc to cancel (on all inline forms)
+- Show hint text: "Enter to save · Esc to cancel" (only on create forms)
+
+---
+
 ## Notes & Decisions
 
 ### Auth flow notes
