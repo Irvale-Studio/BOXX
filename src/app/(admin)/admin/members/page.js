@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
-import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -10,7 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import Image from 'next/image'
 import { cn } from '@/lib/utils'
-import { ChevronLeft, X } from 'lucide-react'
+import { X, ChevronDown, ChevronUp } from 'lucide-react'
 
 export default function AdminMembersPage() {
   const { data: session } = useSession()
@@ -26,22 +25,22 @@ export default function AdminMembersPage() {
   const [sortBy, setSortBy] = useState('newest')
   const [toast, setToast] = useState(null)
 
-  // Detail view
-  const [selectedMember, setSelectedMember] = useState(null)
+  // Inline expand
+  const [expandedId, setExpandedId] = useState(null)
   const [detail, setDetail] = useState(null)
   const [detailLoading, setDetailLoading] = useState(false)
 
   // Edit dialog
-  const [editDialog, setEditDialog] = useState(false)
+  const [editDialog, setEditDialog] = useState(null) // member object or null
   const [editForm, setEditForm] = useState({ name: '', email: '', phone: '', role: 'member' })
   const [editSubmitting, setEditSubmitting] = useState(false)
 
   // Delete dialog
-  const [deleteDialog, setDeleteDialog] = useState(false)
-  const [deleteSubmitting, setDeleteSubmitting] = useState(false)
+  const [freezeDialog, setFreezeDialog] = useState(null)
+  const [freezeSubmitting, setFreezeSubmitting] = useState(false)
 
   // Grant credits dialog
-  const [grantDialog, setGrantDialog] = useState(false)
+  const [grantDialog, setGrantDialog] = useState(null)
   const [packs, setPacks] = useState([])
   const [grantPackId, setGrantPackId] = useState('')
   const [grantNotes, setGrantNotes] = useState('')
@@ -50,7 +49,7 @@ export default function AdminMembersPage() {
 
   useEffect(() => {
     if (!toast) return
-    const t = setTimeout(() => setToast(null), 4000)
+    const t = setTimeout(() => setToast(null), 3000)
     return () => clearTimeout(t)
   }, [toast])
 
@@ -71,8 +70,7 @@ export default function AdminMembersPage() {
       } else {
         setFetchError('Failed to load members')
       }
-    } catch (err) {
-      console.error('Failed to fetch members:', err)
+    } catch {
       setFetchError('Unable to connect. Check your internet and try again.')
     } finally {
       setLoading(false)
@@ -81,60 +79,61 @@ export default function AdminMembersPage() {
 
   useEffect(() => { fetchMembers() }, [fetchMembers])
 
-  // Fetch packs for grant dialog
   useEffect(() => {
     fetch('/api/admin/packs')
       .then((res) => res.ok ? res.json() : { packs: [] })
       .then((data) => setPacks(data.packs || []))
-      .catch(console.error)
+      .catch(() => {})
   }, [])
 
-  // Fetch member detail
-  async function openDetail(member) {
-    setSelectedMember(member)
+  async function toggleExpand(member) {
+    if (expandedId === member.id) {
+      setExpandedId(null)
+      setDetail(null)
+      return
+    }
+    setExpandedId(member.id)
     setDetailLoading(true)
     setDetail(null)
     try {
       const res = await fetch(`/api/admin/members/${member.id}`)
-      if (res.ok) {
-        const data = await res.json()
-        setDetail(data)
-      }
-    } catch (err) {
-      console.error('Failed to fetch member detail:', err)
-    } finally {
+      if (res.ok) setDetail(await res.json())
+    } catch {} finally {
       setDetailLoading(false)
     }
   }
 
-  function openEditDialog() {
-    if (!detail) return
+  async function refreshDetail(memberId) {
+    try {
+      const res = await fetch(`/api/admin/members/${memberId}`)
+      if (res.ok) setDetail(await res.json())
+    } catch {}
+  }
+
+  function openEdit(member, det) {
     setEditForm({
-      name: detail.member.name || '',
-      email: detail.member.email || '',
-      phone: detail.member.phone || '',
-      role: detail.member.role || 'member',
+      name: det?.member?.name || member.name || '',
+      email: det?.member?.email || member.email || '',
+      phone: det?.member?.phone || '',
+      role: det?.member?.role || member.role || 'member',
     })
-    setEditDialog(true)
+    setEditDialog(member)
   }
 
   async function handleEdit() {
     setEditSubmitting(true)
     try {
-      const res = await fetch(`/api/admin/members/${selectedMember.id}`, {
+      const res = await fetch(`/api/admin/members/${editDialog.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(editForm),
       })
       const data = await res.json()
-      if (!res.ok) {
-        setToast({ message: data.error || 'Failed to update', type: 'error' })
-        return
-      }
+      if (!res.ok) { setToast({ message: data.error || 'Failed to update', type: 'error' }); return }
       setToast({ message: 'Member updated', type: 'success' })
-      setEditDialog(false)
-      openDetail(selectedMember) // refresh detail
-      fetchMembers() // refresh list
+      setEditDialog(null)
+      refreshDetail(editDialog.id)
+      fetchMembers()
     } catch {
       setToast({ message: 'Something went wrong', type: 'error' })
     } finally {
@@ -142,24 +141,38 @@ export default function AdminMembersPage() {
     }
   }
 
-  async function handleDelete() {
-    setDeleteSubmitting(true)
+  async function handleFreeze(member) {
+    setFreezeSubmitting(true)
     try {
-      const res = await fetch(`/api/admin/members/${selectedMember.id}`, { method: 'DELETE' })
+      const res = await fetch(`/api/admin/members/${member.id}`, { method: 'DELETE' })
       const data = await res.json()
-      if (!res.ok) {
-        setToast({ message: data.error || 'Failed to freeze member', type: 'error' })
-        return
-      }
+      if (!res.ok) { setToast({ message: data.error || 'Failed to freeze', type: 'error' }); return }
       setToast({ message: `Member frozen. ${data.cancelled_bookings || 0} booking(s) cancelled.`, type: 'success' })
-      setDeleteDialog(false)
-      setSelectedMember(null)
+      setFreezeDialog(null)
+      setExpandedId(null)
       setDetail(null)
       fetchMembers()
     } catch {
       setToast({ message: 'Something went wrong', type: 'error' })
     } finally {
-      setDeleteSubmitting(false)
+      setFreezeSubmitting(false)
+    }
+  }
+
+  async function handleUnfreeze(member) {
+    try {
+      const res = await fetch(`/api/admin/members/${member.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role: 'member' }),
+      })
+      if (res.ok) {
+        setToast({ message: 'Member unfrozen', type: 'success' })
+        refreshDetail(member.id)
+        fetchMembers()
+      }
+    } catch {
+      setToast({ message: 'Failed to unfreeze', type: 'error' })
     }
   }
 
@@ -170,20 +183,13 @@ export default function AdminMembersPage() {
       const res = await fetch('/api/admin/members', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: selectedMember.id,
-          packId: grantPackId,
-          notes: grantNotes || undefined,
-        }),
+        body: JSON.stringify({ userId: grantDialog.id, packId: grantPackId, notes: grantNotes || undefined }),
       })
       const data = await res.json()
-      if (!res.ok) {
-        setToast({ message: data.error || 'Failed to grant credits', type: 'error' })
-        return
-      }
+      if (!res.ok) { setToast({ message: data.error || 'Failed to grant credits', type: 'error' }); return }
       setToast({ message: 'Credits granted', type: 'success' })
-      setGrantDialog(false)
-      openDetail(selectedMember) // refresh
+      setGrantDialog(null)
+      refreshDetail(grantDialog.id)
     } catch {
       setToast({ message: 'Something went wrong', type: 'error' })
     } finally {
@@ -191,7 +197,7 @@ export default function AdminMembersPage() {
     }
   }
 
-  async function handleBookingAction(bookingId, action, refundCredit) {
+  async function handleBookingAction(memberId, bookingId, action, refundCredit) {
     try {
       const res = await fetch('/api/admin/bookings', {
         method: 'PUT',
@@ -204,7 +210,7 @@ export default function AdminMembersPage() {
         return
       }
       setToast({ message: 'Booking cancelled', type: 'success' })
-      openDetail(selectedMember) // refresh
+      refreshDetail(memberId)
     } catch {
       setToast({ message: 'Something went wrong', type: 'error' })
     }
@@ -218,370 +224,48 @@ export default function AdminMembersPage() {
 
   const totalPages = Math.ceil(total / 30)
 
-  // ─── DETAIL VIEW ───
-  if (selectedMember) {
-    return (
-      <div>
-        <button
-          onClick={() => { setSelectedMember(null); setDetail(null) }}
-          className="flex items-center gap-1 text-sm text-muted hover:text-foreground transition-colors mb-4"
-        >
-          <ChevronLeft className="w-4 h-4" />
-          Back to Members
-        </button>
-
-        {/* Toast */}
-        {toast && (
-          <div className={cn(
-            'mb-4 px-4 py-3 rounded-lg border flex items-center justify-between',
-            toast.type === 'error' ? 'bg-red-500/10 border-red-500/20 text-red-400' : 'bg-green-500/10 border-green-500/20 text-green-400'
-          )}>
-            <span className="text-sm">{toast.message}</span>
-            <button onClick={() => setToast(null)} className="opacity-60 hover:opacity-100"><X className="w-3.5 h-3.5" /></button>
-          </div>
-        )}
-
-        {detailLoading ? (
-          <div className="space-y-4">
-            <div className="h-32 bg-card border border-card-border rounded-lg animate-pulse" />
-            <div className="h-64 bg-card border border-card-border rounded-lg animate-pulse" />
-          </div>
-        ) : detail ? (
-          <div className="space-y-6">
-            {/* Profile header */}
-            <Card>
-              <CardContent className="p-4 sm:p-6">
-                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-                  <div className="flex items-center gap-3 sm:gap-4">
-                    <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-accent/10 flex items-center justify-center overflow-hidden shrink-0">
-                      {detail.member.avatar_url ? (
-                        <Image src={detail.member.avatar_url} alt="" width={48} height={48} className="object-cover rounded-full" unoptimized />
-                      ) : (
-                        <span className="text-accent text-lg sm:text-xl font-bold">
-                          {(detail.member.name || detail.member.email)?.[0]?.toUpperCase() || '?'}
-                        </span>
-                      )}
-                    </div>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h2 className="text-lg sm:text-xl font-bold text-foreground">{detail.member.name || 'No name'}</h2>
-                        <Badge variant={detail.member.role === 'admin' ? 'default' : 'outline'} className="text-[10px]">
-                          {detail.member.role}
-                        </Badge>
-                        {detail.member.google_id && (
-                          <span className="text-[10px] text-muted bg-card-border px-1.5 py-0.5 rounded">Google</span>
-                        )}
-                      </div>
-                      <p className="text-sm text-muted truncate">{detail.member.email}</p>
-                      {detail.member.phone && <p className="text-xs text-muted mt-0.5">{detail.member.phone}</p>}
-                      <p className="text-xs text-muted mt-1">
-                        Joined {new Date(detail.member.created_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'Asia/Bangkok' })}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <Button size="sm" variant="outline" onClick={openEditDialog}>Edit</Button>
-                    <Button size="sm" variant="outline" onClick={() => { setGrantDialog(true); setGrantPackId(packs[0]?.id || ''); setGrantNotes('') }}>
-                      Grant Credits
-                    </Button>
-                    {/* Only owner can freeze/unfreeze admins and owners */}
-                    {(myRole === 'owner' || (detail.member.role !== 'admin' && detail.member.role !== 'owner')) && (
-                      detail.member.role === 'frozen' ? (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="text-green-400 border-green-400/30 hover:bg-green-400/10"
-                          onClick={async () => {
-                            try {
-                              const res = await fetch(`/api/admin/members/${selectedMember.id}`, {
-                                method: 'PUT',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ role: 'member' }),
-                              })
-                              if (res.ok) {
-                                setToast({ message: 'Member unfrozen', type: 'success' })
-                                openDetail(selectedMember)
-                                fetchMembers()
-                              }
-                            } catch {
-                              setToast({ message: 'Failed to unfreeze', type: 'error' })
-                            }
-                          }}
-                        >
-                          Unfreeze
-                        </Button>
-                      ) : (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="text-red-400 border-red-400/30 hover:bg-red-400/10"
-                          onClick={() => setDeleteDialog(true)}
-                        >
-                          Freeze
-                        </Button>
-                      )
-                    )}
-                  </div>
-                </div>
-
-                {/* Stats row */}
-                <div className="grid grid-cols-3 sm:grid-cols-5 gap-3 sm:gap-4 mt-4 sm:mt-6 pt-4 border-t border-card-border">
-                  {[
-                    { label: 'Active Credits', value: detail.stats.activeCredits },
-                    { label: 'Total Bookings', value: detail.stats.totalBookings },
-                    { label: 'Cancelled', value: detail.stats.cancelledBookings },
-                  ].map((stat) => (
-                    <div key={stat.label}>
-                      <p className="text-xs text-muted">{stat.label}</p>
-                      <p className="text-lg font-bold text-foreground">{stat.value}</p>
-                    </div>
-                  ))}
-                </div>
-                {detail.stats.lastVisit && (
-                  <p className="text-xs text-muted mt-3">
-                    Last visit: {new Date(detail.stats.lastVisit).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'Asia/Bangkok' })}
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Credits */}
-            <Card>
-              <CardContent className="p-6">
-                <h3 className="font-bold text-foreground mb-4">Credit History ({detail.credits.length})</h3>
-                {detail.credits.length === 0 ? (
-                  <p className="text-sm text-muted">No credits</p>
-                ) : (
-                  <div className="space-y-2">
-                    {detail.credits.map((c) => {
-                      const isActive = c.status === 'active' && new Date(c.expires_at) > new Date()
-                      const isComp = c.stripe_payment_id?.startsWith('admin_grant')
-                      return (
-                        <div key={c.id} className={cn('flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-2 p-3 rounded-lg border', isActive ? 'border-card-border' : 'border-card-border/50 opacity-50')}>
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm font-medium text-foreground truncate">{c.class_packs?.name || 'Pack'}</span>
-                              {isComp && <Badge variant="outline" className="text-[10px]">Comp</Badge>}
-                            </div>
-                            <p className="text-xs text-muted">
-                              {c.credits_remaining ?? '∞'} / {c.credits_total ?? '∞'} remaining · expires {new Date(c.expires_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'Asia/Bangkok' })}
-                            </p>
-                          </div>
-                          <span className="text-xs text-muted shrink-0">
-                            {new Date(c.purchased_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'Asia/Bangkok' })}
-                          </span>
-                        </div>
-                      )
-                    })}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Bookings */}
-            <Card>
-              <CardContent className="p-6">
-                <h3 className="font-bold text-foreground mb-4">Booking History ({detail.bookings.length})</h3>
-                {detail.bookings.length === 0 ? (
-                  <p className="text-sm text-muted">No bookings</p>
-                ) : (
-                  <div className="space-y-2">
-                    {detail.bookings.map((b) => {
-                      const cls = b.class_schedule
-                      const isUpcoming = cls && new Date(cls.starts_at) > new Date()
-                      const statusColor = b.status === 'confirmed' ? 'text-green-400' : 'text-red-400'
-
-                      return (
-                        <div key={b.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 sm:gap-2 p-3 rounded-lg border border-card-border">
-                          <div className="flex items-center gap-3 min-w-0">
-                            {cls?.class_types?.color && (
-                              <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: cls.class_types.color }} />
-                            )}
-                            <div className="min-w-0">
-                              <span className="text-sm font-medium text-foreground truncate block">{cls?.class_types?.name || 'Class'}</span>
-                              <p className="text-xs text-muted truncate">
-                                {cls ? new Date(cls.starts_at).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'Asia/Bangkok' }) : '—'}
-                                {cls?.instructors?.name && ` · ${cls.instructors.name}`}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2 ml-5 sm:ml-0 shrink-0">
-                            <span className={cn('text-xs font-medium capitalize', statusColor)}>{b.status}</span>
-                            {b.status === 'confirmed' && isUpcoming && (
-                              <button
-                                onClick={() => handleBookingAction(b.id, 'cancel', true)}
-                                className="text-[10px] px-2 py-1.5 rounded border border-red-400/30 text-red-400 hover:bg-red-400/10 transition-colors"
-                              >
-                                Cancel
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Waitlist */}
-            {detail.waitlist.length > 0 && (
-              <Card>
-                <CardContent className="p-6">
-                  <h3 className="font-bold text-foreground mb-4">Waitlist ({detail.waitlist.length})</h3>
-                  <div className="space-y-2">
-                    {detail.waitlist.map((w) => (
-                      <div key={w.id} className="flex items-center justify-between p-3 rounded-lg border border-card-border">
-                        <div>
-                          <span className="text-sm font-medium text-foreground">{w.class_schedule?.class_types?.name || 'Class'}</span>
-                          <p className="text-xs text-muted">
-                            Position #{w.position} · {w.class_schedule ? new Date(w.class_schedule.starts_at).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'Asia/Bangkok' }) : '—'}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </div>
-        ) : (
-          <Card><CardContent className="py-12 text-center"><p className="text-muted">Failed to load member details.</p></CardContent></Card>
-        )}
-
-        {/* Edit Dialog */}
-        <Dialog open={editDialog} onOpenChange={(open) => !open && setEditDialog(false)}>
-          <DialogContent className="sm:max-w-md" onOpenAutoFocus={(e) => e.preventDefault()}>
-            <DialogHeader>
-              <DialogTitle>Edit Member</DialogTitle>
-              <DialogDescription>Update {selectedMember?.name || 'member'}&apos;s profile</DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-2">
-              <div>
-                <Label>Name</Label>
-                <Input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} className="mt-1" />
-              </div>
-              <div>
-                <Label>Email</Label>
-                <Input type="email" value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} className="mt-1" />
-              </div>
-              <div>
-                <Label>Phone</Label>
-                <Input value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} className="mt-1" />
-              </div>
-              <div>
-                <Label>Role</Label>
-                <select
-                  value={editForm.role}
-                  onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}
-                  className="mt-1 w-full rounded-lg bg-background/50 border border-card-border/60 px-3.5 py-2 text-sm text-foreground transition-colors focus:outline-none focus:ring-1 focus:ring-accent/50 focus:border-accent/30"
-                >
-                  <option value="member">Member</option>
-                  <option value="admin">Admin</option>
-                </select>
-              </div>
-            </div>
-            <DialogFooter className="gap-2 sm:gap-0">
-              <Button variant="outline" onClick={() => setEditDialog(false)}>Cancel</Button>
-              <Button onClick={handleEdit} disabled={editSubmitting}>{editSubmitting ? 'Saving...' : 'Save'}</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* Delete Dialog */}
-        <Dialog open={deleteDialog} onOpenChange={(open) => !open && setDeleteDialog(false)}>
-          <DialogContent className="sm:max-w-md" onOpenAutoFocus={(e) => e.preventDefault()}>
-            <DialogHeader>
-              <DialogTitle>Freeze Member</DialogTitle>
-              <DialogDescription>
-                This will cancel future bookings (credits returned), remove from waitlists, and block login. Data is preserved and the member can be unfrozen later.
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter className="gap-2 sm:gap-0">
-              <Button variant="outline" onClick={() => setDeleteDialog(false)}>Cancel</Button>
-              <Button className="bg-red-600 hover:bg-red-700 text-white" onClick={handleDelete} disabled={deleteSubmitting}>
-                {deleteSubmitting ? 'Freezing...' : 'Freeze Member'}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* Grant Credits Dialog */}
-        <Dialog open={grantDialog} onOpenChange={(open) => !open && setGrantDialog(false)}>
-          <DialogContent className="sm:max-w-md" onOpenAutoFocus={(e) => e.preventDefault()}>
-            <DialogHeader>
-              <DialogTitle>Grant Credits</DialogTitle>
-              <DialogDescription>Add a complimentary pack to {selectedMember?.name || selectedMember?.email}</DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-2">
-              <div>
-                <Label>Pack</Label>
-                <select
-                  value={grantPackId}
-                  onChange={(e) => setGrantPackId(e.target.value)}
-                  className="mt-1 w-full rounded-lg bg-background/50 border border-card-border/60 px-3.5 py-2 text-sm text-foreground transition-colors focus:outline-none focus:ring-1 focus:ring-accent/50 focus:border-accent/30"
-                >
-                  {packs.map((p) => (
-                    <option key={p.id} value={p.id}>{p.name} ({p.credits || '∞'} credits, {p.validity_days}d)</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <Label>Notes (optional)</Label>
-                <Input value={grantNotes} onChange={(e) => setGrantNotes(e.target.value)} placeholder="e.g. Comp for referral" className="mt-1" />
-              </div>
-            </div>
-            <DialogFooter className="gap-2 sm:gap-0">
-              <Button variant="outline" onClick={() => setGrantDialog(false)}>Cancel</Button>
-              <Button onClick={handleGrant} disabled={grantSubmitting || !grantPackId}>{grantSubmitting ? 'Granting...' : 'Grant Credits'}</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
-    )
+  function roleBadge(role) {
+    const map = {
+      owner: { text: 'Owner', cls: 'text-purple-400 bg-purple-400/10' },
+      admin: { text: 'Admin', cls: 'text-accent bg-accent/10' },
+      employee: { text: 'Staff', cls: 'text-sky-400 bg-sky-400/10' },
+      frozen: { text: 'Frozen', cls: 'text-blue-400 bg-blue-400/10' },
+    }
+    const b = map[role]
+    return b ? <span className={cn('text-[10px] font-medium px-1.5 py-0.5 rounded shrink-0', b.cls)}>{b.text}</span> : null
   }
 
-  // ─── LIST VIEW ───
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-foreground">Members</h1>
-        <span className="text-sm text-muted">{total} total</span>
+    <div className="max-w-4xl mx-auto space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Members</h1>
+          <p className="text-sm text-muted mt-1">{total} total</p>
+        </div>
       </div>
 
       {/* Toast */}
       {toast && (
         <div className={cn(
-          'mb-6 px-4 py-3 rounded-lg border flex items-center justify-between',
+          'fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:bottom-6 z-50 px-4 py-3 rounded-lg border flex items-center gap-3 shadow-lg backdrop-blur-sm sm:max-w-sm',
           toast.type === 'error' ? 'bg-red-500/10 border-red-500/20 text-red-400' : 'bg-green-500/10 border-green-500/20 text-green-400'
         )}>
-          <span className="text-sm">{toast.message}</span>
-          <button onClick={() => setToast(null)} className="opacity-60 hover:opacity-100"><X className="w-3.5 h-3.5" /></button>
+          <span className="text-sm flex-1">{toast.message}</span>
+          <button onClick={() => setToast(null)} className="opacity-60 hover:opacity-100 shrink-0"><X className="w-3.5 h-3.5" /></button>
         </div>
       )}
 
       {/* Search & Filters */}
-      <div className="space-y-3 mb-6">
+      <div className="space-y-3">
         <form onSubmit={handleSearch} className="flex gap-2">
-          <Input
-            placeholder="Search by name or email..."
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            className="flex-1 sm:max-w-sm"
-          />
+          <Input placeholder="Search by name or email..." value={searchInput} onChange={(e) => setSearchInput(e.target.value)} className="flex-1 sm:max-w-sm" />
           <Button type="submit" variant="outline" className="shrink-0">Search</Button>
-          {search && (
-            <Button variant="outline" className="shrink-0" onClick={() => { setSearchInput(''); setSearch(''); setPage(1) }}>Clear</Button>
-          )}
+          {search && <Button variant="outline" className="shrink-0" onClick={() => { setSearchInput(''); setSearch(''); setPage(1) }}>Clear</Button>}
         </form>
         <div className="flex flex-wrap items-end gap-2 sm:gap-3">
           <div>
             <label className="text-xs text-muted block mb-1">Role</label>
-            <select
-              value={roleFilter}
-              onChange={(e) => { setRoleFilter(e.target.value); setPage(1) }}
-              className="rounded-lg bg-background/50 border border-card-border/60 px-3.5 py-2 text-sm text-foreground transition-colors focus:outline-none focus:ring-1 focus:ring-accent/50 focus:border-accent/30"
-            >
+            <select value={roleFilter} onChange={(e) => { setRoleFilter(e.target.value); setPage(1) }} className="rounded-lg bg-background/50 border border-card-border/60 px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-accent/50">
               <option value="">All Roles</option>
               <option value="member">Member</option>
               <option value="admin">Admin</option>
@@ -589,11 +273,7 @@ export default function AdminMembersPage() {
           </div>
           <div>
             <label className="text-xs text-muted block mb-1">Credits</label>
-            <select
-              value={creditsFilter}
-              onChange={(e) => { setCreditsFilter(e.target.value); setPage(1) }}
-              className="rounded-lg bg-background/50 border border-card-border/60 px-3.5 py-2 text-sm text-foreground transition-colors focus:outline-none focus:ring-1 focus:ring-accent/50 focus:border-accent/30"
-            >
+            <select value={creditsFilter} onChange={(e) => { setCreditsFilter(e.target.value); setPage(1) }} className="rounded-lg bg-background/50 border border-card-border/60 px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-accent/50">
               <option value="">All</option>
               <option value="yes">Has Credits</option>
               <option value="no">No Credits</option>
@@ -601,11 +281,7 @@ export default function AdminMembersPage() {
           </div>
           <div>
             <label className="text-xs text-muted block mb-1">Sort</label>
-            <select
-              value={sortBy}
-              onChange={(e) => { setSortBy(e.target.value); setPage(1) }}
-              className="rounded-lg bg-background/50 border border-card-border/60 px-3.5 py-2 text-sm text-foreground transition-colors focus:outline-none focus:ring-1 focus:ring-accent/50 focus:border-accent/30"
-            >
+            <select value={sortBy} onChange={(e) => { setSortBy(e.target.value); setPage(1) }} className="rounded-lg bg-background/50 border border-card-border/60 px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-accent/50">
               <option value="newest">Newest First</option>
               <option value="oldest">Oldest First</option>
               <option value="name_asc">Name A–Z</option>
@@ -615,96 +291,192 @@ export default function AdminMembersPage() {
             </select>
           </div>
           {(roleFilter || creditsFilter || sortBy !== 'newest') && (
-            <Button
-              variant="outline"
-              className="text-xs"
-              onClick={() => { setRoleFilter(''); setCreditsFilter(''); setSortBy('newest'); setPage(1) }}
-            >
-              Reset Filters
-            </Button>
+            <Button variant="outline" className="text-xs" onClick={() => { setRoleFilter(''); setCreditsFilter(''); setSortBy('newest'); setPage(1) }}>Reset</Button>
           )}
         </div>
       </div>
 
+      {/* List */}
       {fetchError && !loading ? (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <p className="text-red-400 font-medium">{fetchError}</p>
-            <Button variant="outline" size="sm" className="mt-3" onClick={fetchMembers}>Retry</Button>
-          </CardContent>
-        </Card>
+        <div className="border border-card-border rounded-lg py-12 text-center">
+          <p className="text-red-400 font-medium">{fetchError}</p>
+          <Button variant="outline" size="sm" className="mt-3" onClick={fetchMembers}>Retry</Button>
+        </div>
       ) : loading ? (
         <div className="space-y-2">
-          {[1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="h-16 bg-card border border-card-border rounded-lg animate-pulse" />
-          ))}
+          {[1, 2, 3, 4, 5].map((i) => <div key={i} className="h-16 bg-card border border-card-border rounded-lg animate-pulse" />)}
         </div>
       ) : members.length === 0 ? (
-        <Card><CardContent className="py-12 text-center"><p className="text-muted">No members found.</p></CardContent></Card>
+        <div className="border border-card-border rounded-lg py-12 text-center">
+          <p className="text-muted">No members found.</p>
+        </div>
       ) : (
         <>
-          <div className="border border-card-border rounded-lg overflow-hidden">
-            <div className="hidden sm:grid sm:grid-cols-[1fr_1fr_80px_80px_120px] gap-4 px-4 py-2 bg-card border-b border-card-border text-xs text-muted font-medium uppercase tracking-wide">
-              <span>Member</span>
-              <span>Email</span>
-              <span>Credits</span>
-              <span>Bookings</span>
-              <span>Joined</span>
-            </div>
-
-            {members.map((member, idx) => (
-              <button
-                key={member.id}
-                onClick={() => openDetail(member)}
-                className={cn(
-                  'w-full text-left grid sm:grid-cols-[1fr_1fr_80px_80px_120px] gap-2 sm:gap-4 px-4 py-3 items-center hover:bg-white/[0.02] transition-colors',
-                  idx !== members.length - 1 && 'border-b border-card-border'
-                )}
-              >
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center shrink-0 overflow-hidden">
-                    {member.avatar_url ? (
-                      <Image src={member.avatar_url} alt="" width={32} height={32} className="object-cover rounded-full" unoptimized />
-                    ) : (
-                      <span className="text-accent text-xs font-medium">
-                        {(member.name || member.email)?.[0]?.toUpperCase() || '?'}
-                      </span>
+          <div className="space-y-2">
+            {members.map((member) => {
+              const isExpanded = expandedId === member.id
+              return (
+                <div key={member.id}>
+                  {/* Row */}
+                  <div
+                    onClick={() => toggleExpand(member)}
+                    className={cn(
+                      'border border-card-border rounded-lg p-3 sm:p-4 transition-colors hover:bg-white/[0.03] cursor-pointer',
+                      isExpanded && 'border-accent/30 bg-card',
+                      member.role === 'frozen' && 'opacity-50'
                     )}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center shrink-0 overflow-hidden">
+                        {member.avatar_url ? (
+                          <Image src={member.avatar_url} alt="" width={40} height={40} className="object-cover rounded-full" unoptimized />
+                        ) : (
+                          <span className="text-accent text-sm font-medium">{(member.name || member.email)?.[0]?.toUpperCase() || '?'}</span>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-semibold text-foreground truncate">{member.name || 'No name'}</p>
+                          {roleBadge(member.role)}
+                        </div>
+                        <p className="text-xs text-muted truncate">{member.email}</p>
+                      </div>
+                      <div className="flex items-center gap-3 shrink-0 text-xs text-muted">
+                        <span className="hidden sm:block">{member.activeCredits} credits</span>
+                        <span className="hidden sm:block">{member.totalBookings} bookings</span>
+                        {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                      </div>
+                    </div>
                   </div>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <p className="text-sm font-medium text-foreground truncate">{member.name || 'No name'}</p>
-                      {member.role === 'owner' && (
-                        <span className="text-[10px] font-medium text-purple-400 bg-purple-400/10 px-1.5 py-0.5 rounded shrink-0">Owner</span>
-                      )}
-                      {member.role === 'admin' && (
-                        <span className="text-[10px] font-medium text-accent bg-accent/10 px-1.5 py-0.5 rounded shrink-0">Admin</span>
-                      )}
-                      {member.role === 'employee' && (
-                        <span className="text-[10px] font-medium text-sky-400 bg-sky-400/10 px-1.5 py-0.5 rounded shrink-0">Staff</span>
-                      )}
-                      {member.role === 'frozen' && (
-                        <span className="text-[10px] font-medium text-blue-400 bg-blue-400/10 px-1.5 py-0.5 rounded shrink-0">Frozen</span>
+
+                  {/* Expanded detail */}
+                  {isExpanded && (
+                    <div className="ml-4 sm:ml-6 pl-4 sm:pl-5 border-l-2 border-card-border mt-1 mb-3 space-y-4 py-3">
+                      {detailLoading ? (
+                        <div className="space-y-3">
+                          <div className="h-20 bg-card-border/30 rounded-lg animate-pulse" />
+                          <div className="h-16 bg-card-border/30 rounded-lg animate-pulse" />
+                        </div>
+                      ) : detail ? (
+                        <>
+                          {/* Actions */}
+                          <div className="flex flex-wrap gap-2">
+                            <button onClick={() => openEdit(member, detail)} className="px-3 py-1.5 text-xs rounded-md border border-card-border hover:bg-white/[0.03] text-foreground transition-colors">Edit</button>
+                            <button onClick={() => { setGrantDialog(member); setGrantPackId(packs[0]?.id || ''); setGrantNotes('') }} className="px-3 py-1.5 text-xs rounded-md border border-card-border hover:bg-white/[0.03] text-foreground transition-colors">Grant Credits</button>
+                            {(myRole === 'owner' || (detail.member.role !== 'admin' && detail.member.role !== 'owner')) && (
+                              detail.member.role === 'frozen' ? (
+                                <button onClick={() => handleUnfreeze(member)} className="px-3 py-1.5 text-xs rounded-md border border-green-400/30 text-green-400 hover:bg-green-400/10 transition-colors">Unfreeze</button>
+                              ) : (
+                                <button onClick={() => setFreezeDialog(member)} className="px-3 py-1.5 text-xs rounded-md border border-red-400/30 text-red-400 hover:bg-red-400/10 transition-colors">Freeze</button>
+                              )
+                            )}
+                          </div>
+
+                          {/* Stats */}
+                          <div className="grid grid-cols-3 gap-3">
+                            {[
+                              { label: 'Active Credits', value: detail.stats.activeCredits },
+                              { label: 'Total Bookings', value: detail.stats.totalBookings },
+                              { label: 'Cancelled', value: detail.stats.cancelledBookings },
+                            ].map((s) => (
+                              <div key={s.label} className="bg-card/50 rounded-lg p-3 border border-card-border/50">
+                                <p className="text-[11px] text-muted">{s.label}</p>
+                                <p className="text-lg font-bold text-foreground">{s.value}</p>
+                              </div>
+                            ))}
+                          </div>
+
+                          {/* Info */}
+                          <div className="text-xs text-muted space-y-1">
+                            {detail.member.phone && <p>Phone: <span className="text-foreground">{detail.member.phone}</span></p>}
+                            <p>Joined: <span className="text-foreground">{new Date(detail.member.created_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</span></p>
+                            {detail.stats.lastVisit && <p>Last visit: <span className="text-foreground">{new Date(detail.stats.lastVisit).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</span></p>}
+                          </div>
+
+                          {/* Credits */}
+                          {detail.credits.length > 0 && (
+                            <div>
+                              <p className="text-xs font-medium text-muted mb-2">Credits ({detail.credits.length})</p>
+                              <div className="space-y-1.5">
+                                {detail.credits.map((c) => {
+                                  const isActive = c.status === 'active' && new Date(c.expires_at) > new Date()
+                                  const isComp = c.stripe_payment_id?.startsWith('admin_grant')
+                                  return (
+                                    <div key={c.id} className={cn('flex items-center justify-between p-2.5 rounded-md border border-card-border/50', !isActive && 'opacity-40')}>
+                                      <div className="min-w-0">
+                                        <div className="flex items-center gap-1.5">
+                                          <span className="text-xs font-medium text-foreground truncate">{c.class_packs?.name || 'Pack'}</span>
+                                          {isComp && <Badge variant="outline" className="text-[9px] px-1 py-0">Comp</Badge>}
+                                        </div>
+                                        <p className="text-[11px] text-muted">{c.credits_remaining ?? '∞'}/{c.credits_total ?? '∞'} · exp {new Date(c.expires_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</p>
+                                      </div>
+                                    </div>
+                                  )
+                                })}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Bookings */}
+                          {detail.bookings.length > 0 && (
+                            <div>
+                              <p className="text-xs font-medium text-muted mb-2">Recent Bookings ({detail.bookings.length})</p>
+                              <div className="space-y-1.5">
+                                {detail.bookings.slice(0, 10).map((b) => {
+                                  const cls = b.class_schedule
+                                  const isUpcoming = cls && new Date(cls.starts_at) > new Date()
+                                  return (
+                                    <div key={b.id} className="flex items-center justify-between p-2.5 rounded-md border border-card-border/50">
+                                      <div className="flex items-center gap-2 min-w-0">
+                                        {cls?.class_types?.color && <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: cls.class_types.color }} />}
+                                        <div className="min-w-0">
+                                          <span className="text-xs font-medium text-foreground truncate block">{cls?.class_types?.name || 'Class'}</span>
+                                          <p className="text-[11px] text-muted">
+                                            {cls ? new Date(cls.starts_at).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : '—'}
+                                            {cls?.instructors?.name && ` · ${cls.instructors.name}`}
+                                          </p>
+                                        </div>
+                                      </div>
+                                      <div className="flex items-center gap-2 shrink-0">
+                                        <span className={cn('text-[11px] font-medium capitalize', b.status === 'confirmed' ? 'text-green-400' : 'text-red-400')}>{b.status}</span>
+                                        {b.status === 'confirmed' && isUpcoming && (
+                                          <button onClick={(e) => { e.stopPropagation(); handleBookingAction(member.id, b.id, 'cancel', true) }} className="text-[10px] px-2 py-1 rounded border border-red-400/30 text-red-400 hover:bg-red-400/10 transition-colors">Cancel</button>
+                                        )}
+                                      </div>
+                                    </div>
+                                  )
+                                })}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Waitlist */}
+                          {detail.waitlist.length > 0 && (
+                            <div>
+                              <p className="text-xs font-medium text-muted mb-2">Waitlist ({detail.waitlist.length})</p>
+                              <div className="space-y-1.5">
+                                {detail.waitlist.map((w) => (
+                                  <div key={w.id} className="flex items-center justify-between p-2.5 rounded-md border border-card-border/50">
+                                    <span className="text-xs font-medium text-foreground">{w.class_schedule?.class_types?.name || 'Class'}</span>
+                                    <span className="text-[11px] text-muted">#{w.position}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <p className="text-xs text-muted">Failed to load details.</p>
                       )}
                     </div>
-                    <p className="text-xs text-muted truncate sm:hidden">{member.email}</p>
-                  </div>
+                  )}
                 </div>
-                <p className="hidden sm:block text-sm text-muted truncate">{member.email}</p>
-                <span className="text-sm font-medium text-foreground">
-                  {member.activeCredits}
-                  <span className="sm:hidden text-xs text-muted font-normal"> credits</span>
-                </span>
-                <span className="hidden sm:block text-sm text-muted">{member.totalBookings}</span>
-                <span className="hidden sm:block text-xs text-muted">
-                  {new Date(member.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'Asia/Bangkok' })}
-                </span>
-              </button>
-            ))}
+              )
+            })}
           </div>
 
           {totalPages > 1 && (
-            <div className="flex items-center justify-between mt-4">
+            <div className="flex items-center justify-between">
               <Button variant="outline" disabled={page <= 1} onClick={() => setPage((p) => p - 1)} className="text-xs">Previous</Button>
               <span className="text-sm text-muted">Page {page} of {totalPages}</span>
               <Button variant="outline" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)} className="text-xs">Next</Button>
@@ -712,6 +484,72 @@ export default function AdminMembersPage() {
           )}
         </>
       )}
+
+      {/* Edit Dialog */}
+      <Dialog open={!!editDialog} onOpenChange={(open) => !open && setEditDialog(null)}>
+        <DialogContent className="sm:max-w-md" onOpenAutoFocus={(e) => e.preventDefault()}>
+          <DialogHeader>
+            <DialogTitle>Edit Member</DialogTitle>
+            <DialogDescription>Update {editDialog?.name || 'member'}&apos;s profile</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div><Label>Name</Label><Input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} className="mt-1" /></div>
+            <div><Label>Email</Label><Input type="email" value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} className="mt-1" /></div>
+            <div><Label>Phone</Label><Input value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} className="mt-1" /></div>
+            <div>
+              <Label>Role</Label>
+              <select value={editForm.role} onChange={(e) => setEditForm({ ...editForm, role: e.target.value })} className="mt-1 w-full rounded-lg bg-background/50 border border-card-border/60 px-3.5 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-accent/50">
+                <option value="member">Member</option>
+                <option value="admin">Admin</option>
+              </select>
+            </div>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setEditDialog(null)}>Cancel</Button>
+            <Button onClick={handleEdit} disabled={editSubmitting}>{editSubmitting ? 'Saving...' : 'Save'}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Freeze Dialog */}
+      <Dialog open={!!freezeDialog} onOpenChange={(open) => !open && setFreezeDialog(null)}>
+        <DialogContent className="sm:max-w-md" onOpenAutoFocus={(e) => e.preventDefault()}>
+          <DialogHeader>
+            <DialogTitle>Freeze Member</DialogTitle>
+            <DialogDescription>This will cancel future bookings (credits returned), remove from waitlists, and block login. Data is preserved.</DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setFreezeDialog(null)}>Cancel</Button>
+            <Button className="bg-red-600 hover:bg-red-700 text-white" onClick={() => handleFreeze(freezeDialog)} disabled={freezeSubmitting}>{freezeSubmitting ? 'Freezing...' : 'Freeze Member'}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Grant Credits Dialog */}
+      <Dialog open={!!grantDialog} onOpenChange={(open) => !open && setGrantDialog(null)}>
+        <DialogContent className="sm:max-w-md" onOpenAutoFocus={(e) => e.preventDefault()}>
+          <DialogHeader>
+            <DialogTitle>Grant Credits</DialogTitle>
+            <DialogDescription>Add a complimentary pack to {grantDialog?.name || grantDialog?.email}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div>
+              <Label>Pack</Label>
+              <select value={grantPackId} onChange={(e) => setGrantPackId(e.target.value)} className="mt-1 w-full rounded-lg bg-background/50 border border-card-border/60 px-3.5 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-accent/50">
+                {packs.map((p) => <option key={p.id} value={p.id}>{p.name} ({p.credits || '∞'} credits, {p.validity_days}d)</option>)}
+              </select>
+            </div>
+            <div>
+              <Label>Notes (optional)</Label>
+              <Input value={grantNotes} onChange={(e) => setGrantNotes(e.target.value)} placeholder="e.g. Comp for referral" className="mt-1" />
+            </div>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setGrantDialog(null)}>Cancel</Button>
+            <Button onClick={handleGrant} disabled={grantSubmitting || !grantPackId}>{grantSubmitting ? 'Granting...' : 'Grant Credits'}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
