@@ -58,7 +58,7 @@ export async function GET() {
         .from('class_schedule')
         .select(`
           *,
-          class_types(id, name, description, duration_mins, color, icon),
+          class_types(id, name, description, duration_mins, color, icon, image_url),
           instructors(id, name, photo_url, bio),
           locations(id, name),
           zones(id, name)
