@@ -6,7 +6,7 @@ import { Switch } from '@/components/ui/switch'
 import Image from 'next/image'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-import { X, Check, User, ChevronDown, ChevronUp, Trash2 } from 'lucide-react'
+import { X, Check, User, ChevronDown, ChevronUp, Trash2, MapPin } from 'lucide-react'
 
 export default function AdminInstructorsPage() {
   const [instructors, setInstructors] = useState([])
@@ -16,17 +16,18 @@ export default function AdminInstructorsPage() {
   const [fetchError, setFetchError] = useState(null)
   const [deletingInst, setDeletingInst] = useState(null)
   const [deleteSubmitting, setDeleteSubmitting] = useState(false)
+  const [locations, setLocations] = useState([])
 
   // Inline create state
   const [showCreate, setShowCreate] = useState(false)
-  const [createForm, setCreateForm] = useState({ name: '', bio: '' })
-  const [createShowBio, setCreateShowBio] = useState(false)
+  const [createForm, setCreateForm] = useState({ name: '', bio: '', locationIds: [] })
+  const [createShowMore, setCreateShowMore] = useState(false)
   const createNameRef = useRef(null)
 
   // Inline edit state
   const [editingId, setEditingId] = useState(null)
-  const [editForm, setEditForm] = useState({ name: '', bio: '' })
-  const [editShowBio, setEditShowBio] = useState(false)
+  const [editForm, setEditForm] = useState({ name: '', bio: '', locationIds: [] })
+  const [editShowMore, setEditShowMore] = useState(false)
   const editNameRef = useRef(null)
 
   useEffect(() => {
@@ -55,6 +56,12 @@ export default function AdminInstructorsPage() {
 
   useEffect(() => { fetchInstructors() }, [])
 
+  useEffect(() => {
+    fetch('/api/admin/locations').then((r) => r.ok ? r.json() : null).then((d) => {
+      if (d?.locations) setLocations(d.locations)
+    }).catch(() => {})
+  }, [])
+
   // Focus name input when create row appears
   useEffect(() => {
     if (showCreate && createNameRef.current) {
@@ -71,28 +78,39 @@ export default function AdminInstructorsPage() {
 
   function startCreate() {
     setEditingId(null)
-    setCreateForm({ name: '', bio: '' })
-    setCreateShowBio(false)
+    setCreateForm({ name: '', bio: '', locationIds: [] })
+    setCreateShowMore(false)
     setShowCreate(true)
   }
 
   function cancelCreate() {
     setShowCreate(false)
-    setCreateForm({ name: '', bio: '' })
-    setCreateShowBio(false)
+    setCreateForm({ name: '', bio: '', locationIds: [] })
+    setCreateShowMore(false)
   }
 
   function startEdit(inst) {
     setShowCreate(false)
-    setEditForm({ name: inst.name, bio: inst.bio || '' })
-    setEditShowBio(!!inst.bio)
+    const instLocIds = (inst.instructor_locations || []).map((il) => il.location_id)
+    const hasMore = inst.bio || instLocIds.length > 0
+    setEditForm({ name: inst.name, bio: inst.bio || '', locationIds: instLocIds })
+    setEditShowMore(!!hasMore)
     setEditingId(inst.id)
   }
 
   function cancelEdit() {
     setEditingId(null)
-    setEditForm({ name: '', bio: '' })
-    setEditShowBio(false)
+    setEditForm({ name: '', bio: '', locationIds: [] })
+    setEditShowMore(false)
+  }
+
+  function toggleLocationId(form, setForm, locId) {
+    setForm((f) => ({
+      ...f,
+      locationIds: f.locationIds.includes(locId)
+        ? f.locationIds.filter((id) => id !== locId)
+        : [...f.locationIds, locId],
+    }))
   }
 
   async function handleSaveCreate() {
@@ -118,6 +136,7 @@ export default function AdminInstructorsPage() {
         body: JSON.stringify({
           name: createForm.name,
           bio: createForm.bio || null,
+          ...(createForm.locationIds.length > 0 && { locationIds: createForm.locationIds }),
         }),
       })
       const data = await res.json()
@@ -151,6 +170,7 @@ export default function AdminInstructorsPage() {
           id: editId,
           name: editForm.name,
           bio: editForm.bio || null,
+          locationIds: editForm.locationIds,
         }),
       })
       const data = await res.json()
@@ -358,22 +378,49 @@ export default function AdminInstructorsPage() {
                       placeholder="Instructor name"
                       className="h-8 text-sm bg-background border-card-border"
                     />
-                    {editShowBio ? (
-                      <Input
-                        value={editForm.bio}
-                        onChange={(e) => setEditForm((f) => ({ ...f, bio: e.target.value }))}
-                        placeholder="Short bio..."
-                        className="h-8 text-sm bg-background border-card-border"
-                      />
-                    ) : null}
                     <button
                       type="button"
-                      onClick={() => setEditShowBio(!editShowBio)}
+                      onClick={() => setEditShowMore(!editShowMore)}
                       className="flex items-center gap-1 text-[11px] text-muted hover:text-accent transition-colors"
                     >
-                      {editShowBio ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                      {editShowBio ? 'Hide bio' : 'More'}
+                      {editShowMore ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                      {editShowMore ? 'Fewer options' : 'More options'}
                     </button>
+                    {editShowMore && (
+                      <div className="space-y-3 pt-2 border-t border-card-border/50">
+                        <div>
+                          <label className="text-[11px] text-muted block mb-1">Bio</label>
+                          <Input
+                            value={editForm.bio}
+                            onChange={(e) => setEditForm((f) => ({ ...f, bio: e.target.value }))}
+                            placeholder="Short bio..."
+                            className="h-8 text-sm bg-background border-card-border"
+                          />
+                        </div>
+                        {locations.length > 0 && (
+                          <div>
+                            <label className="text-[11px] text-muted block mb-1.5">Locations <span className="text-muted/50">· none selected = all locations</span></label>
+                            <div className="flex flex-wrap gap-1.5">
+                              {locations.filter((l) => l.is_active).map((loc) => (
+                                <button
+                                  key={loc.id}
+                                  type="button"
+                                  onClick={() => toggleLocationId(editForm, setEditForm, loc.id)}
+                                  className={cn(
+                                    'px-2.5 py-1 rounded-md text-xs transition-colors border',
+                                    editForm.locationIds.includes(loc.id)
+                                      ? 'bg-accent/10 text-accent border-accent/30'
+                                      : 'text-muted border-card-border hover:border-accent/20 hover:text-foreground'
+                                  )}
+                                >
+                                  {loc.name}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className="flex gap-2 mt-4">
@@ -417,6 +464,14 @@ export default function AdminInstructorsPage() {
                       )}
                     </div>
                     {inst.bio && <p className="text-xs text-muted truncate mt-0.5">{inst.bio}</p>}
+                    {inst.instructor_locations?.length > 0 && (
+                      <div className="flex items-center gap-1 mt-0.5">
+                        <MapPin className="w-3 h-3 text-muted/50 shrink-0" />
+                        <p className="text-[11px] text-muted/70 truncate">
+                          {inst.instructor_locations.map((il) => il.locations?.name || 'Unknown').join(', ')}
+                        </p>
+                      </div>
+                    )}
                   </div>
 
                   {/* Controls */}
@@ -460,22 +515,49 @@ export default function AdminInstructorsPage() {
                     placeholder="Instructor name"
                     className="h-8 text-sm bg-background border-card-border"
                   />
-                  {createShowBio ? (
-                    <Input
-                      value={createForm.bio}
-                      onChange={(e) => setCreateForm((f) => ({ ...f, bio: e.target.value }))}
-                      placeholder="Short bio..."
-                      className="h-8 text-sm bg-background border-card-border"
-                    />
-                  ) : null}
                   <button
                     type="button"
-                    onClick={() => setCreateShowBio(!createShowBio)}
+                    onClick={() => setCreateShowMore(!createShowMore)}
                     className="flex items-center gap-1 text-[11px] text-muted hover:text-accent transition-colors"
                   >
-                    {createShowBio ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                    {createShowBio ? 'Hide bio' : 'More'}
+                    {createShowMore ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                    {createShowMore ? 'Fewer options' : 'More options'}
                   </button>
+                  {createShowMore && (
+                    <div className="space-y-3 pt-2 border-t border-card-border/50">
+                      <div>
+                        <label className="text-[11px] text-muted block mb-1">Bio</label>
+                        <Input
+                          value={createForm.bio}
+                          onChange={(e) => setCreateForm((f) => ({ ...f, bio: e.target.value }))}
+                          placeholder="Short bio..."
+                          className="h-8 text-sm bg-background border-card-border"
+                        />
+                      </div>
+                      {locations.length > 0 && (
+                        <div>
+                          <label className="text-[11px] text-muted block mb-1.5">Locations <span className="text-muted/50">· none selected = all locations</span></label>
+                          <div className="flex flex-wrap gap-1.5">
+                            {locations.filter((l) => l.is_active).map((loc) => (
+                              <button
+                                key={loc.id}
+                                type="button"
+                                onClick={() => toggleLocationId(createForm, setCreateForm, loc.id)}
+                                className={cn(
+                                  'px-2.5 py-1 rounded-md text-xs transition-colors border',
+                                  createForm.locationIds.includes(loc.id)
+                                    ? 'bg-accent/10 text-accent border-accent/30'
+                                    : 'text-muted border-card-border hover:border-accent/20 hover:text-foreground'
+                                )}
+                              >
+                                {loc.name}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
               </div>
