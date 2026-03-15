@@ -352,6 +352,7 @@ export default function ClassTypesPage() {
             <label className="flex items-center gap-2 text-xs text-muted hover:text-foreground cursor-pointer transition-colors">
               <Camera className="w-3.5 h-3.5" />
               <span>Add image</span>
+              <span className="text-[10px] text-muted/50">JPEG, PNG, WebP · max 5MB</span>
               <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => {
                 const f = e.target.files?.[0]
                 if (f) onImageSelect(f)

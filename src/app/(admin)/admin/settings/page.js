@@ -526,9 +526,10 @@ function BrandingTab() {
                 </button>
               </div>
             ) : (
-              <div onClick={() => fileInputRef.current?.click()} className="h-16 w-32 rounded border-2 border-dashed border-card-border flex flex-col items-center justify-center text-muted hover:text-foreground hover:border-accent/30 cursor-pointer transition-colors gap-1">
+              <div onClick={() => fileInputRef.current?.click()} className="h-20 w-40 rounded border-2 border-dashed border-card-border flex flex-col items-center justify-center text-muted hover:text-foreground hover:border-accent/30 cursor-pointer transition-colors gap-1">
                 <Upload className="w-5 h-5" />
                 <span className="text-[10px]">{uploading ? 'Uploading...' : 'Upload logo'}</span>
+                <span className="text-[9px] text-muted/40">JPEG, PNG, WebP, SVG · max 2MB</span>
               </div>
             )}
           </div>
