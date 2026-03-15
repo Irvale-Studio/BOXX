@@ -468,7 +468,7 @@ function BrandingTab() {
         setLogoUrl(data.url)
         setMessage({ type: 'success', text: 'Logo uploaded!' })
       } else {
-        setMessage({ type: 'error', text: data.error || 'Failed to upload logo. Check that the tenant-logos storage bucket exists in Supabase.' })
+        setMessage({ type: 'error', text: data.error || 'Failed to upload logo' })
       }
     } catch {
       setMessage({ type: 'error', text: 'Failed to upload logo.' })

@@ -136,7 +136,7 @@ export default function ClassTypesPage() {
       const res = await fetch('/api/admin/class-types/image', { method: 'POST', body: fd })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
-        setToast({ message: data.error || 'Image upload failed. Check that the class-images storage bucket exists in Supabase.', type: 'error' })
+        setToast({ message: data.error || 'Image upload failed', type: 'error' })
         return false
       }
       return true

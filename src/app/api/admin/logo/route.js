@@ -34,7 +34,10 @@ export async function POST(request) {
 
     if (uploadError) {
       console.error('[admin/logo] Upload error:', uploadError)
-      return NextResponse.json({ error: 'Upload failed. Ensure the tenant-logos storage bucket exists.' }, { status: 500 })
+      const msg = uploadError.message?.includes('maximum allowed size')
+        ? 'Logo too large for storage. Try a smaller file.'
+        : 'Upload failed'
+      return NextResponse.json({ error: msg }, { status: 500 })
     }
 
     const { data: { publicUrl } } = supabaseAdmin.storage
