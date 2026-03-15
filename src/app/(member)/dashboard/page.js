@@ -1246,7 +1246,7 @@ function ScheduleSection({ credits, onUpdate, sharedClassId, view, onViewChange,
           {classImage ? (
             <>
               <Image src={classImage} alt="" fill className="object-cover" sizes="(max-width: 640px) 50vw, 60vw" />
-              <div className="absolute inset-0" style={{ background: 'linear-gradient(to right, var(--card) 0%, var(--card) 20%, rgba(17,17,17,0.7) 50%, rgba(17,17,17,0.3) 75%, transparent 100%)' }} />
+              <div className="absolute inset-0 z-10" style={{ background: 'linear-gradient(to right, #111111 0%, #111111 25%, rgba(17,17,17,0.85) 50%, rgba(17,17,17,0.4) 75%, rgba(17,17,17,0.1) 100%)' }} />
             </>
           ) : (
             <div className="absolute inset-0" style={{ background: `linear-gradient(to right, var(--card), ${classColor}15, ${classColor}08)` }} />
@@ -1842,7 +1842,7 @@ function ScheduleSection({ credits, onUpdate, sharedClassId, view, onViewChange,
                         {classImage ? (
                           <>
                             <Image src={classImage} alt="" fill className="object-cover" sizes="(max-width: 640px) 50vw, 60vw" />
-                            <div className="absolute inset-0" style={{ background: 'linear-gradient(to right, var(--card) 0%, var(--card) 20%, rgba(17,17,17,0.7) 50%, rgba(17,17,17,0.3) 75%, transparent 100%)' }} />
+                            <div className="absolute inset-0 z-10" style={{ background: 'linear-gradient(to right, #111111 0%, #111111 25%, rgba(17,17,17,0.85) 50%, rgba(17,17,17,0.4) 75%, rgba(17,17,17,0.1) 100%)' }} />
                           </>
                         ) : (
                           <div className="absolute inset-0" style={{ background: `linear-gradient(to right, var(--card), ${classColor}15, ${classColor}08)` }} />
@@ -2048,7 +2048,7 @@ function BookingsSection({ upcoming, past, waitlist = [], credits = [], onUpdate
           {classImage ? (
             <>
               <Image src={classImage} alt="" fill className="object-cover" sizes="(max-width: 640px) 50vw, 60vw" />
-              <div className="absolute inset-0" style={{ background: 'linear-gradient(to right, var(--card) 0%, var(--card) 20%, rgba(17,17,17,0.7) 50%, rgba(17,17,17,0.3) 75%, transparent 100%)' }} />
+              <div className="absolute inset-0 z-10" style={{ background: 'linear-gradient(to right, #111111 0%, #111111 25%, rgba(17,17,17,0.85) 50%, rgba(17,17,17,0.4) 75%, rgba(17,17,17,0.1) 100%)' }} />
             </>
           ) : (
             <div className="absolute inset-0" style={{ background: `linear-gradient(to right, var(--card), ${classColor}15, ${classColor}08)` }} />
