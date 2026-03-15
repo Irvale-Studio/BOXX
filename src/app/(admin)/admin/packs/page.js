@@ -96,8 +96,7 @@ export default function AdminPacksPage() {
       display_order: pack.display_order || 0,
       stripe_price_id: pack.stripe_price_id || '',
     })
-    const hasMore = pack.description || pack.badge_text || pack.stripe_price_id || pack.is_intro || pack.is_membership
-    setEditMore(!!hasMore)
+    setEditMore(true)
     setEditingId(pack.id)
     setShowCreate(false)
   }
@@ -254,9 +253,12 @@ export default function AdminPacksPage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Products</h1>
-        <p className="text-sm text-muted mt-1">Manage your class packs and memberships</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Products</h1>
+          <p className="text-sm text-muted mt-1">Manage your class packs and memberships</p>
+        </div>
+        <button onClick={startCreate} className="px-3 py-2 rounded-lg bg-accent/10 text-accent hover:bg-accent/20 text-sm font-medium transition-colors flex items-center gap-1.5"><Plus className="w-4 h-4" /> Add</button>
       </div>
 
       {/* Toast */}

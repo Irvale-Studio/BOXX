@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import Image from 'next/image'
 import { cn } from '@/lib/utils'
-import { X, ChevronDown, ChevronUp } from 'lucide-react'
+import { X, ChevronDown, ChevronUp, Plus, Check } from 'lucide-react'
 
 export default function AdminMembersPage() {
   const { data: session } = useSession()
@@ -46,6 +46,11 @@ export default function AdminMembersPage() {
   const [grantNotes, setGrantNotes] = useState('')
   const [grantSubmitting, setGrantSubmitting] = useState(false)
   const [fetchError, setFetchError] = useState(null)
+
+  // Inline add member
+  const [showAddMember, setShowAddMember] = useState(false)
+  const [addForm, setAddForm] = useState({ name: '', email: '', password: '' })
+  const [addSubmitting, setAddSubmitting] = useState(false)
 
   useEffect(() => {
     if (!toast) return
@@ -187,7 +192,7 @@ export default function AdminMembersPage() {
       })
       const data = await res.json()
       if (!res.ok) { setToast({ message: data.error || 'Failed to grant credits', type: 'error' }); return }
-      setToast({ message: 'Credits granted', type: 'success' })
+      setToast({ message: 'Product granted', type: 'success' })
       setGrantDialog(null)
       refreshDetail(grantDialog.id)
     } catch {
@@ -222,6 +227,28 @@ export default function AdminMembersPage() {
     setPage(1)
   }
 
+  async function handleAddMember() {
+    if (!addForm.name.trim() || !addForm.email.trim() || !addForm.password.trim()) return
+    setAddSubmitting(true)
+    try {
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: addForm.name, email: addForm.email, password: addForm.password }),
+      })
+      const data = await res.json()
+      if (!res.ok) { setToast({ message: data.error || 'Failed to add member', type: 'error' }); return }
+      setToast({ message: 'Member added', type: 'success' })
+      setShowAddMember(false)
+      setAddForm({ name: '', email: '', password: '' })
+      fetchMembers()
+    } catch {
+      setToast({ message: 'Something went wrong', type: 'error' })
+    } finally {
+      setAddSubmitting(false)
+    }
+  }
+
   const totalPages = Math.ceil(total / 30)
 
   function roleBadge(role) {
@@ -242,6 +269,7 @@ export default function AdminMembersPage() {
           <h1 className="text-2xl font-bold text-foreground">Members</h1>
           <p className="text-sm text-muted mt-1">{total} total</p>
         </div>
+        <button onClick={() => setShowAddMember(true)} className="px-3 py-2 rounded-lg bg-accent/10 text-accent hover:bg-accent/20 text-sm font-medium transition-colors flex items-center gap-1.5"><Plus className="w-4 h-4" /> Add</button>
       </div>
 
       {/* Toast */}
@@ -295,6 +323,30 @@ export default function AdminMembersPage() {
           )}
         </div>
       </div>
+
+      {/* Inline add member */}
+      {showAddMember && (
+        <div className="border border-dashed border-accent/40 rounded-lg p-3 sm:p-4 bg-card">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label className="text-[11px] text-muted block mb-1">Name *</label>
+              <Input value={addForm.name} onChange={(e) => setAddForm((f) => ({ ...f, name: e.target.value }))} placeholder="Full name" className="h-8 text-sm bg-background border-card-border" autoFocus />
+            </div>
+            <div>
+              <label className="text-[11px] text-muted block mb-1">Email *</label>
+              <Input type="email" value={addForm.email} onChange={(e) => setAddForm((f) => ({ ...f, email: e.target.value }))} placeholder="email@example.com" className="h-8 text-sm bg-background border-card-border" />
+            </div>
+            <div>
+              <label className="text-[11px] text-muted block mb-1">Password *</label>
+              <Input type="password" value={addForm.password} onChange={(e) => setAddForm((f) => ({ ...f, password: e.target.value }))} placeholder="Min 8 characters" className="h-8 text-sm bg-background border-card-border" />
+            </div>
+          </div>
+          <div className="flex gap-2 mt-4">
+            <button onClick={() => { setShowAddMember(false); setAddForm({ name: '', email: '', password: '' }) }} className="flex-1 h-10 rounded-lg border border-card-border text-muted hover:text-foreground hover:bg-white/[0.03] text-sm transition-colors flex items-center justify-center gap-2"><X className="w-4 h-4" /> Cancel</button>
+            <button onClick={handleAddMember} disabled={addSubmitting || !addForm.name.trim() || !addForm.email.trim() || !addForm.password.trim()} className={cn('flex-1 h-10 rounded-lg bg-accent/10 text-accent hover:bg-accent/20 text-sm font-medium transition-colors flex items-center justify-center gap-2', (addSubmitting || !addForm.name.trim() || !addForm.email.trim() || !addForm.password.trim()) && 'opacity-50 cursor-not-allowed')}><Check className="w-4 h-4" /> {addSubmitting ? 'Adding...' : 'Add Member'}</button>
+          </div>
+        </div>
+      )}
 
       {/* List */}
       {fetchError && !loading ? (
@@ -362,7 +414,7 @@ export default function AdminMembersPage() {
                           {/* Actions */}
                           <div className="flex flex-wrap gap-2">
                             <button onClick={() => openEdit(member, detail)} className="px-3 py-1.5 text-xs rounded-md border border-card-border hover:bg-white/[0.03] text-foreground transition-colors">Edit</button>
-                            <button onClick={() => { setGrantDialog(member); setGrantPackId(packs[0]?.id || ''); setGrantNotes('') }} className="px-3 py-1.5 text-xs rounded-md border border-card-border hover:bg-white/[0.03] text-foreground transition-colors">Grant Credits</button>
+                            <button onClick={() => { setGrantDialog(member); setGrantPackId(packs[0]?.id || ''); setGrantNotes('') }} className="px-3 py-1.5 text-xs rounded-md border border-card-border hover:bg-white/[0.03] text-foreground transition-colors">Grant Product</button>
                             {(myRole === 'owner' || (detail.member.role !== 'admin' && detail.member.role !== 'owner')) && (
                               detail.member.role === 'frozen' ? (
                                 <button onClick={() => handleUnfreeze(member)} className="px-3 py-1.5 text-xs rounded-md border border-green-400/30 text-green-400 hover:bg-green-400/10 transition-colors">Unfreeze</button>
@@ -525,12 +577,12 @@ export default function AdminMembersPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Grant Credits Dialog */}
+      {/* Grant Product Dialog */}
       <Dialog open={!!grantDialog} onOpenChange={(open) => !open && setGrantDialog(null)}>
         <DialogContent className="sm:max-w-md" onOpenAutoFocus={(e) => e.preventDefault()}>
           <DialogHeader>
-            <DialogTitle>Grant Credits</DialogTitle>
-            <DialogDescription>Add a complimentary pack to {grantDialog?.name || grantDialog?.email}</DialogDescription>
+            <DialogTitle>Grant Product</DialogTitle>
+            <DialogDescription>Add a complimentary product to {grantDialog?.name || grantDialog?.email}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div>
@@ -546,7 +598,7 @@ export default function AdminMembersPage() {
           </div>
           <DialogFooter className="gap-2 sm:gap-0">
             <Button variant="outline" onClick={() => setGrantDialog(null)}>Cancel</Button>
-            <Button onClick={handleGrant} disabled={grantSubmitting || !grantPackId}>{grantSubmitting ? 'Granting...' : 'Grant Credits'}</Button>
+            <Button onClick={handleGrant} disabled={grantSubmitting || !grantPackId}>{grantSubmitting ? 'Granting...' : 'Grant Product'}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

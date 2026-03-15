@@ -6,7 +6,7 @@ import { Switch } from '@/components/ui/switch'
 import Image from 'next/image'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-import { X, Check, User, ChevronDown, ChevronUp, Trash2, MapPin } from 'lucide-react'
+import { X, Check, User, ChevronDown, ChevronUp, Trash2, MapPin, Plus } from 'lucide-react'
 
 export default function AdminInstructorsPage() {
   const [instructors, setInstructors] = useState([])
@@ -92,9 +92,8 @@ export default function AdminInstructorsPage() {
   function startEdit(inst) {
     setShowCreate(false)
     const instLocIds = (inst.instructor_locations || []).map((il) => il.location_id)
-    const hasMore = inst.bio || instLocIds.length > 0
     setEditForm({ name: inst.name, bio: inst.bio || '', locationIds: instLocIds })
-    setEditShowMore(!!hasMore)
+    setEditShowMore(true)
     setEditingId(inst.id)
   }
 
@@ -274,9 +273,12 @@ export default function AdminInstructorsPage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Instructors</h1>
-        <p className="text-sm text-muted mt-1">Manage your team of instructors and coaches</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Instructors</h1>
+          <p className="text-sm text-muted mt-1">Manage your team of instructors and coaches</p>
+        </div>
+        <button onClick={startCreate} className="px-3 py-2 rounded-lg bg-accent/10 text-accent hover:bg-accent/20 text-sm font-medium transition-colors flex items-center gap-1.5"><Plus className="w-4 h-4" /> Add</button>
       </div>
 
       {/* Toast */}
@@ -399,8 +401,20 @@ export default function AdminInstructorsPage() {
                         </div>
                         {locations.length > 0 && (
                           <div>
-                            <label className="text-[11px] text-muted block mb-1.5">Locations <span className="text-muted/50">· none selected = all locations</span></label>
+                            <label className="text-[11px] text-muted block mb-1.5">Locations</label>
                             <div className="flex flex-wrap gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => setEditForm((f) => ({ ...f, locationIds: [] }))}
+                                className={cn(
+                                  'px-2.5 py-1 rounded-md text-xs transition-colors border',
+                                  editForm.locationIds.length === 0
+                                    ? 'bg-accent/10 text-accent border-accent/30'
+                                    : 'text-muted border-card-border hover:border-accent/20 hover:text-foreground'
+                                )}
+                              >
+                                All
+                              </button>
                               {locations.filter((l) => l.is_active).map((loc) => (
                                 <button
                                   key={loc.id}
@@ -536,8 +550,20 @@ export default function AdminInstructorsPage() {
                       </div>
                       {locations.length > 0 && (
                         <div>
-                          <label className="text-[11px] text-muted block mb-1.5">Locations <span className="text-muted/50">· none selected = all locations</span></label>
+                          <label className="text-[11px] text-muted block mb-1.5">Locations</label>
                           <div className="flex flex-wrap gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => setCreateForm((f) => ({ ...f, locationIds: [] }))}
+                              className={cn(
+                                'px-2.5 py-1 rounded-md text-xs transition-colors border',
+                                createForm.locationIds.length === 0
+                                  ? 'bg-accent/10 text-accent border-accent/30'
+                                  : 'text-muted border-card-border hover:border-accent/20 hover:text-foreground'
+                              )}
+                            >
+                              All
+                            </button>
                             {locations.filter((l) => l.is_active).map((loc) => (
                               <button
                                 key={loc.id}

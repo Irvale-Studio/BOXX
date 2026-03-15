@@ -114,8 +114,7 @@ export default function ClassTypesPage() {
       is_private: ct.is_private || false,
       image_url: ct.image_url || null,
     })
-    const hasMore = ct.description || ct.icon || ct.is_private || ct.image_url
-    setEditMore(!!hasMore)
+    setEditMore(true)
     setEditImageFile(null)
     setEditImagePreview(null)
     setEditingId(ct.id)
@@ -352,9 +351,12 @@ export default function ClassTypesPage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Events</h1>
-        <p className="text-sm text-muted mt-1">Manage your class types and event categories</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Events</h1>
+          <p className="text-sm text-muted mt-1">Manage your class types and event categories</p>
+        </div>
+        <button onClick={startCreate} className="px-3 py-2 rounded-lg bg-accent/10 text-accent hover:bg-accent/20 text-sm font-medium transition-colors flex items-center gap-1.5"><Plus className="w-4 h-4" /> Add</button>
       </div>
 
       {/* Toast */}

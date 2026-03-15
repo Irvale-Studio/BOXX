@@ -127,9 +127,7 @@ export default function AdminLocationsPage() {
       timezone: loc.timezone || '',
       buffer_mins: loc.buffer_mins || 0,
     })
-    // Show more options if any optional field has data
-    const hasOptional = loc.address || loc.city || loc.country || loc.phone || loc.timezone || loc.buffer_mins
-    setLocMoreOptions(!!hasOptional)
+    setLocMoreOptions(true)
     setEditingLocId(loc.id)
     setShowCreateLoc(false)
   }
@@ -540,9 +538,12 @@ export default function AdminLocationsPage() {
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Locations</h1>
-        <p className="text-sm text-muted mt-1">Manage your studio locations and areas within them</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Locations</h1>
+          <p className="text-sm text-muted mt-1">Manage your studio locations and areas within them</p>
+        </div>
+        <button onClick={startCreateLocation} className="px-3 py-2 rounded-lg bg-accent/10 text-accent hover:bg-accent/20 text-sm font-medium transition-colors flex items-center gap-1.5"><Plus className="w-4 h-4" /> Add</button>
       </div>
 
       {/* Toast — fixed position */}
