@@ -340,6 +340,7 @@ function BrandingTab() {
   const [titleFont, setTitleFont] = useState('Inter')
   const [bodyFont, setBodyFont] = useState('Inter')
   const [showCustomize, setShowCustomize] = useState(false)
+  const [initialState, setInitialState] = useState(null)
 
   const effectiveTheme = useMemo(() => ({
     ...colors,
@@ -379,6 +380,24 @@ function BrandingTab() {
             })
             if (theme.titleFont) setTitleFont(theme.titleFont)
             if (theme.bodyFont) setBodyFont(theme.bodyFont)
+            // Save initial state for dirty checking
+            setInitialState(JSON.stringify({
+              colors: {
+                background: theme.background || '#0a0a0a',
+                surface: theme.surface || '#111111',
+                surfaceHover: theme.surfaceHover || '#1a1a1a',
+                primary: theme.primary || pc,
+                primaryHover: theme.primaryHover || '#a08535',
+                secondary: theme.secondary || pc,
+                accent: theme.accent || pc,
+                foreground: theme.foreground || '#f5f5f5',
+                muted: theme.muted || '#888888',
+                border: theme.border || '#1a1a1a',
+                borderHover: theme.borderHover || '#232323',
+              },
+              titleFont: theme.titleFont || 'Inter',
+              bodyFont: theme.bodyFont || 'Inter',
+            }))
           }
         }
       } catch (err) {
@@ -473,16 +492,18 @@ function BrandingTab() {
 
   return (
     <div className="space-y-6">
-      {/* Save at top */}
+      {/* Save at top — only when changes made */}
       {message && (
         <p className={cn('text-sm', message.type === 'success' ? 'text-green-400' : 'text-red-400')}>
           {message.text}
         </p>
       )}
-      <div className="flex gap-2">
-        <button onClick={() => window.location.reload()} className="flex-1 h-10 rounded-lg border border-card-border text-muted hover:text-foreground hover:bg-white/[0.03] text-sm transition-colors flex items-center justify-center gap-2"><X className="w-4 h-4" /> Cancel</button>
-        <button onClick={handleSave} disabled={saving} className={cn('flex-1 h-10 rounded-lg bg-green-500/10 text-green-400 hover:bg-green-500/20 text-sm font-medium transition-colors flex items-center justify-center gap-2', saving && 'opacity-50 cursor-not-allowed')}><Check className="w-4 h-4" /> {saving ? 'Saving...' : 'Save Branding'}</button>
-      </div>
+      {(initialState && JSON.stringify({ colors, titleFont, bodyFont }) !== initialState) && (
+        <div className="flex gap-2">
+          <button onClick={() => window.location.reload()} className="flex-1 h-10 rounded-lg border border-card-border text-muted hover:text-foreground hover:bg-white/[0.03] text-sm transition-colors flex items-center justify-center gap-2"><X className="w-4 h-4" /> Cancel</button>
+          <button onClick={handleSave} disabled={saving} className={cn('flex-1 h-10 rounded-lg bg-green-500/10 text-green-400 hover:bg-green-500/20 text-sm font-medium transition-colors flex items-center justify-center gap-2', saving && 'opacity-50 cursor-not-allowed')}><Check className="w-4 h-4" /> {saving ? 'Saving...' : 'Save Branding'}</button>
+        </div>
+      )}
 
       {/* Logo */}
       <Card>

@@ -92,8 +92,8 @@ export default function ThemeProvider({ children }) {
     return () => { link.remove() }
   }, [theme?.titleFont, theme?.bodyFont])
 
-  // Render children immediately — don't block on theme fetch.
-  // CSS variables apply as soon as theme loads (no layout shift, just color swap).
+  // Brief opacity transition prevents flash of wrong theme colors on reload.
+  // Content fades in once theme CSS vars are applied (or after timeout for default theme).
   return (
     <ThemeContext.Provider value={{ theme, loading }}>
       {theme?.bodyFont && (
@@ -102,7 +102,13 @@ export default function ThemeProvider({ children }) {
           .tenant-title { font-family: var(--font-tenant-title, var(--font-tenant-body, inherit)); }
         `}</style>
       )}
-      <div className={theme?.bodyFont ? 'tenant-body' : ''}>
+      <div
+        className={theme?.bodyFont ? 'tenant-body' : ''}
+        style={{
+          opacity: loading ? 0 : 1,
+          transition: 'opacity 0.15s ease-in',
+        }}
+      >
         {children}
       </div>
     </ThemeContext.Provider>
