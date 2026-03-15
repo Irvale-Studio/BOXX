@@ -1835,14 +1835,11 @@ function ScheduleSection({ credits, onUpdate, sharedClassId, view, onViewChange,
                       </div>
 
                       {/* Blended image or gradient from right side */}
-                      <div className="absolute inset-0">
+                      <div className="absolute top-0 right-0 bottom-0 w-2/3 sm:w-1/2" style={{ WebkitMaskImage: 'linear-gradient(to left, black 0%, black 40%, transparent 100%)', maskImage: 'linear-gradient(to left, black 0%, black 40%, transparent 100%)' }}>
                         {classImage ? (
-                          <>
-                            <Image src={classImage} alt="" fill className="object-cover object-center" sizes="100vw" />
-                            <div className="absolute inset-0 z-10" style={{ background: 'linear-gradient(to right, #111111 0%, #111111 35%, rgba(17,17,17,0.8) 55%, rgba(17,17,17,0.3) 80%, transparent 100%)' }} />
-                          </>
+                          <Image src={classImage} alt="" fill className="object-cover object-right" sizes="(max-width: 640px) 66vw, 50vw" />
                         ) : (
-                          <div className="absolute inset-0" style={{ background: `linear-gradient(to right, var(--card), ${classColor}15, ${classColor}08)` }} />
+                          <div className="absolute inset-0" style={{ background: `linear-gradient(to right, transparent, ${classColor}15, ${classColor}08)` }} />
                         )}
                       </div>
 
