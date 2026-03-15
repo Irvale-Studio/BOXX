@@ -38,8 +38,11 @@ function SettingsContent() {
   const [activeTab, setActiveTab] = useState(defaultTab)
 
   return (
-    <div>
-      <h1 className="text-xl sm:text-2xl font-bold text-foreground mb-4 sm:mb-6">Settings</h1>
+    <div className="max-w-4xl mx-auto space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold text-foreground">Settings</h1>
+        <p className="text-sm text-muted mt-1">Configure your studio</p>
+      </div>
 
       {/* Tab buttons — horizontal scroll on mobile */}
       <div className="flex gap-1.5 mb-5 overflow-x-auto pb-1 -mx-4 px-4 sm:mx-0 sm:px-0 sm:flex-wrap">
@@ -473,78 +476,34 @@ function BrandingTab() {
         </CardHeader>
         <CardContent>
           <div className="flex items-center gap-4">
+            <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/svg+xml" onChange={handleLogoUpload} className="hidden" />
             {logoUrl ? (
-              <div className="relative group">
+              <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
                 <img src={logoUrl} alt="Studio logo" className="h-16 w-auto max-w-[200px] object-contain rounded border border-card-border" />
-                <button onClick={() => setLogoUrl(null)} className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 rounded flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all">
+                  <Upload className="w-4 h-4 text-white" />
+                </div>
+                <button onClick={(e) => { e.stopPropagation(); setLogoUrl(null) }} className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                   <X className="w-3 h-3" />
                 </button>
               </div>
             ) : (
-              <div className="h-16 w-32 rounded border-2 border-dashed border-card-border flex items-center justify-center text-muted">
+              <div onClick={() => fileInputRef.current?.click()} className="h-16 w-32 rounded border-2 border-dashed border-card-border flex flex-col items-center justify-center text-muted hover:text-foreground hover:border-accent/30 cursor-pointer transition-colors gap-1">
                 <Upload className="w-5 h-5" />
+                <span className="text-[10px]">{uploading ? 'Uploading...' : 'Upload logo'}</span>
               </div>
             )}
-            <div>
-              <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/svg+xml" onChange={handleLogoUpload} className="hidden" />
-              <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
-                {uploading ? 'Uploading...' : logoUrl ? 'Replace Logo' : 'Upload Logo'}
-              </Button>
-            </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Theme Presets */}
+      {/* Colors & Fonts */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Theme</CardTitle>
-          <CardDescription>Choose a preset or customize colors and fonts. This applies to your member-facing pages and emails.</CardDescription>
+          <CardTitle className="text-base">Colors & Fonts</CardTitle>
+          <CardDescription>Customize your member-facing pages and emails</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-            {THEMES.map((t) => {
-              const Icon = t.icon
-              const isSelected = selectedThemeId === t.id
-              return (
-                <button
-                  key={t.id}
-                  onClick={() => applyPreset(t)}
-                  className={cn(
-                    'relative flex items-center gap-2.5 px-3 py-3 rounded-lg border text-left transition-all',
-                    isSelected ? 'border-accent ring-1 ring-accent' : 'border-card-border hover:border-accent/40'
-                  )}
-                >
-                  <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: t.primary }}>
-                    <Icon className="w-4 h-4" style={{ color: t.background }} />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-sm font-medium text-foreground">{t.name}</div>
-                    <div className="text-[10px] text-muted">{t.description}</div>
-                  </div>
-                  {isSelected && <Check className="w-4 h-4 text-accent absolute top-2 right-2" />}
-                </button>
-              )
-            })}
-          </div>
-
-          <button
-            onClick={() => setShowCustomize(!showCustomize)}
-            className="text-sm text-accent hover:text-accent-dim transition-colors"
-          >
-            {showCustomize ? 'Hide customization' : 'Customize colors & fonts'}
-          </button>
-        </CardContent>
-      </Card>
-
-      {/* Customization Panel */}
-      {showCustomize && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Customize</CardTitle>
-            <CardDescription>Fine-tune your theme. Changes show in the preview below.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
+        <CardContent className="space-y-6">
             {/* Colors */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <ColorPicker label="Primary" value={colors.primary} onChange={(v) => setColors(c => ({ ...c, primary: v }))} />
@@ -562,7 +521,6 @@ function BrandingTab() {
             </div>
           </CardContent>
         </Card>
-      )}
 
       {/* Preview */}
       <Card>

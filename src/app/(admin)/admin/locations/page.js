@@ -667,16 +667,18 @@ export default function AdminLocationsPage() {
             }
 
             return (
-              <div key={loc.id}>
+              <div key={loc.id} className={cn(
+                'border border-card-border rounded-lg overflow-hidden transition-colors',
+                isExpanded && 'bg-white/[0.02]',
+                !loc.is_active && 'opacity-50'
+              )}>
+                {/* Location header */}
                 <div
                   onClick={(e) => {
                     if (e.target.closest('[data-no-edit]')) return
                     toggleExpanded(loc.id)
                   }}
-                  className={cn(
-                    'border border-card-border rounded-lg p-3 sm:p-4 transition-colors hover:bg-white/[0.03] cursor-pointer',
-                    !loc.is_active && 'opacity-50'
-                  )}
+                  className="p-3 sm:p-4 cursor-pointer hover:bg-white/[0.03] transition-colors"
                 >
                   <div className="flex items-center gap-3">
                     <MapPin className="w-4 h-4 text-accent shrink-0" />
@@ -704,9 +706,9 @@ export default function AdminLocationsPage() {
                   </div>
                 </div>
 
-                {/* Zones section (expanded) */}
+                {/* Zones section (inside card, shown when expanded) */}
                 {isExpanded && (
-                  <div className="ml-8 mt-1 pl-5 border-l-2 border-card-border space-y-2 py-2">
+                  <div className="border-t border-card-border/50 px-3 sm:px-4 pb-3 pt-2 space-y-2 ml-7">
                     <div className="flex items-center gap-2 text-xs text-muted mb-1">
                       <Layers className="w-3 h-3" />
                       <span>Zones</span>
@@ -889,6 +891,7 @@ export default function AdminLocationsPage() {
                 )}
               </div>
             )
+
           })}
 
           {/* Inline create location form */}

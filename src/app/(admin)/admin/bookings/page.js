@@ -157,11 +157,11 @@ export default function AdminEventsPage() {
   }
 
   return (
-    <div>
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+    <div className="max-w-4xl mx-auto space-y-6">
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-foreground">Activity</h1>
-          <p className="text-sm text-muted mt-0.5">{total} events</p>
+          <h1 className="text-2xl font-bold text-foreground">Activity</h1>
+          <p className="text-sm text-muted mt-1">{total} events</p>
         </div>
         <Button variant="outline" size="sm" onClick={handleExportCSV} disabled={exporting}>
           {exporting ? 'Exporting...' : 'Export CSV'}
