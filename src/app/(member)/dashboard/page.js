@@ -1242,9 +1242,9 @@ function ScheduleSection({ credits, onUpdate, sharedClassId, view, onViewChange,
         onClick={() => !isCancelled && setExpandedId(isExpanded ? null : cls.id)}
       >
         {/* Blended image or gradient from right side */}
-        <div className="absolute top-0 right-0 bottom-0 w-2/3 sm:w-1/2" style={{ WebkitMaskImage: 'linear-gradient(to left, black 0%, black 40%, transparent 100%)', maskImage: 'linear-gradient(to left, black 0%, black 40%, transparent 100%)' }}>
+        <div className="absolute top-0 right-0 bottom-0 w-2/3 sm:w-1/2 overflow-hidden">
           {classImage ? (
-            <Image src={classImage} alt="" fill className="object-cover object-right" sizes="(max-width: 640px) 66vw, 50vw" />
+            <Image src={classImage} alt="" fill className="object-cover object-right" sizes="(max-width: 640px) 66vw, 50vw" style={{ WebkitMaskImage: 'linear-gradient(to left, black 0%, black 30%, transparent 100%)', maskImage: 'linear-gradient(to left, black 0%, black 30%, transparent 100%)' }} />
           ) : (
             <div className="absolute inset-0" style={{ background: `linear-gradient(to right, transparent, ${classColor}15, ${classColor}08)` }} />
           )}
@@ -2038,9 +2038,9 @@ function BookingsSection({ upcoming, past, waitlist = [], credits = [], onUpdate
         onClick={() => setExpandedId(isExpanded ? null : cardId)}
       >
         {/* Blended image or gradient from right */}
-        <div className="absolute top-0 right-0 bottom-0 w-2/3 sm:w-1/2" style={{ WebkitMaskImage: 'linear-gradient(to left, black 0%, black 40%, transparent 100%)', maskImage: 'linear-gradient(to left, black 0%, black 40%, transparent 100%)' }}>
+        <div className="absolute top-0 right-0 bottom-0 w-2/3 sm:w-1/2 overflow-hidden">
           {classImage ? (
-            <Image src={classImage} alt="" fill className="object-cover object-right" sizes="(max-width: 640px) 66vw, 50vw" />
+            <Image src={classImage} alt="" fill className="object-cover object-right" sizes="(max-width: 640px) 66vw, 50vw" style={{ WebkitMaskImage: 'linear-gradient(to left, black 0%, black 30%, transparent 100%)', maskImage: 'linear-gradient(to left, black 0%, black 30%, transparent 100%)' }} />
           ) : (
             <div className="absolute inset-0" style={{ background: `linear-gradient(to right, transparent, ${classColor}15, ${classColor}08)` }} />
           )}
