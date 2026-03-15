@@ -1242,14 +1242,14 @@ function ScheduleSection({ credits, onUpdate, sharedClassId, view, onViewChange,
         onClick={() => !isCancelled && setExpandedId(isExpanded ? null : cls.id)}
       >
         {/* Blended image or gradient from right side */}
-        <div className="absolute top-0 right-0 bottom-0 w-1/3 sm:w-2/5">
+        <div className="absolute top-0 right-0 bottom-0 w-1/2 sm:w-3/5">
           {classImage ? (
             <>
-              <Image src={classImage} alt="" fill className="object-cover" sizes="(max-width: 640px) 33vw, 40vw" />
-              <div className="absolute inset-0" style={{ background: 'linear-gradient(to right, var(--card) 0%, var(--card) 30%, transparent 100%)' }} />
+              <Image src={classImage} alt="" fill className="object-cover" sizes="(max-width: 640px) 50vw, 60vw" />
+              <div className="absolute inset-0 bg-gradient-to-r from-card from-10% via-card/60 via-50% to-transparent to-100%" />
             </>
           ) : (
-            <div className="absolute inset-0 bg-gradient-to-r from-card via-transparent to-transparent" style={{ background: `linear-gradient(to right, var(--card), ${classColor}15, ${classColor}08)` }} />
+            <div className="absolute inset-0" style={{ background: `linear-gradient(to right, var(--card), ${classColor}15, ${classColor}08)` }} />
           )}
         </div>
 
@@ -1838,11 +1838,11 @@ function ScheduleSection({ credits, onUpdate, sharedClassId, view, onViewChange,
                       </div>
 
                       {/* Blended image or gradient from right side */}
-                      <div className="absolute top-0 right-0 bottom-0 w-1/3 sm:w-2/5">
+                      <div className="absolute top-0 right-0 bottom-0 w-1/2 sm:w-3/5">
                         {classImage ? (
                           <>
-                            <Image src={classImage} alt="" fill className="object-cover" sizes="(max-width: 640px) 33vw, 40vw" />
-                            <div className="absolute inset-0" style={{ background: 'linear-gradient(to right, var(--card) 0%, var(--card) 30%, transparent 100%)' }} />
+                            <Image src={classImage} alt="" fill className="object-cover" sizes="(max-width: 640px) 50vw, 60vw" />
+                            <div className="absolute inset-0 bg-gradient-to-r from-card from-10% via-card/60 via-50% to-transparent to-100%" />
                           </>
                         ) : (
                           <div className="absolute inset-0" style={{ background: `linear-gradient(to right, var(--card), ${classColor}15, ${classColor}08)` }} />
@@ -2044,11 +2044,11 @@ function BookingsSection({ upcoming, past, waitlist = [], credits = [], onUpdate
         onClick={() => setExpandedId(isExpanded ? null : cardId)}
       >
         {/* Blended image or gradient from right */}
-        <div className="absolute top-0 right-0 bottom-0 w-1/3 sm:w-2/5">
+        <div className="absolute top-0 right-0 bottom-0 w-1/2 sm:w-3/5">
           {classImage ? (
             <>
-              <Image src={classImage} alt="" fill className="object-cover" sizes="(max-width: 640px) 33vw, 40vw" />
-              <div className="absolute inset-0" style={{ background: 'linear-gradient(to right, var(--card) 0%, var(--card) 30%, transparent 100%)' }} />
+              <Image src={classImage} alt="" fill className="object-cover" sizes="(max-width: 640px) 50vw, 60vw" />
+              <div className="absolute inset-0 bg-gradient-to-r from-card from-10% via-card/60 via-50% to-transparent to-100%" />
             </>
           ) : (
             <div className="absolute inset-0" style={{ background: `linear-gradient(to right, var(--card), ${classColor}15, ${classColor}08)` }} />
