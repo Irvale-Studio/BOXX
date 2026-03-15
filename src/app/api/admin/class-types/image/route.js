@@ -41,13 +41,11 @@ export async function POST(request) {
     }
 
     // Look up class type by ID
-    let { data: ct, error: ctErr } = await supabaseAdmin
+    let { data: ct } = await supabaseAdmin
       .from('class_types')
       .select('id, image_url, tenant_id')
       .eq('id', classTypeId)
       .single()
-
-    console.log('[class-types/image] Lookup:', { classTypeId, tenantId, found: !!ct, ctTenant: ct?.tenant_id, err: ctErr?.message })
 
     if (!ct) {
       return NextResponse.json({ error: 'Event not found' }, { status: 404 })
