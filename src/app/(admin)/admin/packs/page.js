@@ -311,7 +311,7 @@ export default function AdminPacksPage() {
 
             if (isEditing) {
               return (
-                <div key={pack.id} data-pack-edit className="border-2 border-accent/40 rounded-lg p-3 sm:p-4 bg-card">
+                <div key={pack.id} data-pack-edit className="border border-accent/40 rounded-lg p-3 sm:p-4 bg-card">
                   {renderPrimaryFields(editForm, setEditForm, 'edit', editNameRef)}
                   <button onClick={() => setEditMore(!editMore)} className="flex items-center gap-1.5 text-xs text-muted hover:text-foreground transition-colors mt-3">
                     {editMore ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
@@ -365,7 +365,7 @@ export default function AdminPacksPage() {
 
           {/* Inline create */}
           {showCreate ? (
-            <div data-pack-create className="border-2 border-dashed border-accent/40 rounded-lg p-3 sm:p-4 bg-card">
+            <div data-pack-create className="border border-dashed border-accent/40 rounded-lg p-3 sm:p-4 bg-card">
               {renderPrimaryFields(createForm, setCreateForm, 'create', createNameRef)}
               <button onClick={() => setCreateMore(!createMore)} className="flex items-center gap-1.5 text-xs text-muted hover:text-foreground transition-colors mt-3">
                 {createMore ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}

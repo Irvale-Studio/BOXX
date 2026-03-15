@@ -410,7 +410,7 @@ export default function ClassTypesPage() {
 
             if (isEditing) {
               return (
-                <div key={ct.id} data-event-edit className="border-2 border-accent/40 rounded-lg p-3 sm:p-4 bg-card">
+                <div key={ct.id} data-event-edit className="border border-accent/40 rounded-lg p-3 sm:p-4 bg-card">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full shrink-0 flex items-center justify-center" style={{ backgroundColor: `${editForm.color}25` }}>
                       <div className="w-4 h-4 rounded-full" style={{ backgroundColor: editForm.color }} />
@@ -482,7 +482,7 @@ export default function ClassTypesPage() {
 
           {/* Inline create */}
           {showCreate ? (
-            <div data-event-create className="border-2 border-dashed border-accent/40 rounded-lg p-3 sm:p-4 bg-card">
+            <div data-event-create className="border border-dashed border-accent/40 rounded-lg p-3 sm:p-4 bg-card">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full shrink-0 flex items-center justify-center" style={{ backgroundColor: `${createForm.color}25` }}>
                   <div className="w-4 h-4 rounded-full" style={{ backgroundColor: createForm.color }} />

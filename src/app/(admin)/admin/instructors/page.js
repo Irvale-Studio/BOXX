@@ -334,7 +334,7 @@ export default function AdminInstructorsPage() {
               <div
                 key={inst.id}
                 data-instructor-edit
-                className="border-2 border-accent/40 rounded-lg p-3 sm:p-4 bg-card animate-in fade-in duration-200"
+                className="border border-accent/40 rounded-lg p-3 sm:p-4 bg-card animate-in fade-in duration-200"
                 onKeyDown={handleEditKeyDown}
               >
                 <div className="flex items-center gap-3">
@@ -442,7 +442,7 @@ export default function AdminInstructorsPage() {
           {showCreate ? (
             <div
               data-instructor-create
-              className="border-2 border-dashed border-accent/40 rounded-lg p-3 sm:p-4 bg-card animate-in slide-in-from-bottom-2 fade-in duration-300"
+              className="border border-dashed border-accent/40 rounded-lg p-3 sm:p-4 bg-card animate-in slide-in-from-bottom-2 fade-in duration-300"
               onKeyDown={handleCreateKeyDown}
             >
               <div className="flex items-center gap-3">

@@ -634,7 +634,7 @@ export default function AdminLocationsPage() {
 
             if (isEditing) {
               return (
-                <div key={loc.id} ref={locFormRef} className="border-2 border-accent/40 rounded-lg p-3 sm:p-4 bg-card">
+                <div key={loc.id} ref={locFormRef} className="border border-accent/40 rounded-lg p-3 sm:p-4 bg-card">
                   <div>
                     <Label className="text-xs text-muted">Name *</Label>
                     <Input
