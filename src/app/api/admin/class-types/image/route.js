@@ -12,7 +12,7 @@ export async function POST(request) {
   try {
     const result = await requireStaff(request)
     if (result.response) return result.response
-    const { session, tenantId } = result
+    const { tenantId } = result
 
     if (!supabaseAdmin) {
       return NextResponse.json({ error: 'Database unavailable' }, { status: 500 })
@@ -28,8 +28,6 @@ export async function POST(request) {
     if (!classTypeId) {
       return NextResponse.json({ error: 'Class type ID required' }, { status: 400 })
     }
-
-    // Validate UUID format
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(classTypeId)) {
       return NextResponse.json({ error: 'Invalid class type ID' }, { status: 400 })
     }
@@ -42,17 +40,26 @@ export async function POST(request) {
       return NextResponse.json({ error: 'File too large. Maximum 5MB.' }, { status: 400 })
     }
 
-    // Verify class type exists
-    const { data: ct, error: ctError } = await supabaseAdmin
+    // Look up class type — try tenant-scoped first, then backfill if seed data has NULL tenant_id
+    let { data: ct } = await supabaseAdmin
       .from('class_types')
-      .select('id, image_url')
-      .eq('tenant_id', tenantId)
+      .select('id, image_url, tenant_id')
       .eq('id', classTypeId)
       .single()
 
-    if (ctError || !ct) {
-      console.error('[class-types/image] Not found:', { classTypeId, tenantId, ctError })
-      return NextResponse.json({ error: `Class type not found (tenant: ${tenantId?.slice(0,8)}..., id: ${classTypeId?.slice(0,8)}...)` }, { status: 404 })
+    if (!ct) {
+      return NextResponse.json({ error: 'Event not found' }, { status: 404 })
+    }
+
+    // Backfill tenant_id if missing (seed data created before multi-tenant migration)
+    if (!ct.tenant_id) {
+      await supabaseAdmin
+        .from('class_types')
+        .update({ tenant_id: tenantId })
+        .eq('id', classTypeId)
+        .is('tenant_id', null)
+    } else if (ct.tenant_id !== tenantId) {
+      return NextResponse.json({ error: 'Event not found' }, { status: 404 })
     }
 
     // Delete old image if exists
@@ -77,21 +84,18 @@ export async function POST(request) {
 
     if (uploadError) {
       console.error('[class-types/image] Upload error:', uploadError)
-      return NextResponse.json({ error: 'Failed to upload image' }, { status: 500 })
+      return NextResponse.json({ error: 'Failed to upload image. Ensure the class-images storage bucket exists.' }, { status: 500 })
     }
 
-    // Get public URL
     const { data: urlData } = supabaseAdmin.storage
       .from('class-images')
       .getPublicUrl(path)
 
     const imageUrl = urlData.publicUrl + '?t=' + Date.now()
 
-    // Update class type record
     await supabaseAdmin
       .from('class_types')
       .update({ image_url: imageUrl })
-      .eq('tenant_id', tenantId)
       .eq('id', classTypeId)
 
     return NextResponse.json({ image_url: imageUrl })
@@ -108,7 +112,7 @@ export async function DELETE(request) {
   try {
     const result = await requireStaff(request)
     if (result.response) return result.response
-    const { session, tenantId } = result
+    const { tenantId } = result
 
     if (!supabaseAdmin) {
       return NextResponse.json({ error: 'Database unavailable' }, { status: 500 })
@@ -122,10 +126,13 @@ export async function DELETE(request) {
 
     const { data: ct } = await supabaseAdmin
       .from('class_types')
-      .select('image_url')
-      .eq('tenant_id', tenantId)
+      .select('image_url, tenant_id')
       .eq('id', classTypeId)
       .single()
+
+    if (ct && ct.tenant_id && ct.tenant_id !== tenantId) {
+      return NextResponse.json({ error: 'Event not found' }, { status: 404 })
+    }
 
     if (ct?.image_url) {
       const storagePath = extractStoragePath(ct.image_url)
@@ -137,7 +144,6 @@ export async function DELETE(request) {
     await supabaseAdmin
       .from('class_types')
       .update({ image_url: null })
-      .eq('tenant_id', tenantId)
       .eq('id', classTypeId)
 
     return NextResponse.json({ success: true })
@@ -149,7 +155,6 @@ export async function DELETE(request) {
 
 function extractStoragePath(url) {
   if (!url) return null
-  // Extract path after /object/public/class-images/
   const match = url.match(/\/object\/public\/class-images\/(.+?)(\?|$)/)
   return match ? match[1] : null
 }
