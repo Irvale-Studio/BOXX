@@ -178,7 +178,7 @@ function AdminLayoutInner({ children }) {
       {/* Main content */}
       <div className={cn('flex-1 flex flex-col min-w-0 min-h-screen transition-all duration-300', collapsed ? 'lg:ml-16' : 'lg:ml-64')}>
         {/* Top bar */}
-        <header className="h-16 bg-card border-b border-card-border flex items-center justify-between px-4 lg:px-6 fixed top-0 left-0 right-0 z-30">
+        <header className={cn('h-16 bg-card border-b border-card-border flex items-center justify-between px-4 lg:px-6 fixed top-0 left-0 right-0 z-30 transition-all duration-300', collapsed ? 'lg:left-16' : 'lg:left-64')}>
           {/* Mobile hamburger */}
           <button
             onClick={() => setSidebarOpen(true)}

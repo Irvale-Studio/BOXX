@@ -26,13 +26,13 @@ function MemberLayoutInner({ children }) {
       {/* Member nav */}
       <nav className="bg-card border-b border-card-border sticky top-0 z-50">
         <div className="max-w-6xl mx-auto px-4 flex items-center justify-between h-16">
-          <Link href="/">
+          <div>
             {logoUrl ? (
               <Image src={logoUrl} alt={studioName} width={100} height={40} className="h-8 w-auto object-contain" />
             ) : (
               <span className="font-bold text-lg text-foreground tracking-wide tenant-title">{studioName}</span>
             )}
-          </Link>
+          </div>
 
           {/* Desktop nav */}
           <div className="hidden md:flex items-center gap-1">
@@ -93,26 +93,28 @@ function MemberLayoutInner({ children }) {
 
       {/* Spacer + footer */}
       <div className="mt-16" />
-      <footer className="border-t border-card-border py-8 px-4">
-        <div className="max-w-6xl mx-auto flex flex-col items-center gap-4">
-          <Link href="/">
-            {logoUrl ? (
-              <Image src={logoUrl} alt={studioName} width={80} height={32} className="h-6 w-auto opacity-40 object-contain" />
-            ) : (
-              <span className="text-sm font-bold text-muted/40 tenant-title">{studioName}</span>
-            )}
-          </Link>
+      <footer className="border-t border-card-border py-10 px-4">
+        <div className="max-w-6xl mx-auto flex flex-col items-center gap-5">
+          {logoUrl ? (
+            <Image src={logoUrl} alt={studioName} width={160} height={64} className="h-12 w-auto object-contain opacity-60" />
+          ) : (
+            <span className="text-xl font-bold text-muted/40 tenant-title">{studioName}</span>
+          )}
 
-          {/* Social links */}
           <SocialLinks theme={theme} />
 
           <div className="flex items-center gap-4 text-xs text-muted">
-            <Link href="/" className="hover:text-foreground transition-colors">Home</Link>
             <Link href="/dashboard" className="hover:text-foreground transition-colors">Book Classes</Link>
             <Link href="/book-appointment" className="hover:text-foreground transition-colors">Appointments</Link>
             <Link href="/buy-classes" className="hover:text-foreground transition-colors">Buy Packs</Link>
           </div>
+
           <p className="text-[10px] text-muted/50">&copy; {new Date().getFullYear()} {studioName}</p>
+
+          <a href="https://zatrovo.com" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-muted/30 hover:text-muted/50 transition-colors">
+            <span className="text-[9px] tracking-widest uppercase">Powered by</span>
+            <span className="text-[9px] font-bold tracking-widest uppercase">Zatrovo</span>
+          </a>
         </div>
       </footer>
     </div>
