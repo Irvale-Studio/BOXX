@@ -473,6 +473,17 @@ function BrandingTab() {
 
   return (
     <div className="space-y-6">
+      {/* Save at top */}
+      {message && (
+        <p className={cn('text-sm', message.type === 'success' ? 'text-green-400' : 'text-red-400')}>
+          {message.text}
+        </p>
+      )}
+      <div className="flex gap-2">
+        <button onClick={() => window.location.reload()} className="flex-1 h-10 rounded-lg border border-card-border text-muted hover:text-foreground hover:bg-white/[0.03] text-sm transition-colors flex items-center justify-center gap-2"><X className="w-4 h-4" /> Cancel</button>
+        <button onClick={handleSave} disabled={saving} className={cn('flex-1 h-10 rounded-lg bg-green-500/10 text-green-400 hover:bg-green-500/20 text-sm font-medium transition-colors flex items-center justify-center gap-2', saving && 'opacity-50 cursor-not-allowed')}><Check className="w-4 h-4" /> {saving ? 'Saving...' : 'Save Branding'}</button>
+      </div>
+
       {/* Logo */}
       <Card>
         <CardHeader>
@@ -502,11 +513,46 @@ function BrandingTab() {
         </CardContent>
       </Card>
 
+      {/* Theme Presets */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Theme Presets</CardTitle>
+          <CardDescription>Quick-start with a preset, then fine-tune below</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            {THEMES.map((t) => {
+              const Icon = t.icon
+              const isSelected = selectedThemeId === t.id
+              return (
+                <button
+                  key={t.id}
+                  onClick={() => applyPreset(t)}
+                  className={cn(
+                    'relative flex items-center gap-2.5 px-3 py-3 rounded-lg border text-left transition-all',
+                    isSelected ? 'border-accent ring-1 ring-accent' : 'border-card-border hover:border-accent/40'
+                  )}
+                >
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: t.primary }}>
+                    <Icon className="w-4 h-4" style={{ color: t.background }} />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-sm font-medium text-foreground">{t.name}</div>
+                    <div className="text-[10px] text-muted">{t.description}</div>
+                  </div>
+                  {isSelected && <Check className="w-4 h-4 text-accent absolute top-2 right-2" />}
+                </button>
+              )
+            })}
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Colors & Fonts */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Colors & Fonts</CardTitle>
-          <CardDescription>Customize your member-facing pages and emails</CardDescription>
+          <CardDescription>Fine-tune your theme</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
             {/* Colors */}
@@ -540,16 +586,6 @@ function BrandingTab() {
         </CardContent>
       </Card>
 
-      {/* Save */}
-      {message && (
-        <p className={cn('text-sm', message.type === 'success' ? 'text-green-400' : 'text-red-400')}>
-          {message.text}
-        </p>
-      )}
-      <div className="flex gap-2">
-        <button onClick={() => window.location.reload()} className="flex-1 h-10 rounded-lg border border-card-border text-muted hover:text-foreground hover:bg-white/[0.03] text-sm transition-colors flex items-center justify-center gap-2"><X className="w-4 h-4" /> Cancel</button>
-        <button onClick={handleSave} disabled={saving} className={cn('flex-1 h-10 rounded-lg bg-green-500/10 text-green-400 hover:bg-green-500/20 text-sm font-medium transition-colors flex items-center justify-center gap-2', saving && 'opacity-50 cursor-not-allowed')}><Check className="w-4 h-4" /> {saving ? 'Saving...' : 'Save Branding'}</button>
-      </div>
     </div>
   )
 }
