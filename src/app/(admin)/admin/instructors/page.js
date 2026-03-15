@@ -377,8 +377,8 @@ export default function AdminInstructorsPage() {
                   </div>
                 </div>
                 <div className="flex gap-2 mt-4">
-                  <button onClick={handleSaveEdit} disabled={submitting || !editForm.name.trim()} className={cn('flex-1 h-10 rounded-lg bg-accent/10 text-accent hover:bg-accent/20 text-sm font-medium transition-colors flex items-center justify-center gap-2', (submitting || !editForm.name.trim()) && 'opacity-50 cursor-not-allowed')}><Check className="w-4 h-4" /> Save</button>
                   <button onClick={cancelEdit} className="flex-1 h-10 rounded-lg border border-card-border text-muted hover:text-foreground hover:bg-white/[0.03] text-sm transition-colors flex items-center justify-center gap-2"><X className="w-4 h-4" /> Cancel</button>
+                  <button onClick={handleSaveEdit} disabled={submitting || !editForm.name.trim()} className={cn('flex-1 h-10 rounded-lg bg-accent/10 text-accent hover:bg-accent/20 text-sm font-medium transition-colors flex items-center justify-center gap-2', (submitting || !editForm.name.trim()) && 'opacity-50 cursor-not-allowed')}><Check className="w-4 h-4" /> Save</button>
                 </div>
               </div>
             ) : (
@@ -480,8 +480,8 @@ export default function AdminInstructorsPage() {
 
               </div>
               <div className="flex gap-2 mt-4">
-                <button onClick={handleSaveCreate} disabled={submitting || !createForm.name.trim()} className={cn('flex-1 h-10 rounded-lg bg-accent/10 text-accent hover:bg-accent/20 text-sm font-medium transition-colors flex items-center justify-center gap-2', (submitting || !createForm.name.trim()) && 'opacity-50 cursor-not-allowed')}><Check className="w-4 h-4" /> Save</button>
                 <button onClick={cancelCreate} className="flex-1 h-10 rounded-lg border border-card-border text-muted hover:text-foreground hover:bg-white/[0.03] text-sm transition-colors flex items-center justify-center gap-2"><X className="w-4 h-4" /> Cancel</button>
+                <button onClick={handleSaveCreate} disabled={submitting || !createForm.name.trim()} className={cn('flex-1 h-10 rounded-lg bg-accent/10 text-accent hover:bg-accent/20 text-sm font-medium transition-colors flex items-center justify-center gap-2', (submitting || !createForm.name.trim()) && 'opacity-50 cursor-not-allowed')}><Check className="w-4 h-4" /> Save</button>
               </div>
             </div>
           ) : (

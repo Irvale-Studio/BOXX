@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { cn } from '@/lib/utils'
-import { MapPin, Plus, ChevronDown, ChevronRight, Layers, RefreshCw, Check, X, ChevronUp, Trash2, Info } from 'lucide-react'
+import { MapPin, Plus, ChevronDown, Layers, RefreshCw, Check, X, ChevronUp, Trash2, Info } from 'lucide-react'
 
 export default function AdminLocationsPage() {
   const [locations, setLocations] = useState([])
@@ -632,112 +632,90 @@ export default function AdminLocationsPage() {
 
       {/* Locations list */}
       {!loading && !fetchError && (locations.length > 0 || showCreateLoc) && (
-        <div className="space-y-3">
+        <div className="space-y-2">
           {locations.map((loc) => {
             const isExpanded = expanded.has(loc.id)
             const isEditing = editingLocId === loc.id
             const zones = loc.zones || []
+
+            if (isEditing) {
+              return (
+                <div key={loc.id} ref={locFormRef} className="border-2 border-accent/40 rounded-lg p-3 sm:p-4 bg-card">
+                  <div>
+                    <Label className="text-xs text-muted">Name *</Label>
+                    <Input
+                      ref={editLocNameRef}
+                      value={locForm.name}
+                      onChange={(e) => { setLocForm((f) => ({ ...f, name: e.target.value })); setLocError(null) }}
+                      placeholder="Location name"
+                      className={cn('mt-1 h-8 text-sm bg-background border-card-border', locError && 'border-red-500/50')}
+                      onKeyDown={(e) => handleLocKeyDown(e, 'edit')}
+                    />
+                    {locError && <p className="text-[11px] text-red-400 mt-1">{locError}</p>}
+                  </div>
+
+                  <button
+                    onClick={() => setLocMoreOptions(!locMoreOptions)}
+                    className="flex items-center gap-1.5 text-xs text-muted hover:text-foreground transition-colors mt-3"
+                  >
+                    {locMoreOptions ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                    {locMoreOptions ? 'Fewer options' : 'More options'}
+                  </button>
+
+                  {locMoreOptions && renderLocOptionalFields()}
+                  <div className="flex gap-2 mt-4">
+                    <button onClick={cancelEditLocation} className="flex-1 h-10 rounded-lg border border-card-border text-muted hover:text-foreground hover:bg-white/[0.03] text-sm transition-colors flex items-center justify-center gap-2"><X className="w-4 h-4" /> Cancel</button>
+                    <button onClick={() => saveLocation('edit')} className="flex-1 h-10 rounded-lg bg-accent/10 text-accent hover:bg-accent/20 text-sm font-medium transition-colors flex items-center justify-center gap-2"><Check className="w-4 h-4" /> Save</button>
+                  </div>
+                </div>
+              )
+            }
+
             return (
-              <div key={loc.id} className={cn('bg-card border border-card-border rounded-lg overflow-hidden', !loc.is_active && 'opacity-60')}>
-                {/* Location header — entire row clickable to expand/collapse */}
+              <div key={loc.id}>
                 <div
-                  className="p-4 flex items-start gap-3 cursor-pointer select-none"
                   onClick={(e) => {
-                    // Don't toggle if clicking on buttons/inputs/switch
-                    if (e.target.closest('button, input, [role="switch"], [data-no-expand]')) return
+                    if (e.target.closest('[data-no-edit]')) return
                     toggleExpanded(loc.id)
                   }}
+                  className={cn(
+                    'border border-card-border rounded-lg p-3 sm:p-4 transition-colors hover:bg-white/[0.03] cursor-pointer',
+                    !loc.is_active && 'opacity-50'
+                  )}
                 >
-                  <div className="mt-0.5 text-muted">
-                    {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                  </div>
-
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <MapPin className="w-4 h-4 text-accent shrink-0" />
-                      <h3 className="font-semibold text-foreground truncate">{loc.name}</h3>
-                      {!loc.is_active && (
-                        <span className="text-[10px] px-1.5 py-0.5 bg-red-500/10 text-red-400 rounded">Inactive</span>
+                  <div className="flex items-center gap-3">
+                    <MapPin className="w-4 h-4 text-accent shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-semibold text-foreground truncate">{loc.name}</p>
+                        {!loc.is_active && <span className="text-[10px] font-medium text-red-400 bg-red-400/10 px-1.5 py-0.5 rounded shrink-0">Inactive</span>}
+                        {zones.length > 0 && (
+                          <span className="text-[10px] text-muted bg-card-border/50 px-1.5 py-0.5 rounded shrink-0">
+                            {zones.filter((z) => z.is_active).length} zone{zones.filter((z) => z.is_active).length !== 1 ? 's' : ''}
+                          </span>
+                        )}
+                      </div>
+                      {(loc.address || loc.city || loc.country) && (
+                        <p className="text-xs text-muted mt-0.5">
+                          {[loc.address, loc.city, loc.country].filter(Boolean).join(', ')}
+                        </p>
                       )}
                     </div>
-                    {(loc.address || loc.city || loc.country) && (
-                      <p className="text-xs text-muted mt-1 ml-6">
-                        {[loc.address, loc.city, loc.country].filter(Boolean).join(', ')}
-                      </p>
-                    )}
-                    {zones.length > 0 && (
-                      <p className="text-xs text-muted/60 mt-1 ml-6">
-                        {zones.filter((z) => z.is_active).length} active zone{zones.filter((z) => z.is_active).length !== 1 ? 's' : ''}
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-2 shrink-0" data-no-expand>
-                    <Switch
-                      checked={loc.is_active}
-                      onCheckedChange={() => toggleLocationActive(loc)}
-                    />
-                    <button
-                      onClick={(e) => { e.stopPropagation(); isEditing ? cancelEditLocation() : startEditLocation(loc) }}
-                      className={cn(
-                        'px-2.5 py-1.5 text-xs rounded-md border border-card-border hover:bg-white/[0.03] transition-colors',
-                        isEditing && 'text-accent border-accent/30'
-                      )}
-                    >
-                      {isEditing ? 'Cancel' : 'Edit'}
-                    </button>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); setDeletingLoc(loc) }}
-                      className="p-1.5 rounded-md text-muted hover:text-red-400 hover:bg-red-500/10 transition-colors"
-                      title="Delete location"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    <div className="flex items-center gap-2 shrink-0" data-no-edit>
+                      <Switch checked={loc.is_active} onCheckedChange={() => toggleLocationActive(loc)} />
+                      <button onClick={(e) => { e.stopPropagation(); startEditLocation(loc) }} className="px-2 py-1 text-xs rounded-md border border-card-border hover:bg-white/[0.03] transition-colors">Edit</button>
+                      <button onClick={(e) => { e.stopPropagation(); setDeletingLoc(loc) }} className="p-1.5 rounded-md text-muted hover:text-red-400 hover:bg-red-500/10 transition-colors" title="Delete location"><Trash2 className="w-3.5 h-3.5" /></button>
+                    </div>
                   </div>
                 </div>
 
-                {/* Inline edit panel */}
-                {isEditing && (
-                  <div ref={locFormRef} className="border-t border-card-border bg-background/50 px-4 py-4 ml-7 mr-4">
-                    <div>
-                      <Label className="text-xs text-muted">Name *</Label>
-                      <Input
-                        ref={editLocNameRef}
-                        value={locForm.name}
-                        onChange={(e) => { setLocForm((f) => ({ ...f, name: e.target.value })); setLocError(null) }}
-                        placeholder="Location name"
-                        className={cn('mt-1 h-8 text-sm bg-background border-card-border', locError && 'border-red-500/50')}
-                        onKeyDown={(e) => handleLocKeyDown(e, 'edit')}
-                      />
-                      {locError && <p className="text-[11px] text-red-400 mt-1">{locError}</p>}
-                    </div>
-
-                    <button
-                      onClick={() => setLocMoreOptions(!locMoreOptions)}
-                      className="flex items-center gap-1.5 text-xs text-muted hover:text-foreground transition-colors mt-3"
-                    >
-                      {locMoreOptions ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                      {locMoreOptions ? 'Fewer options' : 'More options'}
-                    </button>
-
-                    {locMoreOptions && renderLocOptionalFields()}
-                    <div className="flex gap-2 mt-4">
-                      <button onClick={() => saveLocation('edit')} className="flex-1 h-10 rounded-lg bg-accent/10 text-accent hover:bg-accent/20 text-sm font-medium transition-colors flex items-center justify-center gap-2"><Check className="w-4 h-4" /> Save</button>
-                      <button onClick={cancelEditLocation} className="flex-1 h-10 rounded-lg border border-card-border text-muted hover:text-foreground hover:bg-white/[0.03] text-sm transition-colors flex items-center justify-center gap-2"><X className="w-4 h-4" /> Cancel</button>
-                    </div>
-                  </div>
-                )}
-
                 {/* Zones section (expanded) */}
                 {isExpanded && (
-                  <div className="border-t border-card-border bg-background/30 px-4 py-3">
-                    <div className="ml-7 pl-4 border-l-2 border-card-border space-y-2">
-                      <div className="flex items-center">
-                        <div className="flex items-center gap-2 text-sm text-muted">
-                          <Layers className="w-3.5 h-3.5" />
-                          <span>Zones / Areas</span>
-                        </div>
-                      </div>
+                  <div className="ml-8 mt-1 pl-5 border-l-2 border-card-border space-y-2 py-2">
+                    <div className="flex items-center gap-2 text-xs text-muted mb-1">
+                      <Layers className="w-3 h-3" />
+                      <span>Zones</span>
+                    </div>
 
                     {zones.length === 0 && creatingZoneForLoc !== loc.id && (
                       <p className="text-xs text-muted/50 py-2">No zones. Add zones to organize different areas within this location.</p>
@@ -835,8 +813,8 @@ export default function AdminLocationsPage() {
                                 </div>
                               )}
                               <div className="flex gap-2 mt-3">
-                                <button onClick={() => saveZone('edit')} className="flex-1 h-9 rounded-lg bg-accent/10 text-accent hover:bg-accent/20 text-xs font-medium transition-colors flex items-center justify-center gap-1.5"><Check className="w-3.5 h-3.5" /> Save</button>
                                 <button onClick={cancelEditZone} className="flex-1 h-9 rounded-lg border border-card-border text-muted hover:text-foreground hover:bg-white/[0.03] text-xs transition-colors flex items-center justify-center gap-1.5"><X className="w-3.5 h-3.5" /> Cancel</button>
+                                <button onClick={() => saveZone('edit')} className="flex-1 h-9 rounded-lg bg-accent/10 text-accent hover:bg-accent/20 text-xs font-medium transition-colors flex items-center justify-center gap-1.5"><Check className="w-3.5 h-3.5" /> Save</button>
                               </div>
                             </div>
                           )}
@@ -896,8 +874,8 @@ export default function AdminLocationsPage() {
                           </div>
                         )}
                         <div className="flex gap-2 mt-3">
-                          <button onClick={() => saveZone('create')} className="flex-1 h-9 rounded-lg bg-accent/10 text-accent hover:bg-accent/20 text-xs font-medium transition-colors flex items-center justify-center gap-1.5"><Check className="w-3.5 h-3.5" /> Save</button>
                           <button onClick={cancelCreateZone} className="flex-1 h-9 rounded-lg border border-card-border text-muted hover:text-foreground hover:bg-white/[0.03] text-xs transition-colors flex items-center justify-center gap-1.5"><X className="w-3.5 h-3.5" /> Cancel</button>
+                          <button onClick={() => saveZone('create')} className="flex-1 h-9 rounded-lg bg-accent/10 text-accent hover:bg-accent/20 text-xs font-medium transition-colors flex items-center justify-center gap-1.5"><Check className="w-3.5 h-3.5" /> Save</button>
                         </div>
                       </div>
                     )}
@@ -912,7 +890,6 @@ export default function AdminLocationsPage() {
                         Add zone
                       </button>
                     )}
-                    </div>{/* end border-l wrapper */}
                   </div>
                 )}
               </div>
@@ -951,8 +928,8 @@ export default function AdminLocationsPage() {
                 </div>
               )}
               <div className="flex gap-2 mt-4">
-                <button onClick={() => saveLocation('create')} className="flex-1 h-10 rounded-lg bg-accent/10 text-accent hover:bg-accent/20 text-sm font-medium transition-colors flex items-center justify-center gap-2"><Check className="w-4 h-4" /> Save</button>
                 <button onClick={cancelCreateLocation} className="flex-1 h-10 rounded-lg border border-card-border text-muted hover:text-foreground hover:bg-white/[0.03] text-sm transition-colors flex items-center justify-center gap-2"><X className="w-4 h-4" /> Cancel</button>
+                <button onClick={() => saveLocation('create')} className="flex-1 h-10 rounded-lg bg-accent/10 text-accent hover:bg-accent/20 text-sm font-medium transition-colors flex items-center justify-center gap-2"><Check className="w-4 h-4" /> Save</button>
               </div>
             </div>
           )}
