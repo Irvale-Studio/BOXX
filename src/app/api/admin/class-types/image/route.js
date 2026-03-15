@@ -51,7 +51,8 @@ export async function POST(request) {
       .single()
 
     if (ctError || !ct) {
-      return NextResponse.json({ error: 'Class type not found' }, { status: 404 })
+      console.error('[class-types/image] Not found:', { classTypeId, tenantId, ctError })
+      return NextResponse.json({ error: `Class type not found (tenant: ${tenantId?.slice(0,8)}..., id: ${classTypeId?.slice(0,8)}...)` }, { status: 404 })
     }
 
     // Delete old image if exists
