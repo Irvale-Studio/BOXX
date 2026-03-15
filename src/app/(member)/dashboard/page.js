@@ -1242,7 +1242,7 @@ function ScheduleSection({ credits, onUpdate, sharedClassId, view, onViewChange,
         onClick={() => !isCancelled && setExpandedId(isExpanded ? null : cls.id)}
       >
         {/* Blended image or gradient from right side */}
-        <div className="absolute top-0 right-0 bottom-0 w-2/3 sm:w-1/2" style={{ maskImage: 'linear-gradient(to right, transparent 0%, black 50%, black 100%)', WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 50%, black 100%)' }}>
+        <div className="absolute top-0 right-0 bottom-0 w-2/3 sm:w-1/2" style={{ WebkitMaskImage: 'linear-gradient(to left, black 0%, black 40%, transparent 100%)', maskImage: 'linear-gradient(to left, black 0%, black 40%, transparent 100%)' }}>
           {classImage ? (
             <Image src={classImage} alt="" fill className="object-cover object-right" sizes="(max-width: 640px) 66vw, 50vw" />
           ) : (
@@ -2041,7 +2041,7 @@ function BookingsSection({ upcoming, past, waitlist = [], credits = [], onUpdate
         onClick={() => setExpandedId(isExpanded ? null : cardId)}
       >
         {/* Blended image or gradient from right */}
-        <div className="absolute top-0 right-0 bottom-0 w-2/3 sm:w-1/2" style={{ maskImage: 'linear-gradient(to right, transparent 0%, black 50%, black 100%)', WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 50%, black 100%)' }}>
+        <div className="absolute top-0 right-0 bottom-0 w-2/3 sm:w-1/2" style={{ WebkitMaskImage: 'linear-gradient(to left, black 0%, black 40%, transparent 100%)', maskImage: 'linear-gradient(to left, black 0%, black 40%, transparent 100%)' }}>
           {classImage ? (
             <Image src={classImage} alt="" fill className="object-cover object-right" sizes="(max-width: 640px) 66vw, 50vw" />
           ) : (
