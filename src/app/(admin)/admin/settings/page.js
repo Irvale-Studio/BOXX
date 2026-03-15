@@ -456,19 +456,22 @@ function BrandingTab() {
       setMessage({ type: 'error', text: 'Logo must be under 2MB' })
       return
     }
+    if (!session?.user?.tenantId) {
+      setMessage({ type: 'error', text: 'Not logged in. Please refresh and try again.' })
+      return
+    }
     setUploading(true)
     try {
       const fd = new FormData()
       fd.append('file', file)
-      fd.append('tenantId', session?.user?.tenantId)
+      fd.append('tenantId', session.user.tenantId)
       const res = await fetch('/api/onboarding/upload-logo', { method: 'POST', body: fd })
-      if (res.ok) {
-        const data = await res.json()
-        if (data.url) setLogoUrl(data.url)
+      const data = await res.json().catch(() => ({}))
+      if (res.ok && data.url) {
+        setLogoUrl(data.url)
         setMessage({ type: 'success', text: 'Logo uploaded!' })
       } else {
-        const data = await res.json().catch(() => ({}))
-        setMessage({ type: 'error', text: data.error || 'Failed to upload logo.' })
+        setMessage({ type: 'error', text: data.error || 'Failed to upload logo. Check that the tenant-logos storage bucket exists in Supabase.' })
       }
     } catch {
       setMessage({ type: 'error', text: 'Failed to upload logo.' })

@@ -135,11 +135,14 @@ export default function ClassTypesPage() {
     try {
       const res = await fetch('/api/admin/class-types/image', { method: 'POST', body: fd })
       if (!res.ok) {
-        const data = await res.json()
-        setToast({ message: data.error || 'Image upload failed', type: 'error' })
+        const data = await res.json().catch(() => ({}))
+        setToast({ message: data.error || 'Image upload failed. Check that the class-images storage bucket exists in Supabase.', type: 'error' })
+        return false
       }
+      return true
     } catch {
       setToast({ message: 'Image upload failed', type: 'error' })
+      return false
     }
   }
 
@@ -193,7 +196,10 @@ export default function ClassTypesPage() {
         setToast({ message: data.error || 'Failed to create', type: 'error' })
         return
       }
-      if (savedFile && data.classType?.id) await uploadClassImage(data.classType.id, savedFile)
+      if (savedFile && data.classType?.id) {
+        const imgOk = await uploadClassImage(data.classType.id, savedFile)
+        if (!imgOk) { fetchClassTypes(); return }
+      }
       setToast({ message: `"${data.classType.name}" created`, type: 'success' })
       fetchClassTypes()
     } catch {
@@ -223,7 +229,10 @@ export default function ClassTypesPage() {
         setToast({ message: data.error || 'Failed to update', type: 'error' })
         return
       }
-      if (savedImageFile) await uploadClassImage(id, savedImageFile)
+      if (savedImageFile) {
+        const imgOk = await uploadClassImage(id, savedImageFile)
+        if (!imgOk) { fetchClassTypes(); return }
+      }
       setToast({ message: `"${data.classType.name}" updated`, type: 'success' })
       fetchClassTypes()
     } catch {
