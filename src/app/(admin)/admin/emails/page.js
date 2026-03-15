@@ -544,11 +544,14 @@ function ComposeTab() {
 
           {message && <p className={cn('text-sm', message.type === 'success' ? 'text-green-400' : 'text-red-400')}>{message.text}</p>}
 
-          <div className="flex justify-end">
-            <Button type="submit" disabled={sending || !selectedEmail || !subject.trim() || !body.trim()}>
-              {sending ? 'Sending...' : 'Send Email'}
-            </Button>
-          </div>
+          {(selectedEmail || subject || body) && (
+            <div className="flex gap-2">
+              <button type="button" onClick={() => { setSelectedEmail(''); setSubject(''); setBody(''); setSearchQuery(''); setMessage(null) }} className="flex-1 h-10 rounded-lg border border-card-border text-muted hover:text-foreground hover:bg-white/[0.03] text-sm transition-colors flex items-center justify-center gap-2"><X className="w-4 h-4" /> Clear</button>
+              <Button type="submit" disabled={sending || !selectedEmail || !subject.trim() || !body.trim()} className="flex-1 h-10">
+                {sending ? 'Sending...' : 'Send Email'}
+              </Button>
+            </div>
+          )}
         </form>
       </CardContent>
     </Card>

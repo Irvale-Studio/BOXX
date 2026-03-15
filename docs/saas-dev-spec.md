@@ -691,6 +691,10 @@ Revisit after 50 paying tenants:
 - Staff payroll & commission
 - Video/on-demand classes
 - Drip email marketing automation
+- Bulk email send (send to all members, filtered groups, custom segments)
+- Member groups / tags (e.g. "VIP", "Trial", "Inactive 30d") for targeted emails
+- Promotional email campaigns with scheduling and templates
+- Email analytics (open rates, click rates per campaign)
 - Franchise corporate dashboard
 - Wearables integration
 - In-app social/community features

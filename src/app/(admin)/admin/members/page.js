@@ -241,9 +241,9 @@ export default function AdminMembersPage() {
   const [addError, setAddError] = useState(null)
 
   async function handleAddMember() {
-    if (!addForm.name.trim()) { setAddError('Name is required'); return }
-    if (!addForm.email.trim()) { setAddError('Email is required'); return }
-    if (!addForm.password.trim() || addForm.password.length < 8) { setAddError('Password must be at least 8 characters'); return }
+    if (!addForm.name.trim()) { setAddError('name'); return }
+    if (!addForm.email.trim()) { setAddError('email'); return }
+    if (!addForm.password.trim() || addForm.password.length < 8) { setAddError('password'); return }
     setAddError(null)
     setAddSubmitting(true)
     try {
@@ -346,18 +346,20 @@ export default function AdminMembersPage() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
               <label className="text-[11px] text-muted block mb-1">Name *</label>
-              <Input value={addForm.name} onChange={(e) => setAddForm((f) => ({ ...f, name: e.target.value }))} placeholder="Full name" className="h-8 text-sm bg-background border-card-border" autoFocus />
+              <Input value={addForm.name} onChange={(e) => { setAddForm((f) => ({ ...f, name: e.target.value })); setAddError(null) }} placeholder="Full name" className={cn("h-8 text-sm bg-background border-card-border", addError === 'name' && "border-red-500/50")} autoFocus />
+              {addError === 'name' && <p className="text-[11px] text-red-400 mt-1">Name is required</p>}
             </div>
             <div>
               <label className="text-[11px] text-muted block mb-1">Email *</label>
-              <Input type="email" value={addForm.email} onChange={(e) => setAddForm((f) => ({ ...f, email: e.target.value }))} placeholder="email@example.com" className="h-8 text-sm bg-background border-card-border" />
+              <Input type="email" value={addForm.email} onChange={(e) => { setAddForm((f) => ({ ...f, email: e.target.value })); setAddError(null) }} placeholder="email@example.com" className={cn("h-8 text-sm bg-background border-card-border", addError === 'email' && "border-red-500/50")} />
+              {addError === 'email' && <p className="text-[11px] text-red-400 mt-1">Email is required</p>}
             </div>
             <div>
               <label className="text-[11px] text-muted block mb-1">Password *</label>
-              <Input type="password" value={addForm.password} onChange={(e) => setAddForm((f) => ({ ...f, password: e.target.value }))} placeholder="Min 8 characters" className="h-8 text-sm bg-background border-card-border" />
+              <Input type="password" value={addForm.password} onChange={(e) => { setAddForm((f) => ({ ...f, password: e.target.value })); setAddError(null) }} placeholder="Min 8 characters" className={cn("h-8 text-sm bg-background border-card-border", addError === 'password' && "border-red-500/50")} />
+              {addError === 'password' && <p className="text-[11px] text-red-400 mt-1">Min 8 characters</p>}
             </div>
           </div>
-          {addError && <p className="text-[11px] text-red-400 mt-2">{addError}</p>}
           <div className="flex gap-2 mt-4">
             <button onClick={() => { setShowAddMember(false); setAddForm({ name: '', email: '', password: '' }); setAddError(null) }} className="flex-1 h-10 rounded-lg border border-card-border text-muted hover:text-foreground hover:bg-white/[0.03] text-sm transition-colors flex items-center justify-center gap-2"><X className="w-4 h-4" /> Cancel</button>
             <button onClick={handleAddMember} disabled={addSubmitting} className={cn('flex-1 h-10 rounded-lg bg-green-500/10 text-green-400 hover:bg-green-500/20 text-sm font-medium transition-colors flex items-center justify-center gap-2', addSubmitting && 'opacity-50 cursor-not-allowed')}><Check className="w-4 h-4" /> {addSubmitting ? 'Adding...' : 'Add Member'}</button>
