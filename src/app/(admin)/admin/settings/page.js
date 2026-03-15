@@ -329,13 +329,13 @@ function BrandingTab() {
   const [uploading, setUploading] = useState(false)
   const fileInputRef = useRef(null)
 
-  // Theme state
+  // Theme state — defaults match the app's dark theme
   const [selectedThemeId, setSelectedThemeId] = useState(null)
   const [colors, setColors] = useState({
-    background: '#0a0a0b', surface: '#141416', surfaceHover: '#1c1c1f',
-    primary: '#6366f1', primaryHover: '#5558e8', secondary: '#818cf8',
-    accent: '#a78bfa', foreground: '#f0f0f5', muted: '#71717a',
-    border: '#27272a', borderHover: '#3f3f46',
+    background: '#0a0a0a', surface: '#111111', surfaceHover: '#1a1a1a',
+    primary: '#c8a750', primaryHover: '#a08535', secondary: '#c8a750',
+    accent: '#c8a750', foreground: '#f5f5f5', muted: '#888888',
+    border: '#1a1a1a', borderHover: '#232323',
   })
   const [titleFont, setTitleFont] = useState('Inter')
   const [bodyFont, setBodyFont] = useState('Inter')
@@ -363,18 +363,19 @@ function BrandingTab() {
             const matchedPreset = THEMES.find(t => t.primary === theme.primary && t.background === theme.background)
             if (matchedPreset) setSelectedThemeId(matchedPreset.id)
             // Load all colors
+            const pc = theme.primaryColor || '#c8a750'
             setColors({
-              background: theme.background || '#0a0a0b',
-              surface: theme.surface || '#141416',
-              surfaceHover: theme.surfaceHover || '#1c1c1f',
-              primary: theme.primary || '#6366f1',
-              primaryHover: theme.primaryHover || '#5558e8',
-              secondary: theme.secondary || '#818cf8',
-              accent: theme.accent || '#a78bfa',
-              foreground: theme.foreground || '#f0f0f5',
-              muted: theme.muted || '#71717a',
-              border: theme.border || '#27272a',
-              borderHover: theme.borderHover || '#3f3f46',
+              background: theme.background || '#0a0a0a',
+              surface: theme.surface || '#111111',
+              surfaceHover: theme.surfaceHover || '#1a1a1a',
+              primary: theme.primary || pc,
+              primaryHover: theme.primaryHover || '#a08535',
+              secondary: theme.secondary || pc,
+              accent: theme.accent || pc,
+              foreground: theme.foreground || '#f5f5f5',
+              muted: theme.muted || '#888888',
+              border: theme.border || '#1a1a1a',
+              borderHover: theme.borderHover || '#232323',
             })
             if (theme.titleFont) setTitleFont(theme.titleFont)
             if (theme.bodyFont) setBodyFont(theme.bodyFont)

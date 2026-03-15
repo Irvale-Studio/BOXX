@@ -100,14 +100,8 @@ function AdminLayoutInner({ children }) {
         <div className="h-16 flex items-center justify-between px-4 border-b border-card-border">
           {!collapsed && (
             <div className="flex items-center gap-2 min-w-0">
-              {logoUrl ? (
-                <Image src={logoUrl} alt={studioName} width={80} height={32} className="h-6 w-auto object-contain" />
-              ) : (
-                <>
-                  <VerticalIcon className="w-5 h-5 text-accent shrink-0" />
-                  <span className="font-bold text-foreground tracking-wide tenant-title truncate">{studioName}</span>
-                </>
-              )}
+              <VerticalIcon className="w-5 h-5 text-accent shrink-0" />
+              <span className="font-bold text-foreground tracking-wide tenant-title truncate">{studioName}</span>
             </div>
           )}
           {collapsed && (
