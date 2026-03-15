@@ -151,31 +151,65 @@ export default function AdminLocationsPage() {
       return
     }
     setLocError(null)
-    setSubmitting(true)
-    try {
-      const isCreate = mode === 'create'
-      const res = await fetch('/api/admin/locations', {
-        method: isCreate ? 'POST' : 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(isCreate ? locForm : { id: editingLocId, ...locForm }),
-      })
-      const data = await res.json()
-      if (!res.ok) {
-        setToast({ message: data.error || 'Failed to save', type: 'error' })
-        return
+    const isCreate = mode === 'create'
+
+    if (isCreate) {
+      // Optimistic: add immediately, close form
+      const tempId = `temp-${Date.now()}`
+      const optimisticLoc = {
+        id: tempId,
+        ...locForm,
+        is_active: true,
+        zones: [],
+        _optimistic: true,
       }
-      setToast({ message: isCreate ? 'Location created' : 'Location updated', type: 'success' })
-      if (isCreate) {
-        setShowCreateLoc(false)
-      } else {
-        setEditingLocId(null)
-      }
+      setLocations((prev) => [...prev, optimisticLoc])
+      setShowCreateLoc(false)
       setLocMoreOptions(false)
-      fetchLocations()
-    } catch {
-      setToast({ message: 'Something went wrong', type: 'error' })
-    } finally {
-      setSubmitting(false)
+
+      try {
+        const res = await fetch('/api/admin/locations', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(locForm),
+        })
+        const data = await res.json()
+        if (!res.ok) {
+          setLocations((prev) => prev.filter((l) => l.id !== tempId))
+          setToast({ message: data.error || 'Failed to save', type: 'error' })
+          return
+        }
+        setToast({ message: 'Location created', type: 'success' })
+        fetchLocations()
+      } catch {
+        setLocations((prev) => prev.filter((l) => l.id !== tempId))
+        setToast({ message: 'Something went wrong', type: 'error' })
+      }
+    } else {
+      // Edit: optimistic update in place
+      const prevLocations = [...locations]
+      setLocations((prev) => prev.map((l) => l.id === editingLocId ? { ...l, ...locForm } : l))
+      setEditingLocId(null)
+      setLocMoreOptions(false)
+
+      try {
+        const res = await fetch('/api/admin/locations', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: editingLocId, ...locForm }),
+        })
+        const data = await res.json()
+        if (!res.ok) {
+          setLocations(prevLocations)
+          setToast({ message: data.error || 'Failed to save', type: 'error' })
+          return
+        }
+        setToast({ message: 'Location updated', type: 'success' })
+        fetchLocations()
+      } catch {
+        setLocations(prevLocations)
+        setToast({ message: 'Something went wrong', type: 'error' })
+      }
     }
   }
 
@@ -292,40 +326,80 @@ export default function AdminLocationsPage() {
       return
     }
     setZoneError(null)
-    setSubmitting(true)
     const locationId = mode === 'create' ? creatingZoneForLoc : editingZoneLocId
-    try {
-      const isCreate = mode === 'create'
-      const rawCapacity = zoneForm.capacity.trim()
-      const parsedCapacity = rawCapacity === '' ? null : parseInt(rawCapacity, 10)
-      const payload = {
-        name: zoneForm.name,
-        capacity: Number.isNaN(parsedCapacity) ? null : parsedCapacity,
-        description: zoneForm.description || null,
-      }
-      const res = await fetch(`/api/admin/locations/${locationId}/zones`, {
-        method: isCreate ? 'POST' : 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(isCreate ? payload : { id: editingZoneId, ...payload }),
-      })
-      const data = await res.json()
-      if (!res.ok) {
-        setToast({ message: data.error || 'Failed to save zone', type: 'error' })
-        return
-      }
-      setToast({ message: isCreate ? 'Zone created' : 'Zone updated', type: 'success' })
-      if (isCreate) {
-        setCreatingZoneForLoc(null)
-      } else {
-        setEditingZoneId(null)
-        setEditingZoneLocId(null)
-      }
+    const isCreate = mode === 'create'
+    const rawCapacity = zoneForm.capacity.trim()
+    const parsedCapacity = rawCapacity === '' ? null : parseInt(rawCapacity, 10)
+    const payload = {
+      name: zoneForm.name,
+      capacity: Number.isNaN(parsedCapacity) ? null : parsedCapacity,
+      description: zoneForm.description || null,
+    }
+
+    if (isCreate) {
+      // Optimistic: add zone to location immediately
+      const tempId = `temp-${Date.now()}`
+      const optimisticZone = { id: tempId, ...payload, is_active: true, _optimistic: true }
+      setLocations((prev) => prev.map((l) => l.id === locationId
+        ? { ...l, zones: [...(l.zones || []), optimisticZone] }
+        : l
+      ))
+      setCreatingZoneForLoc(null)
       setZoneMoreOptions(false)
-      fetchLocations()
-    } catch {
-      setToast({ message: 'Something went wrong', type: 'error' })
-    } finally {
-      setSubmitting(false)
+
+      try {
+        const res = await fetch(`/api/admin/locations/${locationId}/zones`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        })
+        const data = await res.json()
+        if (!res.ok) {
+          setLocations((prev) => prev.map((l) => l.id === locationId
+            ? { ...l, zones: (l.zones || []).filter((z) => z.id !== tempId) }
+            : l
+          ))
+          setToast({ message: data.error || 'Failed to save zone', type: 'error' })
+          return
+        }
+        setToast({ message: 'Zone created', type: 'success' })
+        fetchLocations()
+      } catch {
+        setLocations((prev) => prev.map((l) => l.id === locationId
+          ? { ...l, zones: (l.zones || []).filter((z) => z.id !== tempId) }
+          : l
+        ))
+        setToast({ message: 'Something went wrong', type: 'error' })
+      }
+    } else {
+      // Optimistic edit
+      const prevLocations = [...locations.map((l) => ({ ...l, zones: [...(l.zones || [])] }))]
+      setLocations((prev) => prev.map((l) => l.id === locationId
+        ? { ...l, zones: (l.zones || []).map((z) => z.id === editingZoneId ? { ...z, ...payload } : z) }
+        : l
+      ))
+      setEditingZoneId(null)
+      setEditingZoneLocId(null)
+      setZoneMoreOptions(false)
+
+      try {
+        const res = await fetch(`/api/admin/locations/${locationId}/zones`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: editingZoneId, ...payload }),
+        })
+        const data = await res.json()
+        if (!res.ok) {
+          setLocations(prevLocations)
+          setToast({ message: data.error || 'Failed to save zone', type: 'error' })
+          return
+        }
+        setToast({ message: 'Zone updated', type: 'success' })
+        fetchLocations()
+      } catch {
+        setLocations(prevLocations)
+        setToast({ message: 'Something went wrong', type: 'error' })
+      }
     }
   }
 

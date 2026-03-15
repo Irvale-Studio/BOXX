@@ -103,7 +103,25 @@ export default function ClassTypesPage() {
 
   async function handleCreate() {
     if (!addForm.name.trim()) { setToast({ message: 'Name is required', type: 'error' }); return }
-    setAddSubmitting(true)
+
+    // Optimistic: add card immediately, close form
+    const tempId = `temp-${Date.now()}`
+    const optimisticCt = {
+      id: tempId,
+      name: addForm.name,
+      description: addForm.description || null,
+      duration_mins: addForm.duration_mins,
+      color: addForm.color,
+      icon: addForm.icon || null,
+      is_private: addForm.is_private,
+      is_active: true,
+      image_url: addImagePreview || null,
+      _optimistic: true,
+    }
+    setClassTypes((prev) => [...prev, optimisticCt])
+    const savedImageFile = addImageFile
+    cancelAdd()
+
     try {
       const res = await fetch('/api/admin/class-types', {
         method: 'POST',
@@ -118,18 +136,20 @@ export default function ClassTypesPage() {
         }),
       })
       const data = await res.json()
-      if (!res.ok) { setToast({ message: data.error || 'Failed to create', type: 'error' }); return }
+      if (!res.ok) {
+        setClassTypes((prev) => prev.filter((ct) => ct.id !== tempId))
+        setToast({ message: data.error || 'Failed to create', type: 'error' })
+        return
+      }
       // Upload image if selected
-      if (addImageFile && data.classType?.id) {
-        await uploadClassImage(data.classType.id, addImageFile)
+      if (savedImageFile && data.classType?.id) {
+        await uploadClassImage(data.classType.id, savedImageFile)
       }
       setToast({ message: `"${data.classType.name}" created`, type: 'success' })
-      cancelAdd()
       fetchClassTypes()
     } catch {
+      setClassTypes((prev) => prev.filter((ct) => ct.id !== tempId))
       setToast({ message: 'Something went wrong', type: 'error' })
-    } finally {
-      setAddSubmitting(false)
     }
   }
 

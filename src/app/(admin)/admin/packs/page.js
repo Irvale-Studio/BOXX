@@ -262,7 +262,6 @@ export default function AdminPacksPage() {
   }
 
   async function handleSave() {
-    setSubmitting(true)
     const isCreate = editingId === 'new'
     const url = '/api/admin/packs'
     const method = isCreate ? 'POST' : 'PUT'
@@ -281,25 +280,63 @@ export default function AdminPacksPage() {
       stripe_price_id: form.stripe_price_id || null,
     }
 
-    try {
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
-      const data = await res.json()
-      if (!res.ok) {
-        setToast({ message: data.error || 'Failed to save pack', type: 'error' })
-        return
+    if (isCreate) {
+      // Optimistic: add row immediately
+      const tempId = `temp-${Date.now()}`
+      const optimisticPack = {
+        id: tempId,
+        ...payload,
+        active: true,
+        _optimistic: true,
       }
-      setToast({ message: isCreate ? 'Pack created' : 'Pack updated', type: 'success' })
+      setPacks((prev) => [...prev, optimisticPack])
       setEditingId(null)
       setForm(emptyForm)
-      fetchPacks()
-    } catch (err) {
-      setToast({ message: 'Something went wrong', type: 'error' })
-    } finally {
-      setSubmitting(false)
+
+      try {
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        })
+        const data = await res.json()
+        if (!res.ok) {
+          setPacks((prev) => prev.filter((p) => p.id !== tempId))
+          setToast({ message: data.error || 'Failed to save pack', type: 'error' })
+          return
+        }
+        setToast({ message: 'Pack created', type: 'success' })
+        fetchPacks()
+      } catch {
+        setPacks((prev) => prev.filter((p) => p.id !== tempId))
+        setToast({ message: 'Something went wrong', type: 'error' })
+      }
+    } else {
+      // Optimistic edit
+      const editId = editingId
+      const prevPacks = [...packs]
+      setPacks((prev) => prev.map((p) => p.id === editId ? { ...p, ...payload } : p))
+      setEditingId(null)
+      setForm(emptyForm)
+
+      try {
+        const res = await fetch(url, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        })
+        const data = await res.json()
+        if (!res.ok) {
+          setPacks(prevPacks)
+          setToast({ message: data.error || 'Failed to save pack', type: 'error' })
+          return
+        }
+        setToast({ message: 'Pack updated', type: 'success' })
+        fetchPacks()
+      } catch {
+        setPacks(prevPacks)
+        setToast({ message: 'Something went wrong', type: 'error' })
+      }
     }
   }
 

@@ -94,7 +94,20 @@ export default function AdminInstructorsPage() {
 
   async function handleSaveCreate() {
     if (!createForm.name.trim() || submitting) return
-    setSubmitting(true)
+
+    // Optimistic: add immediately, close form
+    const tempId = `temp-${Date.now()}`
+    const optimisticInst = {
+      id: tempId,
+      name: createForm.name,
+      bio: createForm.bio || null,
+      active: true,
+      photo_url: null,
+      _optimistic: true,
+    }
+    setInstructors((prev) => [...prev, optimisticInst])
+    cancelCreate()
+
     try {
       const res = await fetch('/api/admin/instructors', {
         method: 'POST',
@@ -106,49 +119,55 @@ export default function AdminInstructorsPage() {
       })
       const data = await res.json()
       if (!res.ok) {
+        setInstructors((prev) => prev.filter((i) => i.id !== tempId))
         setToast({ message: data.error || 'Failed to save', type: 'error' })
         return
       }
       setToast({ message: 'Instructor added', type: 'success' })
-      cancelCreate()
       fetchInstructors()
-    } catch (err) {
+    } catch {
+      setInstructors((prev) => prev.filter((i) => i.id !== tempId))
       setToast({ message: 'Something went wrong', type: 'error' })
-    } finally {
-      setSubmitting(false)
     }
   }
 
   async function handleSaveEdit() {
     if (!editForm.name.trim() || submitting) return
-    setSubmitting(true)
+
+    // Optimistic: update immediately, close form
+    const prevInstructors = [...instructors]
+    const editId = editingId
+    setInstructors((prev) => prev.map((i) => i.id === editId ? { ...i, name: editForm.name, bio: editForm.bio || null } : i))
+    cancelEdit()
+
     try {
       const res = await fetch('/api/admin/instructors', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          id: editingId,
+          id: editId,
           name: editForm.name,
           bio: editForm.bio || null,
         }),
       })
       const data = await res.json()
       if (!res.ok) {
+        setInstructors(prevInstructors)
         setToast({ message: data.error || 'Failed to save', type: 'error' })
         return
       }
       setToast({ message: 'Instructor updated', type: 'success' })
-      cancelEdit()
       fetchInstructors()
-    } catch (err) {
+    } catch {
+      setInstructors(prevInstructors)
       setToast({ message: 'Something went wrong', type: 'error' })
-    } finally {
-      setSubmitting(false)
     }
   }
 
   async function handleToggleActive(e, inst) {
     e.stopPropagation()
+    // Optimistic toggle
+    setInstructors((prev) => prev.map((i) => i.id === inst.id ? { ...i, active: !i.active } : i))
     try {
       const res = await fetch('/api/admin/instructors', {
         method: 'PUT',
@@ -157,9 +176,13 @@ export default function AdminInstructorsPage() {
       })
       if (res.ok) {
         setToast({ message: inst.active ? 'Instructor deactivated' : 'Instructor activated', type: 'success' })
-        fetchInstructors()
+      } else {
+        // Revert
+        setInstructors((prev) => prev.map((i) => i.id === inst.id ? { ...i, active: inst.active } : i))
+        setToast({ message: 'Failed to update', type: 'error' })
       }
-    } catch (err) {
+    } catch {
+      setInstructors((prev) => prev.map((i) => i.id === inst.id ? { ...i, active: inst.active } : i))
       setToast({ message: 'Failed to update', type: 'error' })
     }
   }
